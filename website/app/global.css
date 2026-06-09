@@ -1,0 +1,4 @@
+@import 'fumadocs-ui/style.css';
+
+/* Scan our own components/pages for any Tailwind utilities we use (Tailwind v4 syntax). */
+@source '../app';

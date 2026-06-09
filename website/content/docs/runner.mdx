@@ -1,0 +1,32 @@
+---
+title: The Runner
+description: Optional measured facts for Deep Dive — in Rust, and it never runs your code.
+---
+
+By default, Deep Dive works from the repo's **README** — what the project *says* about itself. The optional **deeper-scan runner** replaces that with **measured facts** pulled from the actual source.
+
+## What it measures
+
+A small **Rust** daemon downloads a repo's source as a tarball, extracts it under strict guards, and analyzes it **statically**:
+
+- real file counts and a file tree
+- languages and lines of code
+- the dependency graph (direct + transitive, from lockfiles)
+- license (SPDX)
+- architecture signals — entry points, monorepo/workspaces, containerization
+- test and CI detection
+- a secret scan
+
+> **It never executes repo code.** It only downloads and reads source — no `npm install`, no build, no run. When Docker is available it sandboxes hard (`--network none --read-only --cap-drop ALL`); otherwise it analyzes in-process on the host.
+
+## Run it
+
+```bash
+cargo run --release -- serve   # listens on localhost:9191
+```
+
+Leave it running. The extension auto-detects it, and the Deep Dive status pill turns green: *"Deeper-scan runner online — Deep Dive will use measured facts."* Without it, Deep Dive simply falls back to the README — nothing breaks.
+
+## It's optional
+
+RepoLens is fully usable without the runner. The runner just makes Deep Dive *deeper* and more honest, by grounding it in what the code actually is rather than what its README claims.

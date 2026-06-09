@@ -1,0 +1,29 @@
+---
+title: Storage
+description: Your library lives in the browser. Nothing to install.
+---
+
+Every analysis is persisted **in the browser**, using **IndexedDB**. There's no database to run, no port to configure, no daemon to keep alive — it works the moment the extension is loaded, which is also what makes it Chrome-Web-Store-ready.
+
+## What's stored
+
+- **Repos** — each analysis payload, keyed by a stable hash of the repo id.
+- **Graph** — the nodes and edges behind the Connections tab.
+
+"Similar repos" is a small **client-side ranker** over your saved repos (token overlap on language, category, tags, and the summary) — no embeddings, no vector database, no network.
+
+## Importing an old VelesDB library
+
+Earlier builds of RepoLens saved to a local **VelesDB** server. If you have one, you can pull that library into the new in-browser store in one pass:
+
+1. Start your VelesDB server.
+2. Open **Options → Import from VelesDB**.
+3. Confirm the URL (defaults to `http://localhost:9090`) and click **Import library**.
+
+It reads every saved repo and copies it across. The import is **idempotent** — re-running overwrites by id, never duplicates. The Connections graph isn't migrated; it rebuilds naturally as you use the app.
+
+> Repos saved by older builds may show as **Unrated** — their fit data was never persisted. Re-scanning a repo fills in its fit chip.
+
+## A seam for later
+
+Persistence sits behind a single storage interface. Today the only backend is IndexedDB; a future sync or shared-store backend can slot in behind the same interface without touching the rest of the app.

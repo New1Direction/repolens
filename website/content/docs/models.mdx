@@ -1,0 +1,38 @@
+---
+title: Models
+description: Bring your own keys, and route each part of a scan to a different model.
+---
+
+RepoLens never ships a key. You connect the providers you want in **Options → Connected Services**, and scans run on your credentials.
+
+## The fallback chain
+
+By default, every AI call runs down a **smart fallback chain** — it tries one provider, and drops to the next on *any* error (rate limit, network, outage):
+
+```text
+Nous  →  Gemini  →  OpenRouter  →  Grok  →  Anthropic
+```
+
+Whichever provider is highest in that order *and* connected is your primary; the rest are automatic fallbacks. Each provider has a model dropdown, with **★** marking the recommended pick.
+
+| Provider | ★ Recommended |
+|---|---|
+| Anthropic | Claude Sonnet 4.6 (Opus 4.8 for max) |
+| Gemini | Gemini 2.5 Pro |
+| Nous | Hermes 4 405B |
+| OpenRouter | Grok 4.3 |
+| xAI | Grok 4.3 |
+
+## Models per scan part
+
+A scan isn't one call — it's eight distinct parts (Core scan, Deep Dive, Framework Lens, SKTPG, Versus, Synergies, Combinator, Re-tag). You can point **each one** at a different provider and model:
+
+> Core scan → **Claude Opus 4.8** for the deep judgment.
+> Re-tag → a cheap, fast model, because it's bulk work.
+> Deep Dive → whatever you like.
+
+Set it all in **Options → Models per scan part**. Each part defaults to **"Default (smart fallback)"**, so you only configure what you care about.
+
+### It can't dead-end
+
+A per-part pick is a *preferred first try*, not a hard requirement. If that provider errors or isn't connected, the part **falls through to the full chain**. So a routed part always has a working model — you can be aggressive with your picks without risking a broken scan.

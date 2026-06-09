@@ -1,0 +1,33 @@
+---
+title: Getting Started
+description: Load the extension and run your first scan.
+---
+
+## Install (load unpacked)
+
+RepoLens has **no build step** — it runs as-is.
+
+1. Clone or download the repo.
+2. Open `chrome://extensions`.
+3. Toggle **Developer mode** (top right).
+4. Click **Load unpacked** and select the project folder.
+
+The 🔭 icon appears in your toolbar.
+
+## Your first scan
+
+1. Open any repo page — e.g. a project on **github.com**.
+2. Click the **RepoLens** icon.
+3. A new tab opens on the **Verdict** — fit call, bottom line, measured facts, and the top things worth noting.
+
+The first scan needs an AI provider connected. If you haven't yet, RepoLens points you to **Options** to add a key — see [Models](/docs/models).
+
+## Develop
+
+```bash
+npm install      # installs vitest
+npm test         # the unit suite
+npm run test:watch
+```
+
+Pure ES modules, no bundler. Edit a file, reload the extension at `chrome://extensions`, scan again.
