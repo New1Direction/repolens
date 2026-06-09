@@ -1,0 +1,59 @@
+{
+  "manifest_version": 3,
+  "name": "RepoLens",
+  "version": "1.0.0",
+  "description": "One-click repo explainer. Powered by Claude.",
+  "permissions": ["storage", "activeTab", "tabs", "identity", "webNavigation"],
+  "host_permissions": [
+    "https://github.com/*",
+    "https://gitlab.com/*",
+    "https://www.npmjs.com/*",
+    "https://pypi.org/*",
+    "https://api.github.com/*",
+    "https://registry.npmjs.org/*",
+    "https://pypi.org/pypi/*",
+    "https://api.anthropic.com/*",
+    "https://console.anthropic.com/*",
+    "https://claude.ai/*",
+    "https://platform.claude.com/*",
+    "https://generativelanguage.googleapis.com/*",
+    "https://openrouter.ai/*",
+    "https://api.x.ai/*",
+    "https://auth.x.ai/*",
+    "https://inference-api.nousresearch.com/*",
+    "https://grok.com/*",
+    "https://cli-chat-proxy.grok.com/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://github.com/*/*",
+        "https://gitlab.com/*/*",
+        "https://www.npmjs.com/package/*",
+        "https://pypi.org/project/*"
+      ],
+      "js": ["content_script.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "RepoLens — click to analyse",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "options_page": "options.html",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

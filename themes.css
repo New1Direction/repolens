@@ -1,0 +1,252 @@
+/* extension/themes.css — theme tokens. Selected via <html data-theme="…">. */
+
+:root,
+[data-theme="midnight"] {
+  --body-bg: #0a0a0f;
+  --bg: #0a0a0f;
+  --surface: #0f0f17;
+  --surface-alt: #0c0c14;
+  --border: #1e1e2e;
+  --border-2: #2a2a3e;
+
+  --text: #e2e8f0;
+  --text-strong: #ffffff;
+  --text-body: #cbd5e1;
+  --text-sub: #94a3b8;
+  --text-muted: #64748b;
+  --text-faint: #475569;
+  --text-fainter: #334155;
+
+  --accent: #818cf8;
+  --accent-deep: #6d28d9;
+  --accent-deep-hover: #7c3aed;
+  --accent-grad: linear-gradient(135deg, #6d28d9, #2563eb);
+
+  --font: system-ui, -apple-system, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --card-shadow: none;
+}
+
+[data-theme="paper"] {
+  --body-bg: #f7f7fb;
+  --bg: #f7f7fb;
+  --surface: #ffffff;
+  --surface-alt: #f0f0f5;
+  --border: #e2e8f0;
+  --border-2: #d8dce6;
+
+  --text: #1e293b;
+  --text-strong: #0f172a;
+  --text-body: #334155;
+  --text-sub: #475569;
+  --text-muted: #64748b;
+  --text-faint: #94a3b8;
+  --text-fainter: #cbd5e1;
+
+  --accent: #6d28d9;
+  --accent-deep: #6d28d9;
+  --accent-deep-hover: #5b21b6;
+  --accent-grad: linear-gradient(135deg, #7c3aed, #2563eb);
+
+  --card-shadow: 0 1px 3px #0000000d;
+}
+
+[data-theme="terminal"] {
+  --body-bg: #07100b;
+  --bg: #07100b;
+  --surface: #0b160f;
+  --surface-alt: #091310;
+  --border: #15803d40;
+  --border-2: #22c55e40;
+
+  --text: #d1fae5;
+  --text-strong: #bbf7d0;
+  --text-body: #a7f3d0;
+  --text-sub: #6ee7b7;
+  --text-muted: #3f9142;
+  --text-faint: #3f6212;
+  --text-fainter: #2d4a16;
+
+  --accent: #22c55e;
+  --accent-deep: #16a34a;
+  --accent-deep-hover: #15803d;
+  --accent-grad: linear-gradient(135deg, #16a34a, #22c55e);
+
+  --font: var(--mono);
+  --card-shadow: none;
+}
+
+[data-theme="synthwave"] {
+  --body-bg: linear-gradient(160deg, #1a0b2e, #0f0524);
+  --bg: #160833;
+  --surface: #1e0b3a;
+  --surface-alt: #180830;
+  --border: #e879f933;
+  --border-2: #e879f955;
+
+  --text: #f5d0fe;
+  --text-strong: #fae8ff;
+  --text-body: #e9d5ff;
+  --text-sub: #d8b4fe;
+  --text-muted: #a78bca;
+  --text-faint: #7c5295;
+  --text-fainter: #5b3a78;
+
+  --accent: #e879f9;
+  --accent-deep: #c026d3;
+  --accent-deep-hover: #d946ef;
+  --accent-grad: linear-gradient(135deg, #e879f9, #22d3ee);
+
+  --card-shadow: 0 0 18px #6d28d955;
+}
+
+/* BMW M — pure-black canvas, white type, M tricolor on brand marks,
+   heritage M-blue accent, sharp rectangles. */
+[data-theme="bmw"] {
+  --body-bg: #000000;
+  --bg: #000000;
+  --surface: #1a1a1a;
+  --surface-alt: #0d0d0d;
+  --border: #3c3c3c;
+  --border-2: #262626;
+
+  --text: #ffffff;
+  --text-strong: #ffffff;
+  --text-body: #bbbbbb;
+  --text-sub: #bbbbbb;
+  --text-muted: #7e7e7e;
+  --text-faint: #7e7e7e;
+  --text-fainter: #3c3c3c;
+
+  --accent: #1c69d4;
+  --accent-deep: #0066b1;
+  --accent-deep-hover: #0653b6;
+  /* The M tricolor — lands on the logo + health bar as the M stripe. */
+  --accent-grad: linear-gradient(90deg, #0066b1 33%, #1c69d4 33% 66%, #e22718 66%);
+
+  --font: "BMW Type Next Latin", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --card-shadow: none;
+}
+
+/* BMW M: industrial sharp rectangles (functional circles stay round). */
+[data-theme="bmw"] .pill,
+[data-theme="bmw"] .use-card,
+[data-theme="bmw"] .pro-col,
+[data-theme="bmw"] .con-col,
+[data-theme="bmw"] .entry-card,
+[data-theme="bmw"] .entry-tag,
+[data-theme="bmw"] .veles-box,
+[data-theme="bmw"] .saved-badge,
+[data-theme="bmw"] .logo,
+[data-theme="bmw"] .health-track,
+[data-theme="bmw"] .health-fill,
+[data-theme="bmw"] .svc-card,
+[data-theme="bmw"] .svc-btn,
+[data-theme="bmw"] .save-btn,
+[data-theme="bmw"] .theme-chip,
+[data-theme="bmw"] input[type="text"],
+[data-theme="bmw"] input[type="password"],
+[data-theme="bmw"] .token-row input,
+[data-theme="bmw"] .token-row button,
+[data-theme="bmw"] .model-select { border-radius: 0; }
+
+/* BMW M: machined uppercase tab labels. */
+[data-theme="bmw"] .tab-btn { text-transform: uppercase; letter-spacing: 1.5px; }
+
+/* xAI — near-black canvas, white-on-black, engineered restraint. */
+[data-theme="xai"] {
+  --body-bg: #0a0a0a;
+  --bg: #0a0a0a;
+  --surface: #191919;
+  --surface-alt: #1a1c20;
+  --border: #212327;
+  --border-2: #363a3f;
+
+  --text: #ffffff;
+  --text-strong: #ffffff;
+  --text-body: #dadbdf;
+  --text-sub: #dadbdf;
+  --text-muted: #7d8187;
+  --text-faint: #7d8187;
+  --text-fainter: #363a3f;
+
+  --accent: #ffffff;
+  --accent-deep: #363a3f;
+  --accent-deep-hover: #4a4f55;
+  /* The rare accent palette lives on the brand marks only. */
+  --accent-grad: linear-gradient(135deg, #ff7a17, #7c3aed);
+
+  --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --card-shadow: none;
+}
+/* xAI: pill buttons (outline) + mono code-comment eyebrows. */
+[data-theme="xai"] .save-btn,
+[data-theme="xai"] .svc-btn,
+[data-theme="xai"] .token-row button { border-radius: 9999px; }
+[data-theme="xai"] .save-btn { background: transparent; border: 1px solid rgba(255,255,255,0.25); color: #ffffff; }
+[data-theme="xai"] .section-title { font-family: var(--mono); }
+
+/* Claude — warm cream canvas, coral accent, serif display. */
+[data-theme="claude"] {
+  --body-bg: #faf9f5;
+  --bg: #faf9f5;
+  --surface: #efe9de;
+  --surface-alt: #f5f0e8;
+  --border: #e6dfd8;
+  --border-2: #d8cec0;
+
+  --text: #141413;
+  --text-strong: #141413;
+  --text-body: #3d3d3a;
+  --text-sub: #3d3d3a;
+  --text-muted: #6c6a64;
+  --text-faint: #8e8b82;
+  --text-fainter: #cbc5ba;
+
+  --accent: #cc785c;
+  --accent-deep: #cc785c;
+  --accent-deep-hover: #a9583e;
+  --accent-grad: linear-gradient(135deg, #cc785c, #e8a55a);
+
+  --font: "StyreneB", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --card-shadow: 0 1px 3px rgba(20,20,19,0.08);
+}
+/* Claude: editorial slab-serif on display elements (body stays sans). */
+[data-theme="claude"] .repo-name,
+[data-theme="claude"] .health-score {
+  font-family: "Copernicus", "Tiempos Headline", Georgia, "Times New Roman", serif;
+  letter-spacing: -0.5px;
+}
+
+/* Apple — white/parchment canvas, single action-blue accent, pill CTAs. */
+[data-theme="apple"] {
+  --body-bg: #ffffff;
+  --bg: #ffffff;
+  --surface: #f5f5f7;
+  --surface-alt: #fafafc;
+  --border: #e0e0e0;
+  --border-2: #d2d2d7;
+
+  --text: #1d1d1f;
+  --text-strong: #1d1d1f;
+  --text-body: #1d1d1f;
+  --text-sub: #6e6e73;
+  --text-muted: #6e6e73;
+  --text-faint: #86868b;
+  --text-fainter: #d2d2d7;
+
+  --accent: #0066cc;
+  --accent-deep: #0066cc;
+  --accent-deep-hover: #0071e3;
+  --accent-grad: linear-gradient(135deg, #0071e3, #0066cc);
+
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", Roboto, sans-serif;
+  --card-shadow: 0 3px 30px rgba(0,0,0,0.10);
+}
+/* Apple: pill CTAs + signature tight display tracking. */
+[data-theme="apple"] .save-btn,
+[data-theme="apple"] .svc-btn,
+[data-theme="apple"] .token-row button { border-radius: 9999px; }
+[data-theme="apple"] .repo-name,
+[data-theme="apple"] .health-score { letter-spacing: -1px; }

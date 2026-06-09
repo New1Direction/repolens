@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>RepoLens Settings</title>
+<link rel="stylesheet" href="themes.css">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--body-bg); color: var(--text-body); font-family: var(--font); padding: 40px; max-width: 520px; }
+
+  h1 { font-size: 18px; font-weight: 800; color: var(--text-strong); margin-bottom: 6px; }
+  .sub { font-size: 12px; color: var(--text-fainter); margin-bottom: 36px; }
+
+  .section { margin-bottom: 36px; padding-bottom: 36px; border-bottom: 1px solid var(--border); }
+  .section:last-of-type { border-bottom: none; }
+  .section-title { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--accent); margin-bottom: 20px; }
+
+  /* Core fields */
+  label { display: block; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text-faint); margin-bottom: 6px; }
+  input[type="password"], input[type="text"] {
+    width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+    padding: 10px 12px; font-size: 13px; color: var(--text); outline: none;
+    margin-bottom: 6px; font-family: monospace;
+  }
+  input:focus { border-color: var(--accent); }
+  .field-hint { font-size: 10px; color: var(--text-fainter); margin-bottom: 18px; }
+  .checkbox-row { display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 0; }
+  .checkbox-row input[type="checkbox"] { width: auto; margin: 0; accent-color: var(--accent); }
+  .checkbox-row span { font-size: 13px; color: var(--text-sub); }
+
+  /* Service cards */
+  .svc-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; margin-bottom: 10px; }
+  .svc-card.connected { border-color: #16a34a30; }
+  .svc-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .svc-left { display: flex; align-items: center; gap: 12px; }
+  .svc-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); flex-shrink: 0; transition: background .2s; }
+  .svc-dot.on { background: #4ade80; box-shadow: 0 0 6px #4ade8060; }
+  .svc-name { font-size: 13px; font-weight: 600; color: var(--text); }
+  .svc-status { font-size: 11px; color: var(--text-fainter); margin-top: 2px; transition: color .2s; }
+  .svc-status.on { color: #4ade80; }
+
+  .svc-btn {
+    background: var(--border); color: var(--text-sub); border: 1px solid var(--border-2);
+    border-radius: 6px; padding: 7px 14px; font-size: 12px; font-weight: 600;
+    cursor: pointer; white-space: nowrap; transition: all .15s;
+  }
+  .svc-btn:hover { background: var(--accent-deep); color: var(--text-strong); border-color: var(--accent-deep); }
+  .svc-btn.disconnect { background: transparent; color: var(--text-faint); border-color: var(--border); }
+  .svc-btn:disabled { opacity: 0.6; cursor: wait; }
+
+  /* Token entry panel (slides in under card) */
+  .token-panel {
+    display: none; margin-top: 14px; padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+  .token-panel.open { display: block; }
+  .key-toggle { display: inline-block; margin-top: 10px; font-size: 11px; color: var(--text-faint); cursor: pointer; }
+  .key-toggle:hover { color: var(--accent); }
+  .token-instruction { font-size: 11px; color: var(--text-faint); line-height: 1.6; margin-bottom: 10px; }
+  .token-instruction a { color: var(--accent); text-decoration: none; cursor: pointer; }
+  .token-instruction a:hover { text-decoration: underline; }
+  .token-row { display: flex; gap: 8px; }
+  .token-row input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; font-size: 12px; color: var(--text); outline: none; font-family: monospace; margin: 0; }
+  .token-row input:focus { border-color: var(--accent); }
+  .token-row button { background: var(--accent-deep); color: var(--text-strong); border: none; border-radius: 6px; padding: 8px 14px; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .token-row button:hover { background: var(--accent-deep-hover); }
+
+  /* Model selector */
+  .model-row { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); align-items: center; gap: 10px; }
+  .model-row.visible { display: flex; }
+  .model-label { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text-faint); white-space: nowrap; }
+  .model-select {
+    flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+    padding: 6px 10px; font-size: 12px; color: var(--text); outline: none; cursor: pointer;
+    appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23475569'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center;
+  }
+  .model-select:focus { border-color: var(--accent); }
+  .model-select option { background: var(--surface); }
+
+  /* Save + status */
+  .save-btn { background: var(--accent-deep); color: var(--text-strong); border: none; border-radius: 6px; padding: 10px 22px; font-size: 13px; font-weight: 600; cursor: pointer; margin-top: 8px; }
+  .save-btn:hover { background: var(--accent-deep-hover); }
+  #status { font-size: 12px; margin-top: 12px; display: none; }
+
+  .theme-picker { display: flex; gap: 10px; flex-wrap: wrap; }
+  .theme-chip { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; cursor: pointer; color: var(--text-sub); font-size: 12px; font-weight: 600; }
+  .theme-chip .dot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--border-2); }
+  .theme-chip.active { border-color: var(--accent); color: var(--text); box-shadow: 0 0 6px var(--accent); }
+
+  .tone-picker { display: flex; gap: 8px; flex-wrap: wrap; }
+  .tone-chip { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; cursor: pointer; color: var(--text-sub); font-size: 12px; font-weight: 600; text-align: left; }
+  .tone-chip .tone-blurb { display: block; font-weight: 400; font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .tone-chip.active { border-color: var(--accent); color: var(--text); box-shadow: 0 0 6px var(--accent); }
+
+  .hist-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .hist-row:last-child { border-bottom: none; }
+  .hist-open { flex: 1; text-align: left; background: none; border: none; color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer; padding: 0; font-family: ui-monospace, monospace; }
+  .hist-open:hover { color: var(--accent); }
+  .hist-meta { color: var(--text-faint); font-size: 11px; white-space: nowrap; }
+  .hist-del { background: none; border: none; color: var(--text-faint); cursor: pointer; font-size: 16px; line-height: 1; padding: 0 4px; }
+  .hist-del:hover { color: #f87171; }
+  .hist-empty { color: var(--text-muted); font-size: 12px; }
+</style>
+</head>
+<body>
+  <h1>RepoLens</h1>
+  <p class="sub">Everything stored locally. Nothing leaves your machine except calls to each service's own API.</p>
+
+  <!-- Appearance -->
+  <div class="section">
+    <div class="section-title">Appearance</div>
+    <label>Theme</label>
+    <div class="theme-picker" id="theme-picker"></div>
+  </div>
+
+  <!-- Voice -->
+  <div class="section">
+    <div class="section-title">Voice</div>
+    <label>Analysis tone</label>
+    <div class="tone-picker" id="tone-picker"></div>
+    <p class="field-hint" style="margin-top:8px">The voice the AI writes every analysis in — the scan and all lenses.</p>
+  </div>
+
+  <!-- Skills -->
+  <div class="section">
+    <div class="section-title">Skills</div>
+    <label class="checkbox-row"><input type="checkbox" id="sktpgEnabled"><span>SKTPG — Directional intelligence (one-tap, on the repo)</span></label>
+    <p class="field-hint" style="margin-top:8px">Adds a one-tap SKTPG tab to every scan — where the repo is heading, not just what it is. On by default.</p>
+  </div>
+
+  <!-- History -->
+  <div class="section">
+    <div class="section-title">History</div>
+    <input type="text" id="historySearch" placeholder="Search analyzed repos…">
+    <div id="history-list"></div>
+    <p class="field-hint" style="margin-top:10px">Every repo you've analyzed is cached locally — click to reopen instantly (no AI call). Re-scanning a cached repo loads it instantly too.</p>
+  </div>
+
+  <!-- Core -->
+  <div class="section">
+    <div class="section-title">Core</div>
+
+    <label>VelesDB Server URL</label>
+    <input type="text" id="velesdbUrl" placeholder="http://localhost:9090">
+    <p class="field-hint" style="margin-bottom:18px">Local database for saving your library.</p>
+
+    <label class="checkbox-row" style="text-transform:none;letter-spacing:0;font-size:13px;font-weight:400;color:var(--text-sub)">
+      <input type="checkbox" id="autoSave">
+      <span>Auto-save analyses to VelesDB</span>
+    </label>
+
+    <label style="margin-top:22px">Delay between AI calls — <span id="aiGapLabel" style="color:var(--accent)">1.2s</span></label>
+    <input type="range" id="aiGap" min="0" max="5000" step="100" value="1200" style="width:100%;accent-color:var(--accent)">
+    <p class="field-hint">Paces bursts (Run-all lenses, Deep Dive's 3 stages) so slow / rate-limited models like Step 3.7 aren't hit all at once. 0 = no delay.</p>
+  </div>
+
+  <!-- Connected Services -->
+  <div class="section">
+    <div class="section-title">Connected Services</div>
+
+    <!-- Anthropic (OAuth via PKCE — Claude subscription) -->
+    <div class="svc-card" id="card-anthropic">
+      <div class="svc-row">
+        <div class="svc-left">
+          <div class="svc-dot" id="dot-anthropic"></div>
+          <div>
+            <div class="svc-name">Anthropic <span style="font-size:10px;color:var(--accent);font-weight:400;margin-left:4px">Claude</span></div>
+            <div class="svc-status" id="status-anthropic">Not connected</div>
+          </div>
+        </div>
+        <button class="svc-btn" id="btn-anthropic">Connect</button>
+      </div>
+      <a class="key-toggle" id="toggle-anthropic">Use an API key instead →</a>
+      <div class="token-panel" id="panel-anthropic">
+        <p class="token-instruction">
+          Paste a standard API key from <a id="link-anthropic">console.anthropic.com/settings/keys</a>.
+          This is the supported, reliable way to use Claude here.
+        </p>
+        <div class="token-row">
+          <input type="password" id="anthropicApiKey" placeholder="sk-ant-api...">
+          <button id="save-anthropic">Save</button>
+        </div>
+      </div>
+      <div class="model-row" id="model-row-anthropic">
+        <span class="model-label">Model</span>
+        <select class="model-select" id="anthropicModel">
+          <option value="claude-sonnet-4-6" selected>Claude Sonnet 4.6</option>
+          <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 — fast</option>
+          <option value="claude-opus-4-7">Claude Opus 4.7 — max quality</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Google AI (OAuth via chrome.identity) — uses Gemini, priority provider -->
+    <div class="svc-card" id="card-google">
+      <div class="svc-row">
+        <div class="svc-left">
+          <div class="svc-dot" id="dot-google"></div>
+          <div>
+            <div class="svc-name">Google AI <span style="font-size:10px;color:var(--accent);font-weight:400;margin-left:4px">Gemini · recommended</span></div>
+            <div class="svc-status" id="status-google">Not connected</div>
+          </div>
+        </div>
+        <button class="svc-btn" id="btn-google">Connect</button>
+      </div>
+      <div class="model-row" id="model-row-google">
+        <span class="model-label">Model</span>
+        <select class="model-select" id="googleModel">
+          <option value="gemini-2.5-pro">Gemini 2.5 Pro — max quality</option>
+          <option value="gemini-2.5-flash" selected>Gemini 2.5 Flash — smart + fast</option>
+          <option value="gemini-2.0-flash">Gemini 2.0 Flash — fast</option>
+          <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash Lite — fastest</option>
+          <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+        </select>
+      </div>
+      <div class="token-panel" id="panel-google">
+        <p class="token-instruction">
+          Go to <a id="link-aistudio">aistudio.google.com/app/apikey</a>, create a free API key,
+          and paste it here. Works with your <strong style="color:var(--text)">Google AI Ultra</strong> subscription.
+        </p>
+        <div class="token-row">
+          <input type="password" id="googleKey" placeholder="AIza...">
+          <button id="save-google">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Nous Research — Nous Portal API key (membership) -->
+    <div class="svc-card" id="card-nous">
+      <div class="svc-row">
+        <div class="svc-left">
+          <div class="svc-dot" id="dot-nous"></div>
+          <div>
+            <div class="svc-name">Nous Research <span style="font-size:10px;color:var(--accent);font-weight:400;margin-left:4px">Nous Portal · membership</span></div>
+            <div class="svc-status" id="status-nous">Not connected</div>
+          </div>
+        </div>
+        <button class="svc-btn" id="btn-nous">Connect</button>
+      </div>
+      <div class="model-row" id="model-row-nous">
+        <span class="model-label">Model</span>
+        <select class="model-select" id="nousModel">
+          <option value="stepfun/step-3.7-flash" selected>Step 3.7 Flash — free 30 days (members)</option>
+          <option value="Hermes-4-405B">Hermes 4 405B — Nous flagship</option>
+          <option value="Hermes-4-70B">Hermes 4 70B — faster</option>
+          <option value="__custom__">Custom…</option>
+        </select>
+      </div>
+      <div class="token-panel" id="custom-nous">
+        <p class="token-instruction">
+          Enter the exact model slug from <a id="link-nous-models">portal.nousresearch.com</a>.
+          The API resolves OpenRouter-catalog slugs (e.g. <strong style="color:var(--text)">stepfun/step-3.7-flash</strong>) and Nous-native names (<strong style="color:var(--text)">Hermes-4-405B</strong>).
+        </p>
+        <div class="token-row">
+          <input type="text" id="nousModelCustom" placeholder="Model-Slug">
+          <button id="save-nous-model">Set</button>
+        </div>
+      </div>
+      <div class="token-panel" id="panel-nous">
+        <p class="token-instruction">
+          Create an API key at <a id="link-nous">portal.nousresearch.com</a> and paste it here.
+          Uses your Nous Portal <strong style="color:var(--text)">membership</strong> credits.
+        </p>
+        <div class="token-row">
+          <input type="password" id="nousKey" placeholder="sk-...">
+          <button id="save-nous">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- OpenRouter (real OAuth via chrome.identity) -->
+    <div class="svc-card" id="card-openrouter">
+      <div class="svc-row">
+        <div class="svc-left">
+          <div class="svc-dot" id="dot-openrouter"></div>
+          <div>
+            <div class="svc-name">OpenRouter</div>
+            <div class="svc-status" id="status-openrouter">Not connected</div>
+          </div>
+        </div>
+        <button class="svc-btn" id="btn-openrouter">Connect</button>
+      </div>
+      <div class="model-row" id="model-row-openrouter">
+        <span class="model-label">Model</span>
+        <select class="model-select" id="openrouterModel">
+          <option value="x-ai/grok-4.3" selected>Grok 4.3 — xAI frontier</option>
+          <option value="x-ai/grok-4.20">Grok 4.20 — reasoning</option>
+          <option value="x-ai/grok-4.1-fast">Grok 4.1 Fast</option>
+          <option value="x-ai/grok-4-fast">Grok 4 Fast</option>
+          <option value="anthropic/claude-sonnet-4-6">Claude Sonnet 4.6</option>
+          <option value="anthropic/claude-opus-4-7">Claude Opus 4.7</option>
+          <option value="google/gemini-2.5-pro">Gemini 2.5 Pro</option>
+          <option value="google/gemini-2.5-flash">Gemini 2.5 Flash</option>
+          <option value="__custom__">Custom…</option>
+        </select>
+      </div>
+      <div class="token-panel" id="custom-openrouter">
+        <p class="token-instruction">
+          Enter any model ID from <a id="link-openrouter">openrouter.ai/models</a>
+          (e.g. <strong style="color:var(--text)">meta-llama/llama-3.3-70b-instruct</strong>).
+        </p>
+        <div class="token-row">
+          <input type="text" id="openrouterModelCustom" placeholder="vendor/model-id">
+          <button id="save-openrouter-model">Set</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- xAI Grok (Device Code OAuth — SuperGrok subscription) -->
+    <div class="svc-card" id="card-xai">
+      <div class="svc-row">
+        <div class="svc-left">
+          <div class="svc-dot" id="dot-xai"></div>
+          <div>
+            <div class="svc-name">Grok <span style="font-size:10px;color:var(--accent);font-weight:400;margin-left:4px">xAI · SuperGrok</span></div>
+            <div class="svc-status" id="status-xai">Not connected</div>
+          </div>
+        </div>
+        <button class="svc-btn" id="btn-xai">Connect</button>
+      </div>
+      <a class="key-toggle" id="toggle-xai">Use an API key instead →</a>
+      <div class="token-panel" id="panel-xai-device"></div>
+      <div class="token-panel" id="panel-xai">
+        <p class="token-instruction">
+          Paste a developer API key from <a id="link-xai">console.x.ai</a> (starts with
+          <strong style="color:var(--text)">xai-</strong>). Note: this is billed per token —
+          separate from a SuperGrok subscription.
+        </p>
+        <div class="token-row">
+          <input type="password" id="xaiKey" placeholder="xai-...">
+          <button id="save-xai">Save</button>
+        </div>
+      </div>
+      <div class="model-row" id="model-row-xai">
+        <span class="model-label">Model</span>
+        <select class="model-select" id="xaiModel">
+          <option value="grok-4.3" selected>Grok 4.3 — smartest + fastest</option>
+          <option value="grok-4.20-0309-reasoning">Grok 4.20 Reasoning — max quality</option>
+          <option value="grok-4.20-0309-non-reasoning">Grok 4.20 — fast</option>
+          <option value="grok-build-0.1">Grok Build 0.1 — lightweight</option>
+        </select>
+      </div>
+    </div>
+
+  </div>
+
+  <button class="save-btn" id="save">Save Core Settings</button>
+  <div id="status"></div>
+
+  <script type="module" src="options.js"></script>
+</body>
+</html>
