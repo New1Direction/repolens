@@ -2,7 +2,7 @@ import { detectPlatform } from './url-detector.js';
 import { fetchRepoData } from './fetcher.js';
 import { buildPrompt } from './prompt.js';
 import { parseClaudeResponse } from './parser.js';
-import { saveAnalysis, normalizeVelesdbUrl, searchLibrary, alternateLocalUrl, upsertNode, addEdge, scrollLibrary, scrollPoints, saveRepo } from './velesdb.js';
+import { saveAnalysis, searchLibrary, upsertNode, addEdge, scrollLibrary, scrollPoints, saveRepo } from './store.js';
 import { buildTagPrompt, parseTags } from './tag-prompt.js';
 import { nodeIdFor, edgeIdFor, ideaIdFor } from './graph.js';
 import { deriveCapabilities } from './taxonomy.js';
@@ -37,31 +37,31 @@ import { cacheAnalysis, getCached } from './cache.js';
 import { emptyLens, withRun, setActive } from './lens-runs.js';
 
 // Best-effort semantic-graph write: upsert both endpoint nodes, then a deterministic
-// (idempotent) edge. VelesDB offline / graph errors are swallowed — building the graph
-// must never block or fail a scan. Mirrors the existing "save offline = skip" policy.
-async function linkRepos(velesdbUrl, { source, sourcePayload, targetKey, targetPayload, label, properties }) {
+// (idempotent) edge. Graph write errors are swallowed — building the graph
+// must never block or fail a scan. Mirrors the existing "save error = skip" policy.
+async function linkRepos({ source, sourcePayload, targetKey, targetPayload, label, properties }) {
   try {
     const src = nodeIdFor(source);
     const tgt = nodeIdFor(targetKey);
-    await upsertNode(velesdbUrl, src, sourcePayload);
-    await upsertNode(velesdbUrl, tgt, targetPayload);
-    await addEdge(velesdbUrl, { id: edgeIdFor(src, label, tgt), source: src, target: tgt, label, properties: properties || {} });
-  } catch { /* best-effort: additive graph, offline = skip */ }
+    await upsertNode(src, sourcePayload);
+    await upsertNode(tgt, targetPayload);
+    await addEdge({ id: edgeIdFor(src, label, tgt), source: src, target: tgt, label, properties: properties || {} });
+  } catch { /* best-effort: additive graph, write error = skip */ }
 }
 
 // Pin a generated combo as a first-class IDEA node + COMBINES edges (best-effort, non-fatal).
-async function pinIdea(velesdbUrl, { title, pitch, sources = [], novelty = 0, feasibility = 0, createdIso = '' }) {
+async function pinIdea({ title, pitch, sources = [], novelty = 0, feasibility = 0, createdIso = '' }) {
   try {
     const ideaId = ideaIdFor(sources);
-    await upsertNode(velesdbUrl, ideaId, {
+    await upsertNode(ideaId, {
       kind: 'idea', title: title || '', pitch: pitch || '', sources,
       novelty: Number(novelty) || 0, feasibility: Number(feasibility) || 0, analyzed: false, created: createdIso || '',
     });
     for (const src of sources) {
       const srcId = nodeIdFor(src);
-      await addEdge(velesdbUrl, { id: edgeIdFor(srcId, 'COMBINES', ideaId), source: srcId, target: ideaId, label: 'COMBINES', properties: { title: title || '' } });
+      await addEdge({ id: edgeIdFor(srcId, 'COMBINES', ideaId), source: srcId, target: ideaId, label: 'COMBINES', properties: { title: title || '' } });
     }
-  } catch { /* best-effort: ontology is additive, offline = skip */ }
+  } catch { /* best-effort: ontology is additive, write error = skip */ }
 }
 
 // Build the analyzed-repo node payload from a parsed scan (shared by every write site).
@@ -151,7 +151,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     sendResponse({ ok: true });
     (async () => {
       const cur = (await chrome.storage.session.get(msg.sessionKey))[msg.sessionKey] || {};
-      await pinIdea(normalizeVelesdbUrl(cur.velesdbUrl), { ...msg.idea, createdIso: new Date().toISOString() });
+      await pinIdea({ ...msg.idea, createdIso: new Date().toISOString() });
     })();
     return true;
   }
@@ -300,12 +300,10 @@ async function runAnalysis(sessionKey, detected) {
     anthropicKey, anthropicModel, googleKey, googleModel,
     openrouterKey, openrouterModel, xaiKey, xaiRefresh, xaiModel,
     nousKey, nousModel,
-    velesdbUrl, autoSave = true, tone,
+    autoSave = true, tone,
   } = await chrome.storage.local.get(
-    [...PROVIDER_KEYS, 'velesdbUrl', 'autoSave', 'tone']
+    [...PROVIDER_KEYS, 'autoSave', 'tone']
   );
-
-  const dbUrl = normalizeVelesdbUrl(velesdbUrl);
 
   try {
     // Fetch metadata + README
@@ -328,7 +326,6 @@ async function runAnalysis(sessionKey, detected) {
       ...analysis,
       loading: false,
       error: null,
-      velesdbUrl: dbUrl,
       autoSave,
       saved: autoSave ? 'pending' : 'skipped',
     };
@@ -337,38 +334,26 @@ async function runAnalysis(sessionKey, detected) {
     cacheAnalysis(detected.platform, detected.repoId, fullData).catch(() => {}); // history/cache
 
     if (autoSave) {
-      let savedUrl = dbUrl;
       let saveErr = null;
       try {
-        await saveAnalysis(dbUrl, fullData);
+        await saveAnalysis(fullData);
       } catch (err) {
-        // Self-heal: the configured port may be stale (8080 ↔ 9090). Retry the
-        // alternate common local port, and if it works, persist it for next time.
-        const alt = alternateLocalUrl(dbUrl);
-        if (alt) {
-          try {
-            await saveAnalysis(alt, fullData);
-            savedUrl = alt;
-            await chrome.storage.local.set({ velesdbUrl: alt });
-          } catch { saveErr = err; }
-        } else {
-          saveErr = err;
-        }
+        saveErr = err;
       }
 
       await chrome.storage.session.set({
         [sessionKey]: saveErr
-          ? { ...fullData, saved: false, velesdbError: saveErr.message || 'Could not save to VelesDB' }
-          : { ...fullData, velesdbUrl: savedUrl, saved: true, velesdbError: null },
+          ? { ...fullData, saved: false, saveError: saveErr.message || 'Could not save to your library' }
+          : { ...fullData, saved: true, saveError: null },
       });
 
-      // Semantic graph: this repo + its named alternatives (only when the save worked,
-      // on the port that worked). Best-effort — never throws.
+      // Semantic graph: this repo + its named alternatives (only when the save worked).
+      // Best-effort — never throws.
       if (!saveErr) {
         const sourcePayload = repoNodePayload(fullData.repoId, fullData, true);
         for (const alt of (fullData.alternatives || [])) {
           if (!alt?.name) continue;
-          await linkRepos(savedUrl, {
+          await linkRepos({
             source: fullData.repoId, sourcePayload,
             targetKey: alt.name, targetPayload: { name: alt.name, analyzed: false },
             label: 'ALTERNATIVE_TO', properties: { name: alt.name, when: alt.when || '' },
@@ -530,7 +515,7 @@ async function runVersus(sessionKey, detectedA, competitorInput) {
 
     // Semantic graph: A compared-to B (best-effort).
     const curVs = (await chrome.storage.session.get(sessionKey))[sessionKey] || {};
-    await linkRepos(normalizeVelesdbUrl(curVs.velesdbUrl), {
+    await linkRepos({
       source: detectedA.repoId, sourcePayload: repoNodePayload(detectedA.repoId, curVs, true),
       targetKey: compB.repoId, targetPayload: repoNodePayload(compB.repoId, compB, false),
       label: 'COMPARED_TO', properties: { verdict: result?.verdict || '' },
@@ -540,7 +525,7 @@ async function runVersus(sessionKey, detectedA, competitorInput) {
   }
 }
 
-// ─── Synergies: complementary repos grounded in the VelesDB library ───────────
+// ─── Synergies: complementary repos grounded in the library ───────────────────
 async function runSynergies(sessionKey, detected) {
   const keys = await chrome.storage.local.get(
     [...PROVIDER_KEYS, 'tone']
@@ -563,17 +548,16 @@ async function runSynergies(sessionKey, detected) {
 
     await setSyn({ status: 'running', error: null, result: null });
     // Seed candidates from the user's library (same ecosystem, by language).
-    const candidates = await searchLibrary(cur.velesdbUrl, { query: repoData.language, topK: 12, excludeRepoId: repoData.repoId });
+    const candidates = await searchLibrary({ query: repoData.language, topK: 12, excludeRepoId: repoData.repoId });
     const result = parseSynergies(await callAI(keys, withTone(keys.tone, buildSynergiesPrompt(repoData, candidates))));
 
     await setSyn({ status: 'done', result });
 
     // Semantic graph: target synergizes-with each complement (best-effort).
-    const synUrl = normalizeVelesdbUrl(cur.velesdbUrl);
     const synSource = repoNodePayload(repoData.repoId, repoData, true);
     for (const s of (result?.synergies || [])) {
       if (!s?.repoId) continue;
-      await linkRepos(synUrl, {
+      await linkRepos({
         source: repoData.repoId, sourcePayload: synSource,
         targetKey: s.repoId,
         targetPayload: { repoId: s.repoId, name: s.repoId.split('/').pop() || s.repoId, category: s.category || '', analyzed: !!s.in_library },
@@ -598,10 +582,9 @@ async function runCombinator(sessionKey, detected, { mode = 'repo', wildness = 0
 
   try {
     const cur = (await chrome.storage.session.get(sessionKey))[sessionKey] || {};
-    const url = normalizeVelesdbUrl(cur.velesdbUrl);
     await setC({ status: 'running', mode, wildness, results: [] });
 
-    const rows = await scrollLibrary(url);
+    const rows = await scrollLibrary();
     if (mode === 'repo') {
       // Repo-anchored: ensure the current repo (the seed) is represented with its capabilities.
       const seedCaps = (Array.isArray(cur.capabilities) && cur.capabilities.length) ? cur.capabilities : deriveCapabilities(cur);
@@ -639,16 +622,14 @@ async function runTagLibrary(sessionKey) {
     await chrome.storage.session.set({ [sessionKey]: { ...cur, retag: { ...(cur.retag || {}), ...patch } } });
   };
   try {
-    const cur = (await chrome.storage.session.get(sessionKey))[sessionKey] || {};
-    const url = normalizeVelesdbUrl(cur.velesdbUrl);
-    const points = await scrollPoints(url);
+    const points = await scrollPoints();
     await setT({ status: 'running', total: points.length, done: 0 });
     let done = 0;
     for (const pt of points) {
       try {
         const meta = pt.payload || {};
         const caps = parseTags(await callAI(keys, buildTagPrompt(meta)));
-        if (caps.length) await saveRepo(url, { ...meta, capabilities: caps }); // re-save preserves the full payload
+        if (caps.length) await saveRepo({ ...meta, capabilities: caps }); // re-save preserves the full payload
       } catch { /* skip a single repo, keep going */ }
       done++;
       await setT({ status: 'running', total: points.length, done });
