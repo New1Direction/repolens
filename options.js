@@ -12,6 +12,7 @@ import {
   storeXaiOAuthTokens,
 } from './oauth-xai.js';
 import { importFromVelesdb } from './migrate/velesdb-import.js';
+import { PARTS, CATALOG } from './models.js';
 import { THEMES, initTheme, saveTheme } from './theme.js';
 import { TONES, DEFAULT_TONE } from './tone.js';
 import { listCached, removeCached } from './cache.js';
@@ -178,6 +179,62 @@ if (importBtn) {
     }
   });
 }
+
+// ─── Models per scan part ──────────────────────────────────────────────────────
+const partModelsHost = document.getElementById('part-models');
+
+function buildPartSelect(part, current) {
+  const sel = document.createElement('select');
+  sel.className = 'model-select';
+  sel.dataset.part = part.id;
+  sel.style.width = '100%';
+
+  const def = document.createElement('option');
+  def.value = 'default';
+  def.textContent = 'Default (smart fallback)';
+  sel.appendChild(def);
+
+  for (const [provider, { label, models }] of Object.entries(CATALOG)) {
+    const group = document.createElement('optgroup');
+    group.label = label;
+    for (const m of models) {
+      const opt = document.createElement('option');
+      opt.value = `${provider}:${m.value}`;
+      opt.textContent = `${m.recommended ? '★ ' : ''}${m.label}`;
+      group.appendChild(opt);
+    }
+    sel.appendChild(group);
+  }
+
+  sel.value = current && current !== 'default' ? current : 'default';
+  if (!sel.value) sel.value = 'default'; // current pointed at a model no longer in the catalog
+  return sel;
+}
+
+async function renderPartModels() {
+  if (!partModelsHost) return;
+  const { partRouting = {} } = await chrome.storage.local.get('partRouting');
+  partModelsHost.innerHTML = '';
+  for (const part of PARTS) {
+    const label = document.createElement('label');
+    label.textContent = part.label;
+    label.style.cssText = 'display:block;margin:14px 0 6px';
+
+    const sel = buildPartSelect(part, partRouting[part.id]);
+    sel.addEventListener('change', async () => {
+      const { partRouting: cur = {} } = await chrome.storage.local.get('partRouting');
+      const next = { ...cur };
+      if (sel.value === 'default') delete next[part.id];
+      else next[part.id] = sel.value;
+      await chrome.storage.local.set({ partRouting: next });
+      showStatus(`✓ ${part.label} → ${sel.options[sel.selectedIndex].textContent}`, '#4ade80');
+    });
+
+    partModelsHost.appendChild(label);
+    partModelsHost.appendChild(sel);
+  }
+}
+renderPartModels();
 
 function showStatus(msg, color) {
   statusEl.textContent    = msg;
