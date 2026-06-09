@@ -174,6 +174,10 @@ function resolveCompetitor(input) {
 
 // ─── Anthropic OAuth callback handling (robust intercept for claude.ai → console.anthropic.com) ───
 
+// One redirect can fire BOTH webNavigation.onCompleted and tabs.onUpdated, and the
+// auth code is single-use — only the first handler may run the exchange.
+const _handledOAuthCodes = new Set();
+
 async function handleAnthropicOAuthCallback(rawUrl, tabId) {
   if (!rawUrl || !isAnthropicOAuthCallbackUrl(rawUrl)) return;
 
@@ -214,6 +218,9 @@ async function handleAnthropicOAuthCallback(rawUrl, tabId) {
     if (tabId) chrome.tabs.remove(tabId).catch(() => {});
     return;
   }
+
+  if (_handledOAuthCodes.has(code)) return; // the other listener got here first
+  _handledOAuthCodes.add(code);
 
   const stored = await chrome.storage.local.get([ANTHROPIC_OAUTH_VERIFIER_KEY, ANTHROPIC_OAUTH_STATE_KEY]);
   const verifier = stored[ANTHROPIC_OAUTH_VERIFIER_KEY];
@@ -697,7 +704,8 @@ async function callAIInner(keys, prompt, part) {
 async function callAnthropic(model = 'claude-sonnet-4-6', prompt) {
   // Two credential styles share the `anthropicKey` slot:
   //   • a standard API key (sk-ant-api…) → sent via x-api-key  ← supported, reliable
-  //   • an OAuth access token (has a refresh token) → sent via x-api-key + beta flags
+  //   • an OAuth access token (has a refresh token) → exchanged for an API key, or
+  //     sent raw with the OAuth beta flags as a fallback
   //
   // Uses Hermes-hardened getAnthropicCredentials + refreshAnthropicToken (60s skew + inflight dedup)
   const { anthropicKey, anthropicRefresh } = await chrome.storage.local.get(['anthropicKey', 'anthropicRefresh']);
@@ -710,8 +718,11 @@ async function callAnthropic(model = 'claude-sonnet-4-6', prompt) {
   // OAuth tokens need exchange via create_api_key to get a usable API key.
   // Direct x-api-key with OAuth tokens may fail (401 "invalid x-api-key").
   // The Claude Code SDK does this exchange internally.
+  let usingRawOAuthToken = false;
   if (isOAuth) {
-    token = await exchangeAnthropicOAuthForApiKey(token);
+    const exchanged = await exchangeAnthropicOAuthForApiKey(token);
+    usingRawOAuthToken = exchanged === token;
+    token = exchanged;
   }
 
   const headers = {
@@ -720,6 +731,10 @@ async function callAnthropic(model = 'claude-sonnet-4-6', prompt) {
     'Content-Type': 'application/json',
     'x-api-key': token,
   };
+  // A raw OAuth access token (exchange unavailable) only works with the beta flags.
+  if (usingRawOAuthToken) {
+    headers['anthropic-beta'] = 'oauth-2025-04-20,claude-code-20250219';
+  }
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -734,6 +749,10 @@ async function callAnthropic(model = 'claude-sonnet-4-6', prompt) {
     const err = await res.json().catch(() => ({}));
     // Only clear stored OAuth tokens on a real auth failure — never on transient errors.
     if (res.status === 401 && isOAuth) {
+      // The cached exchanged key may be the stale credential being rejected — drop it
+      // so a reconnect takes effect immediately instead of after the SW restarts.
+      _anthropicExchangedKey = null;
+      _anthropicExchangedKeyExpiry = 0;
       // Hermes-hardened clear (structured + legacy flat keys)
       if (typeof clearAnthropicCredentials === 'function') {
         await clearAnthropicCredentials();
@@ -779,7 +798,7 @@ async function exchangeAnthropicOAuthForApiKey(oauthToken) {
       }
     }
     // If exchange fails (endpoint might not exist or token type not supported),
-    // fall back to using the raw OAuth token as x-api-key (works for some token types).
+    // fall back to using the raw OAuth token (callAnthropic adds the beta flags).
     console.warn('[RepoLens] create_api_key exchange failed, falling back to raw OAuth token');
   } catch (err) {
     console.warn('[RepoLens] create_api_key exchange error:', err.message);
@@ -914,7 +933,7 @@ async function callXAI(model = 'grok-4.3', prompt) {
     console.warn('[RepoLens xAI]', endpoint, res.status, JSON.stringify(err));
     lastErr = err.error?.message || ('xAI API error ' + res.status + ' at ' + endpoint);
     if (res.status === 401 && isOAuth) {
-      await chrome.storage.local.remove(['xaiKey', 'xaiRefresh', 'xaiExpiry']);
+      await chrome.storage.local.remove(['xaiKey', 'xaiRefresh', 'xaiExpiry', 'xaiCredentials']);
       throw new Error('xAI session expired — please reconnect in Settings');
     }
     // Only break on 401 (bad auth) — 403/426 might work on the next endpoint
