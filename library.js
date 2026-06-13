@@ -321,7 +321,12 @@ async function init() {
   renderCaps();
   render();
   renderStats();
-  document.getElementById('search').addEventListener('input', (e) => { state.query = e.target.value; render(); });
+  let searchTimer = null;
+  document.getElementById('search').addEventListener('input', (e) => {
+    state.query = e.target.value;
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(render, 180); // debounce: don't re-render the whole grid on every keystroke
+  });
   document.getElementById('sort').addEventListener('change', (e) => { state.sort = e.target.value; render(); });
 }
 

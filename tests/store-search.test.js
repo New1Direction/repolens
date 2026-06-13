@@ -40,4 +40,25 @@ describe('rankRepos', () => {
   it('ignores malformed rows (no repoId)', () => {
     expect(rankRepos([{ language: 'Rust' }, null], 'Rust', {})).toEqual([]);
   });
+
+  it('BM25: a rare query term outranks a common one (idf weighting)', () => {
+    // "web" is in 2 of 3 docs (common); "compiler" is in 1 (rare). The doc that
+    // matches only the rare term should beat the docs that match only the common one.
+    const idfRows = [
+      { repoId: 'o/aaa', category: 'web' },
+      { repoId: 'o/bbb', category: 'web' },
+      { repoId: 'o/ccc', category: 'compiler' },
+    ];
+    const out = rankRepos(idfRows, 'web compiler', { topK: 3 });
+    expect(out[0].repoId).toBe('o/ccc');
+  });
+
+  it('BM25: a hit in a high-signal field outranks a buried mention', () => {
+    const fieldRows = [
+      { repoId: 'o/x', category: 'database' }, // "database" in the category (weight 3)
+      { repoId: 'o/y', eli5: 'this tool mentions database once' }, // buried in eli5 (weight 1)
+    ];
+    const out = rankRepos(fieldRows, 'database', { topK: 2 });
+    expect(out[0].repoId).toBe('o/x');
+  });
 });
