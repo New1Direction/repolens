@@ -119,6 +119,22 @@ describe('sortRows', () => {
     expect(sortRows(rows, 'name').map(r => r.name)).toEqual(['care', 'risky', 'solid', 'strong']);
     expect(rows.map(r => r.repoId)).toEqual(before); // immutability
   });
+  it("by 'recent' orders by savedAt desc", () => {
+    const rs = [
+      mk('o/old', 80, 0, [], { saved_at: '2026-01-01T00:00:00Z' }),
+      mk('o/new', 80, 0, [], { saved_at: '2026-06-01T00:00:00Z' }),
+      mk('o/mid', 80, 0, [], { saved_at: '2026-03-01T00:00:00Z' }),
+    ].map(libraryRow);
+    expect(sortRows(rs, 'recent').map(r => r.name)).toEqual(['new', 'mid', 'old']);
+  });
+  it("by 'stars' orders by star count desc", () => {
+    const rs = [
+      mk('o/a', 80, 0, [], { stars: 10 }),
+      mk('o/b', 80, 0, [], { stars: 9000 }),
+      mk('o/c', 80, 0, [], { stars: 500 }),
+    ].map(libraryRow);
+    expect(sortRows(rs, 'stars').map(r => r.name)).toEqual(['b', 'c', 'a']);
+  });
 });
 
 describe('filterRows', () => {

@@ -1,6 +1,7 @@
 import { findSimilar, getEgoGraph } from './store.js';
 import { egoGraphSvg } from './graph.js';
 import { esc, paras, formatStars } from './format.js';
+import { formatTokens } from './estimate.js';
 import { THEMES, initTheme, saveTheme } from './theme.js';
 import { SYSTEMS_FRAMEWORKS } from './systems.js';
 import { IDEATE_FRAMEWORKS } from './ideate.js';
@@ -978,6 +979,7 @@ function verdictDashboard(d) {
     langs ? `<div class="v-fact wide"><div class="v-k">Languages</div><div class="v-v">${langs}</div></div>` : '',
     facts ? `<div class="v-fact"><div class="v-k">Tests</div><div class="v-v ${facts.tests?.present ? 'v-ok' : 'v-no'}">${facts.tests?.present ? '✓ present' : '— none'}</div></div>` : '',
     facts ? `<div class="v-fact"><div class="v-k">CI</div><div class="v-v ${facts.ci?.present ? 'v-ok' : 'v-no'}">${facts.ci?.present ? '✓ present' : '— none'}</div></div>` : '',
+    d.inputTokensEstimate ? `<div class="v-fact" title="Estimated input tokens sent for the core scan — multiply by your provider's rate for cost"><div class="v-k">Scan size</div><div class="v-v">~${esc(formatTokens(d.inputTokensEstimate))} tok in</div></div>` : '',
   ].filter(Boolean).join('');
 
   const warns = (d.red_flags || []).filter(f => f && f.severity !== 'ok').slice(0, 3);

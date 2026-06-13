@@ -22,6 +22,7 @@ export function libraryRow(payload) {
     platform: p.platform || '',
     fit: hasTriage ? deriveFit(p) : { level: 'unrated', label: 'Unrated', why: 'Re-scan for a fit verdict' },
     health: p.health?.score ?? 0,
+    stars: p.stars ?? 0,
     category: p.category || '',
     capabilities: Array.isArray(p.capabilities) ? p.capabilities : [],
     languages: (p.languages || []).slice(0, 3),
@@ -51,7 +52,7 @@ export function relativeTime(iso, now = Date.now()) {
 
 const FIT_RANK = { strong: 0, solid: 1, care: 2, risky: 3, unrated: 4 };
 
-/** Return a NEW sorted array. by: 'fit' (default) | 'health' | 'name'. */
+/** Return a NEW sorted array. by: 'fit' (default) | 'health' | 'name' | 'recent' | 'stars'. */
 export function sortRows(rows, by) {
   const r = [...rows];
   if (by === 'health') {
@@ -59,6 +60,12 @@ export function sortRows(rows, by) {
   }
   if (by === 'name') {
     return r.sort((a, b) => a.repoId.localeCompare(b.repoId));
+  }
+  if (by === 'recent') {
+    return r.sort((a, b) => (Date.parse(b.savedAt) || 0) - (Date.parse(a.savedAt) || 0) || a.name.localeCompare(b.name));
+  }
+  if (by === 'stars') {
+    return r.sort((a, b) => (b.stars || 0) - (a.stars || 0) || a.name.localeCompare(b.name));
   }
   // 'fit': strong → risky, then health desc, then name
   return r.sort(
@@ -76,6 +83,27 @@ export function filterRows(rows, { query = '', capability = '' } = {}) {
     if (capability && !row.capabilities.includes(capability)) return false;
     return true;
   });
+}
+
+/** Aggregate counts for the Library stats bar. Pure — tallies rows by fit level
+ * and the mean health of the rows that actually carry one. */
+const FIT_LEVELS = ['strong', 'solid', 'care', 'risky', 'unrated'];
+
+export function libraryStats(rows) {
+  const list = rows || [];
+  const byFit = { strong: 0, solid: 0, care: 0, risky: 0, unrated: 0 };
+  let healthSum = 0, healthCount = 0;
+  for (const r of list) {
+    const level = r.fit?.level;
+    const key = FIT_LEVELS.includes(level) ? level : 'unrated';
+    byFit[key] += 1;
+    if (r.health > 0) { healthSum += r.health; healthCount += 1; }
+  }
+  return {
+    total: list.length,
+    byFit,
+    avgHealth: healthCount ? Math.round(healthSum / healthCount) : null,
+  };
 }
 
 /** Sorted unique capabilities across all rows (for the filter chips). */

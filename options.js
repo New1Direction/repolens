@@ -12,6 +12,7 @@ import {
   storeXaiOAuthTokens,
 } from './oauth-xai.js';
 import { importFromVelesdb } from './migrate/velesdb-import.js';
+import { SAFE_SETTING_KEYS, buildSettingsBackup, validateSettingsBackup } from './settings-backup.js';
 import { PARTS, CATALOG } from './models.js';
 import { THEMES, initTheme, saveTheme } from './theme.js';
 import { TONES, DEFAULT_TONE } from './tone.js';
@@ -177,6 +178,59 @@ if (importBtn) {
     }
   });
 }
+
+// ─── Settings backup (allowlisted keys only — never API keys / tokens) ─────────
+const settingsExportBtn = document.getElementById('settingsExportBtn');
+const settingsImportBtn = document.getElementById('settingsImportBtn');
+const settingsFile = document.getElementById('settingsFile');
+const settingsBackupStatus = document.getElementById('settingsBackupStatus');
+
+function setSettingsStatus(msg, color) {
+  if (!settingsBackupStatus) return;
+  settingsBackupStatus.style.color = color || 'var(--text-sub)';
+  settingsBackupStatus.textContent = msg || '';
+}
+
+settingsExportBtn?.addEventListener('click', async () => {
+  try {
+    const snapshot = await chrome.storage.local.get(SAFE_SETTING_KEYS);
+    const backup = buildSettingsBackup(snapshot);
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `repolens-settings-${backup.exportedAt.slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setSettingsStatus('✓ Settings exported (API keys excluded).', '#4ade80');
+  } catch (err) {
+    setSettingsStatus(`✗ ${err?.message || 'Export failed'}`, '#f87171');
+  }
+});
+
+settingsImportBtn?.addEventListener('click', () => settingsFile?.click());
+
+settingsFile?.addEventListener('change', async (e) => {
+  const file = e.target.files?.[0];
+  e.target.value = '';
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { setSettingsStatus('✗ That file is too large.', '#f87171'); return; }
+  let parsed;
+  try {
+    parsed = JSON.parse(await file.text());
+  } catch {
+    setSettingsStatus('✗ That file isn’t valid JSON.', '#f87171');
+    return;
+  }
+  const { ok, errors, value } = validateSettingsBackup(parsed);
+  if (!ok) { setSettingsStatus(`✗ ${errors[0]}`, '#f87171'); return; }
+  if (!Object.keys(value).length) { setSettingsStatus('Nothing importable in that file.', 'var(--text-sub)'); return; }
+  await chrome.storage.local.set(value);
+  setSettingsStatus('✓ Settings imported. Reloading…', '#4ade80');
+  setTimeout(() => location.reload(), 700);
+});
 
 // ─── Models per scan part ──────────────────────────────────────────────────────
 const partModelsHost = document.getElementById('part-models');

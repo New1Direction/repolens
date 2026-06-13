@@ -2,9 +2,10 @@
 // offline (no Mermaid/CDN), themes via CSS classes, and is built for our small
 // graphs (≤ ~10 nodes). Pure string functions — unit-testable without a DOM.
 
+import { escapeHtml as esc } from './safe-html.js';
+
 const NODE_W = 132, NODE_H = 38, COL_GAP = 64, ROW_GAP = 16, PAD = 14;
 
-const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const truncate = (s, n) => { s = String(s); return s.length > n ? s.slice(0, n - 1) + '…' : s; };
 
 /** Layered left→right DAG of atoms connected by lineage links. */

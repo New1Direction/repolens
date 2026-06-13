@@ -4,6 +4,9 @@ import { buildPrompt } from './prompt.js';
 import { parseClaudeResponse } from './parser.js';
 import { saveAnalysis, searchLibrary, upsertNode, addEdge, scrollLibrary, scrollPoints, saveRepo } from './store.js';
 import { buildAttemptPlan } from './routing.js';
+import { withRetry } from './retry.js';
+import { categorizeError, rankErrors } from './errors.js';
+import { estimateTokens } from './estimate.js';
 import { buildTagPrompt, parseTags } from './tag-prompt.js';
 import { nodeIdFor, edgeIdFor, ideaIdFor } from './graph.js';
 import { deriveCapabilities } from './taxonomy.js';
@@ -327,6 +330,7 @@ async function runAnalysis(sessionKey, detected) {
     await chrome.storage.session.set({ [sessionKey]: { loading: true, status: 'thinking', ...detected } });
 
     // Call AI provider — tried in order: Nous > Gemini > OpenRouter > Grok > Anthropic
+    const corePrompt = withTone(tone, buildPrompt(repoData));
     const text = await callAI({
       anthropicKey, anthropicModel,
       googleKey, googleModel,
@@ -334,11 +338,12 @@ async function runAnalysis(sessionKey, detected) {
       xaiKey, xaiRefresh, xaiModel,
       nousKey, nousModel,
       partRouting,
-    }, withTone(tone, buildPrompt(repoData)), 'core');
+    }, corePrompt, 'core');
     const analysis = parseClaudeResponse(text);
     const fullData = {
       ...repoData,
       ...analysis,
+      inputTokensEstimate: estimateTokens(corePrompt),
       loading: false,
       error: null,
       autoSave,
@@ -697,13 +702,24 @@ function dispatch(provider, model, keys, prompt) {
 
 async function callAIInner(keys, prompt, part) {
   const plan = buildAttemptPlan({ routing: keys.partRouting || {}, part, keys });
-  const errors = [];
+  const failures = [];
   for (const { provider, model } of plan) {
-    try { return await dispatch(provider, model, keys, prompt); }
-    catch (e) { errors.push(`${PROVIDER_LABEL[provider] || provider}: ${e.message}`); }
+    const label = PROVIDER_LABEL[provider] || provider;
+    try {
+      // Retry transient failures (429 / 5xx / network) with backoff before falling
+      // through to the next provider; auth/model errors fail over immediately.
+      return await withRetry(() => dispatch(provider, model, keys, prompt), {
+        retries: 2,
+        isRetryable: (e) => categorizeError(e, label).retryable,
+        sleep,
+      });
+    } catch (e) {
+      failures.push({ provider: label, error: e });
+    }
   }
-
-  throw new Error(errors.length ? errors.join(' · ') : 'No AI provider configured — open Settings to connect one.');
+  if (!failures.length) throw new Error('No AI provider configured — open Settings to connect one.');
+  // Surface the single most actionable failure instead of concatenating all of them.
+  throw new Error(rankErrors(failures).userMessage);
 }
 
 async function callAnthropic(model = 'claude-sonnet-4-6', prompt) {
