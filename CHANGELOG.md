@@ -3,6 +3,18 @@
 All notable changes to RepoLens are documented here. This project follows
 [Semantic Versioning](https://semver.org/) and groups changes by theme.
 
+## [1.3.0] — 2026-06-13 · _Bulk triage_
+
+### Added
+
+- **Bulk multi-select delete in the Library.** A new **Select** toggle in the
+  toolbar reveals a checkbox on every card and a selection action bar — pick any
+  number of repos (or **Select all** the current filter) and remove them in one
+  confirmed action. Each removal clears both the saved library row and its local
+  scan cache, exactly like the single-card remove. The default triage view stays
+  uncluttered; **Esc** or **Done** leaves selection mode, and changing the
+  selection cancels a pending delete confirm.
+
 ## [1.2.0] — 2026-06-13 · _Themes that actually theme_
 
 ### Added
@@ -96,5 +108,6 @@ motion-accessible. Plus a sharper search and a few quality-of-life touches.
 - Optional Rust deeper-scan runner for measured facts.
 - One-time import from a legacy VelesDB server.
 
+[1.3.0]: https://github.com/New1Direction/repolens/releases/tag/v1.3.0
 [1.2.0]: https://github.com/New1Direction/repolens/releases/tag/v1.2.0
 [1.1.0]: https://github.com/New1Direction/repolens/releases/tag/v1.1.0
