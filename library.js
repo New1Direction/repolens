@@ -288,10 +288,12 @@ async function init() {
   document.getElementById('settings')?.addEventListener('click', () => chrome.runtime.openOptionsPage());
   wireToolbar(); // before the empty-state return, so Import works on an empty library
 
-  const [points, cachedList] = await Promise.all([
+  const [points, cachedList, prefs] = await Promise.all([
     scrollPoints(),
     listCached().catch(() => []),
+    chrome.storage.local.get('librarySort').catch(() => ({})),
   ]);
+  if (prefs?.librarySort) state.sort = prefs.librarySort; // restore the last chosen sort
   cacheByRepo = new Map(cachedList.filter((c) => c && c.repoId).map((c) => [c.repoId, c]));
 
   // Saved-library rows win (richer capabilities); local cache fills the gaps (repos
@@ -327,7 +329,13 @@ async function init() {
     clearTimeout(searchTimer);
     searchTimer = setTimeout(render, 180); // debounce: don't re-render the whole grid on every keystroke
   });
-  document.getElementById('sort').addEventListener('change', (e) => { state.sort = e.target.value; render(); });
+  const sortSel = document.getElementById('sort');
+  sortSel.value = state.sort; // reflect the restored preference in the dropdown
+  sortSel.addEventListener('change', (e) => {
+    state.sort = e.target.value;
+    chrome.storage.local.set({ librarySort: state.sort }).catch(() => {});
+    render();
+  });
 }
 
 init();
