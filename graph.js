@@ -3,8 +3,8 @@
 // string functions, all values escaped, empty input → ''. No DOM, no network.
 
 import { hashRepoId } from './store.js';
+import { escapeHtml as esc } from './safe-html.js';
 
-const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const truncate = (s, n) => { s = String(s); return s.length > n ? s.slice(0, n - 1) + '…' : s; };
 
 /**

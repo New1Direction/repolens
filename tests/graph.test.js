@@ -89,6 +89,11 @@ describe('egoGraphSvg', () => {
     expect(svg).toContain('&lt;script&gt;');
     expect(svg).not.toContain('<script>');
   });
+  it('escapes quotes in node names (canonical escaper covers attribute contexts)', () => {
+    const svg = egoGraphSvg({ id: '1', name: 'a"b' }, [{ id: '2', name: 'c"d', analyzed: false }], []);
+    expect(svg).toContain('a&quot;b');
+    expect(svg).toContain('c&quot;d');
+  });
 });
 
 import { ideaIdFor } from '../graph.js';

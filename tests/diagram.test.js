@@ -25,6 +25,10 @@ describe('lineageSvg', () => {
     expect(svg).toContain('&lt;script&gt;');
     expect(svg).not.toContain('<script>');
   });
+  it('escapes quotes in node names (canonical escaper, no attribute drift)', () => {
+    const svg = lineageSvg([{ id: 'x', name: '"q"' }, { id: 'y', name: 'Y' }], [{ from: 'x', to: 'y' }]);
+    expect(svg).toContain('&quot;q&quot;');
+  });
 });
 
 describe('loopSvg', () => {
