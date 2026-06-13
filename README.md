@@ -71,7 +71,7 @@ Any per-part pick still falls back to the full chain if that provider errors or 
 
 Your whole library lives **in the browser** (IndexedDB). No database, no daemon, no setup — it works the moment you load the extension, and it's Web-Store-ready.
 
-Because it's *your* data, you can take it with you: **Library → Export** writes your whole library — analyzed repos, the semantic graph, and the local scan cache — to one portable JSON file, and **Import** restores it (merge or replace) on any machine. Backups are validated and bounded on import, so a bad file fails safe.
+Because it's *your* data, you can take it with you: **Library → Export** writes your whole library — analyzed repos, the semantic graph, and the local scan cache — to one portable JSON file, and **Import** restores it (merge or replace) on any machine. Backups are validated and bounded on import, so a bad file fails safe. Your settings travel too: **Options → Back up your settings** exports your theme, voice, model picks and per-part routing — never your API keys.
 
 Migrating from an old VelesDB server? **Options → Import from VelesDB** pulls your library across in one click.
 

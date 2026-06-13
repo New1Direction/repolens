@@ -187,6 +187,18 @@
     <p class="field-hint" id="importStatus" style="margin-top:10px" aria-live="polite"></p>
   </div>
 
+  <!-- Settings backup (never includes API keys) -->
+  <div class="section">
+    <div class="section-title">Back up your settings</div>
+    <p class="field-hint" style="margin-bottom:12px">Export your theme, voice, model picks and per-part routing to a JSON file you can carry to another machine. <b>API keys and tokens are never included.</b></p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="svc-btn" id="settingsExportBtn">Export settings</button>
+      <button class="svc-btn" id="settingsImportBtn">Import settings</button>
+    </div>
+    <input type="file" id="settingsFile" accept="application/json,.json" hidden>
+    <p class="field-hint" id="settingsBackupStatus" style="margin-top:10px" aria-live="polite"></p>
+  </div>
+
   <!-- Connected Services -->
   <div class="section">
     <div class="section-title">Connected Services</div>
