@@ -10,7 +10,7 @@
 ![Zero build](https://img.shields.io/badge/build-none-0e1722)
 ![Vanilla ES modules](https://img.shields.io/badge/vanilla-ES_modules-f7df1e?logo=javascript&logoColor=black)
 ![Tests](https://img.shields.io/badge/tests-360%2B_passing-4ade80)
-![Version](https://img.shields.io/badge/version-1.1.0-7c5cff)
+![Version](https://img.shields.io/badge/version-1.2.0-7c5cff)
 ![Storage](https://img.shields.io/badge/storage-in--browser_IndexedDB-38bdf8)
 
 </div>
@@ -39,7 +39,11 @@ Plus SKTPG, framework lenses, and capability re-tagging.
 
 ---
 
-## What's new in 1.1.0 · *Trust & Polish*
+## What's new
+
+**1.2.0 · Themes that actually theme** — **5 new themes** (Nord, Gruvbox, Rosé Pine, Catppuccin Latte, Solarized Light — 13 in all), and a full fix so **light themes are properly themed**: the verdict landing, Library page and status colours no longer leak dark bubbles onto light palettes. Status colours now derive per-theme via `color-mix`, so every theme stays legible. See [CHANGELOG.md](CHANGELOG.md).
+
+### 1.1.0 · *Trust & Polish*
 
 > The theme is **trust** — your data moves with you and stays safe, untrusted input never reaches the model raw, provider hiccups recover on their own, and the surfaces are keyboard- and motion-accessible. Full notes in [CHANGELOG.md](CHANGELOG.md).
 

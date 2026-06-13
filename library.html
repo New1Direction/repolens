@@ -3,16 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <title>RepoLens — Library</title>
+<link rel="stylesheet" href="themes.css">
 <style>
+  /* The Library maps its local colour vocabulary onto the active theme's tokens
+     (themes.css), so it honours the chosen theme like every other surface.
+     --bg / --border / --border-2 / --text / --mono come straight from the theme;
+     only the Library-specific aliases are defined here. */
   :root {
-    --bg: #070b11; --panel: #0e1722; --panel-2: #0b1622; --border: #1c2b3e; --border-2: #244660;
-    --text: #e6edf5; --sub: #9fb2c9; --muted: #647488; --cyan: #38bdf8; --mono: ui-monospace, Menlo, monospace;
-    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    /* Semantic fit tokens — one source of truth for the verdict palette. */
-    --fit-strong: #4ade80; --fit-solid: #38bdf8; --fit-care: #fbbf24; --fit-risky: #f87171; --danger: #f87171;
+    --panel: var(--surface); --panel-2: var(--surface-alt);
+    --sub: var(--text-sub); --muted: var(--text-muted);
+    --cyan: var(--accent); --sans: var(--font);
+    /* Semantic fit palette derives from the shared status hues. */
+    --fit-strong: var(--ok); --fit-solid: var(--info); --fit-care: var(--warn); --fit-risky: var(--bad); --danger: var(--bad);
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: radial-gradient(1200px 700px at 70% -10%, #0d1b2e 0%, var(--bg) 55%);
+  body { margin: 0; background: radial-gradient(1200px 700px at 70% -10%, var(--surface) 0%, var(--bg) 55%);
     color: var(--text); font-family: var(--sans); min-height: 100vh; }
   .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 24px 80px; }
 
@@ -39,19 +44,19 @@
   .lib-cap { font: 600 11px/1 var(--mono); color: var(--sub); background: var(--panel); border: 1px solid var(--border);
     padding: 6px 10px; border-radius: 999px; cursor: pointer; transition: all .14s; }
   .lib-cap:hover { border-color: var(--border-2); color: var(--text); }
-  .lib-cap.on { background: #0c2030; border-color: var(--cyan); color: var(--cyan); }
+  .lib-cap.on { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); border-color: var(--cyan); color: var(--cyan); }
 
   #grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 14px; }
   .lib-card { background: var(--panel); border: 1px solid var(--border); border-radius: 13px; padding: 15px 16px;
     cursor: pointer; transition: transform .14s, border-color .14s, box-shadow .14s; display: flex; flex-direction: column; gap: 9px; }
-  .lib-card:hover { transform: translateY(-2px); border-color: var(--border-2); box-shadow: 0 14px 30px -18px #000; }
+  .lib-card:hover { transform: translateY(-2px); border-color: var(--border-2); box-shadow: 0 14px 30px -18px rgba(0,0,0,.4); }
   .lc-top { display: flex; align-items: center; gap: 9px; }
   .lc-name { font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
   .lc-owner { font: 500 11.5px/1 var(--mono); color: var(--muted); }
   .lc-chip { margin-left: auto; font: 800 11px/1 var(--sans); padding: 5px 9px; border-radius: 7px; white-space: nowrap; }
   .fit-strong { background: var(--fit-strong); color: #06210f; } .fit-solid { background: var(--fit-solid); color: #052235; }
   .fit-care { background: var(--fit-care); color: #241a02; } .fit-risky { background: var(--fit-risky); color: #250a08; }
-  .fit-unrated { background: #2a3441; color: #9fb2c9; }
+  .fit-unrated { background: color-mix(in srgb, var(--text-muted) 18%, var(--surface)); color: var(--text-sub); }
   .lc-blurb { font-size: 12.5px; color: var(--sub); line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .lc-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 11.5px; color: var(--muted); }
   .lc-health { font-family: var(--mono); }
@@ -70,7 +75,7 @@
     border: 1px solid var(--border); padding: 5px 8px; border-radius: 6px; cursor: pointer; transition: all .12s; }
   .lc-act:hover { border-color: var(--border-2); color: var(--text); }
   .lc-act-del { margin-left: auto; }
-  .lc-act-del:hover { border-color: #f87171; color: #f87171; }
+  .lc-act-del:hover { border-color: var(--bad); color: var(--bad-ink); }
 
   .lib-empty { text-align: center; padding: 80px 20px; color: var(--sub); }
   .lib-empty h2 { font-size: 17px; color: var(--text); margin: 0 0 8px; }
@@ -86,7 +91,7 @@
   .ls-pill.solid  { background: var(--fit-solid);  color: #052235; }
   .ls-pill.care   { background: var(--fit-care);   color: #241a02; }
   .ls-pill.risky  { background: var(--fit-risky);  color: #250a08; }
-  .ls-pill.unrated{ background: #2a3441; color: var(--sub); }
+  .ls-pill.unrated{ background: color-mix(in srgb, var(--text-muted) 18%, var(--surface)); color: var(--sub); }
   .ls-health { margin-left: auto; font: 600 12px var(--mono); color: var(--sub); }
 
   /* Backup / import status + confirm panel. */

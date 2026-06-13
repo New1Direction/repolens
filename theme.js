@@ -9,6 +9,11 @@ export const THEMES = [
   { key: 'xai',       label: 'xAI',       swatch: 'linear-gradient(135deg, #0a0a0a 50%, #f5f0e8 50%)' },
   { key: 'claude',    label: 'Claude',    swatch: '#cc785c' },
   { key: 'apple',     label: 'Apple',     swatch: '#0066cc' },
+  { key: 'nord',      label: 'Nord',      swatch: 'linear-gradient(135deg, #5e81ac, #88c0d0)' },
+  { key: 'gruvbox',   label: 'Gruvbox',   swatch: 'linear-gradient(135deg, #d65d0e, #fabd2f)' },
+  { key: 'rosepine',  label: 'Rosé Pine', swatch: 'linear-gradient(135deg, #ebbcba, #c4a7e7)' },
+  { key: 'latte',     label: 'Catppuccin', swatch: 'linear-gradient(135deg, #8839ef, #7287fd)' },
+  { key: 'solarized', label: 'Solarized', swatch: 'linear-gradient(135deg, #fdf6e3 50%, #268bd2 50%)' },
 ];
 
 function isKnown(key) {

@@ -3,6 +3,31 @@
 All notable changes to RepoLens are documented here. This project follows
 [Semantic Versioning](https://semver.org/) and groups changes by theme.
 
+## [1.2.0] — 2026-06-13 · _Themes that actually theme_
+
+### Added
+
+- **Five new themes** — **Nord** (arctic blue-grey), **Gruvbox** (retro-warm
+  amber), **Rosé Pine** (muted rose & iris), **Catppuccin Latte** (soft pastel
+  light) and **Solarized Light** (iconic warm cream). Thirteen themes in all,
+  balanced across light and dark.
+
+### Fixed
+
+- **Light themes are now fully themed.** The verdict landing (fit cards, fact
+  tiles, jump buttons, the deeper-scan runner strip), status pills, confidence /
+  evidence tags and badges were authored in hardcoded dark hex and leaked dark
+  bubbles onto light themes. They now route through the theme tokens.
+- **The Library page honours the active theme.** It previously shipped its own
+  hardcoded-dark palette and never loaded `themes.css`, so it stayed dark on
+  every theme; it now links the theme stylesheet, initialises the saved theme,
+  and maps its colours onto the active palette.
+- **Status colours derive per-theme.** New semantic tokens
+  (`--ok/--info/--warn/--bad` + `*-ink/-bg/-edge`) compute their surface, text and
+  border variants from each theme's own `--surface`/`--text` via `color-mix`, so a
+  status colour stays legible on light and dark canvases — and every future theme
+  gets correct status styling for free.
+
 ## [1.1.0] — 2026-06-13 · _Trust & Polish_
 
 The first release after the de-branding work. The theme is **trust**: your data
@@ -71,4 +96,5 @@ motion-accessible. Plus a sharper search and a few quality-of-life touches.
 - Optional Rust deeper-scan runner for measured facts.
 - One-time import from a legacy VelesDB server.
 
+[1.2.0]: https://github.com/New1Direction/repolens/releases/tag/v1.2.0
 [1.1.0]: https://github.com/New1Direction/repolens/releases/tag/v1.1.0

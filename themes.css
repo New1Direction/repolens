@@ -25,6 +25,27 @@
   --font: system-ui, -apple-system, sans-serif;
   --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
   --card-shadow: none;
+
+  /* Semantic status — one hue set shared by every theme. The surface/ink/edge
+     variants derive from each theme's own --surface/--text via color-mix, so a
+     status colour stays legible on light and dark canvases alike (and any new
+     theme gets correct status styling for free). */
+  --ok: #22c55e;
+  --info: #38bdf8;
+  --warn: #f59e0b;
+  --bad: #ef4444;
+  --ok-ink:    color-mix(in srgb, var(--ok) 62%, var(--text));
+  --info-ink:  color-mix(in srgb, var(--info) 62%, var(--text));
+  --warn-ink:  color-mix(in srgb, var(--warn) 70%, var(--text));
+  --bad-ink:   color-mix(in srgb, var(--bad) 64%, var(--text));
+  --ok-bg:     color-mix(in srgb, var(--ok) 14%, var(--surface));
+  --info-bg:   color-mix(in srgb, var(--info) 14%, var(--surface));
+  --warn-bg:   color-mix(in srgb, var(--warn) 14%, var(--surface));
+  --bad-bg:    color-mix(in srgb, var(--bad) 14%, var(--surface));
+  --ok-edge:   color-mix(in srgb, var(--ok) 40%, var(--surface));
+  --info-edge: color-mix(in srgb, var(--info) 40%, var(--surface));
+  --warn-edge: color-mix(in srgb, var(--warn) 40%, var(--surface));
+  --bad-edge:  color-mix(in srgb, var(--bad) 40%, var(--surface));
 }
 
 [data-theme="paper"] {
@@ -250,3 +271,146 @@
 [data-theme="apple"] .token-row button { border-radius: 9999px; }
 [data-theme="apple"] .repo-name,
 [data-theme="apple"] .health-score { letter-spacing: -1px; }
+
+/* Nord — arctic blue-grey (Polar Night canvas, Frost accent). Calm, low-glare. */
+[data-theme="nord"] {
+  --body-bg: #2e3440;
+  --bg: #2e3440;
+  --surface: #3b4252;
+  --surface-alt: #353b49;
+  --border: #434c5e;
+  --border-2: #4c566a;
+
+  --text: #eceff4;
+  --text-strong: #eceff4;
+  --text-body: #e5e9f0;
+  --text-sub: #d8dee9;
+  --text-muted: #9aa3b5;
+  --text-faint: #6e7888;
+  --text-fainter: #4c566a;
+
+  --accent: #88c0d0;
+  --accent-deep: #5e81ac;
+  --accent-deep-hover: #81a1c1;
+  --accent-grad: linear-gradient(135deg, #5e81ac, #88c0d0);
+
+  --card-shadow: none;
+}
+
+/* Gruvbox — retro-warm dark, amber/orange accent. Cozy terminal heritage. */
+[data-theme="gruvbox"] {
+  --body-bg: #282828;
+  --bg: #282828;
+  --surface: #32302f;
+  --surface-alt: #3c3836;
+  --border: #504945;
+  --border-2: #665c54;
+
+  --text: #ebdbb2;
+  --text-strong: #fbf1c7;
+  --text-body: #d5c4a1;
+  --text-sub: #bdae93;
+  --text-muted: #a89984;
+  --text-faint: #7c6f64;
+  --text-fainter: #504945;
+
+  --accent: #fe8019;
+  --accent-deep: #d65d0e;
+  --accent-deep-hover: #fe8019;
+  --accent-grad: linear-gradient(135deg, #d65d0e, #fabd2f);
+
+  --card-shadow: none;
+}
+
+/* Rosé Pine — soho-vibes dark, muted rose & iris on a low-saturation base. */
+[data-theme="rosepine"] {
+  --body-bg: #191724;
+  --bg: #191724;
+  --surface: #1f1d2e;
+  --surface-alt: #26233a;
+  --border: #403d52;
+  --border-2: #524f67;
+
+  --text: #e0def4;
+  --text-strong: #e0def4;
+  --text-body: #d4d2ee;
+  --text-sub: #908caa;
+  --text-muted: #6e6a86;
+  --text-faint: #44415a;
+  --text-fainter: #2a273f;
+
+  --accent: #c4a7e7;
+  --accent-deep: #907ac4;
+  --accent-deep-hover: #c4a7e7;
+  --accent-grad: linear-gradient(135deg, #ebbcba, #c4a7e7);
+
+  --card-shadow: 0 0 18px #19172455;
+}
+
+/* Catppuccin Latte — soft pastel light, lavender/mauve accent. */
+[data-theme="latte"] {
+  --body-bg: #eff1f5;
+  --bg: #eff1f5;
+  --surface: #e6e9ef;
+  --surface-alt: #dce0e8;
+  --border: #ccd0da;
+  --border-2: #bcc0cc;
+
+  --text: #4c4f69;
+  --text-strong: #4c4f69;
+  --text-body: #5c5f77;
+  --text-sub: #5e6175;
+  --text-muted: #6c6f85;
+  --text-faint: #9ca0b0;
+  --text-fainter: #bcc0cc;
+
+  --accent: #8839ef;
+  --accent-deep: #7710d4;
+  --accent-deep-hover: #9d4bf0;
+  --accent-grad: linear-gradient(135deg, #8839ef, #7287fd);
+
+  --card-shadow: 0 1px 3px rgba(76,79,105,0.10);
+}
+
+/* Solarized Light — iconic warm-cream canvas, precise cyan/blue accent. */
+[data-theme="solarized"] {
+  --body-bg: #fdf6e3;
+  --bg: #fdf6e3;
+  --surface: #eee8d5;
+  --surface-alt: #f5efdc;
+  --border: #e3dcc4;
+  --border-2: #d9d2b8;
+
+  --text: #4e6168;
+  --text-strong: #073642;
+  --text-body: #50666e;
+  --text-sub: #50666e;
+  --text-muted: #6c7c7e;
+  --text-faint: #93a1a1;
+  --text-fainter: #c8c4ad;
+
+  --accent: #268bd2;
+  --accent-deep: #1a6fab;
+  --accent-deep-hover: #268bd2;
+  --accent-grad: linear-gradient(135deg, #268bd2, #2aa198);
+
+  --card-shadow: 0 1px 3px rgba(0,43,54,0.08);
+}
+
+/* Status text on LIGHT themes.
+   The default --*-ink (hue mixed toward --text) lands in a mid-luminance band
+   that fails WCAG AA against the pale --*-bg tints on a light canvas — worst of
+   all for yellow. Light themes instead pin status text to solid dark status
+   colours, which clear AA on both the tinted and plain surfaces. Dark themes
+   keep the derived, theme-tinted ink. (Source order: this wins over the base
+   :root definitions for these themes only.) */
+[data-theme="paper"],
+[data-theme="apple"],
+[data-theme="claude"],
+[data-theme="latte"],
+[data-theme="solarized"] {
+  --ok-ink:   #166534;
+  --info-ink: #0369a1;
+  --warn-ink: #8a5a00;
+  --bad-ink:  #b91c1c;
+}

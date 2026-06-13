@@ -25,7 +25,10 @@ beforeEach(() => {
 
 describe('THEMES', () => {
   it('has all themes with key, label, swatch', () => {
-    expect(THEMES.map(t => t.key)).toEqual(['midnight', 'paper', 'terminal', 'synthwave', 'bmw', 'xai', 'claude', 'apple']);
+    expect(THEMES.map(t => t.key)).toEqual([
+      'midnight', 'paper', 'terminal', 'synthwave', 'bmw', 'xai', 'claude', 'apple',
+      'nord', 'gruvbox', 'rosepine', 'latte', 'solarized',
+    ]);
     for (const t of THEMES) {
       expect(t.label).toBeTruthy();
       expect(t.swatch).toBeTruthy();
