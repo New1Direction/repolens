@@ -8,6 +8,10 @@ import { listCached, removeCached, openCachedAnalysis, importCache, clearCache }
 import { libraryRow, sortRows, filterRows, allCapabilities, relativeTime, sourceUrl, mergeRows, libraryStats } from './library-data.js';
 import { buildBackup, validateBackup, summarizeBackup, backupFilename } from './backup.js';
 import { html, escapeHtml as esc } from './safe-html.js';
+import { initTheme } from './theme.js';
+
+// Honour the user's chosen theme on this standalone page (sets <html data-theme>).
+initTheme();
 
 const MAX_BACKUP_BYTES = 50 * 1024 * 1024; // refuse absurd import files before parsing
 
