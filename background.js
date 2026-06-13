@@ -6,6 +6,7 @@ import { saveAnalysis, searchLibrary, upsertNode, addEdge, scrollLibrary, scroll
 import { buildAttemptPlan } from './routing.js';
 import { withRetry } from './retry.js';
 import { categorizeError, rankErrors } from './errors.js';
+import { estimateTokens } from './estimate.js';
 import { buildTagPrompt, parseTags } from './tag-prompt.js';
 import { nodeIdFor, edgeIdFor, ideaIdFor } from './graph.js';
 import { deriveCapabilities } from './taxonomy.js';
@@ -329,6 +330,7 @@ async function runAnalysis(sessionKey, detected) {
     await chrome.storage.session.set({ [sessionKey]: { loading: true, status: 'thinking', ...detected } });
 
     // Call AI provider — tried in order: Nous > Gemini > OpenRouter > Grok > Anthropic
+    const corePrompt = withTone(tone, buildPrompt(repoData));
     const text = await callAI({
       anthropicKey, anthropicModel,
       googleKey, googleModel,
@@ -336,11 +338,12 @@ async function runAnalysis(sessionKey, detected) {
       xaiKey, xaiRefresh, xaiModel,
       nousKey, nousModel,
       partRouting,
-    }, withTone(tone, buildPrompt(repoData)), 'core');
+    }, corePrompt, 'core');
     const analysis = parseClaudeResponse(text);
     const fullData = {
       ...repoData,
       ...analysis,
+      inputTokensEstimate: estimateTokens(corePrompt),
       loading: false,
       error: null,
       autoSave,
