@@ -1,4 +1,4 @@
-import { findSimilar, getEgoGraph, getLibraryIndex } from './store.js';
+import { findSimilar, getEgoGraph, getLibraryIndex, listCollections, saveCollection } from './store.js';
 import { egoGraphSvg } from './graph.js';
 import { esc, paras, formatStars } from './format.js';
 import { formatTokens } from './estimate.js';
@@ -25,6 +25,7 @@ import { saveDecision, getDecision, clearDecision } from './store.js';
 import { encodeShareCard } from './share-card.js';
 import { FITS_VERDICTS } from './fits-stack.js';
 import { initPalette } from './palette.js';
+import { toggleRepoInCollection, collectionContains, sortedCollections, COLLECTION_COLORS } from './collections.js';
 
 // Apply the saved theme ASAP (before render) to minimise flash.
 initTheme();
@@ -217,7 +218,8 @@ function initOutputPalette(data) {
     { name: 'Ask This Repo', description: 'Ask a specific question about this repo', action: () => show(26) },
     { name: 'Run All Lenses', description: 'Fire every on-demand lens', action: () => runAllLenses() },
     // Actions
-    { section: 'Actions', name: 'Open Library', description: 'Browse your saved repos', action: () => chrome.tabs.create({ url: chrome.runtime.getURL('library.html') }) },
+    { section: 'Actions', name: 'Add to Board', description: 'Save this repo to a collection', action: () => document.getElementById('add-to-board')?.click() },
+    { name: 'Open Library', description: 'Browse your saved repos', action: () => chrome.tabs.create({ url: chrome.runtime.getURL('library.html') }) },
     { name: 'Batch Scan', description: 'Scan multiple repos at once', action: () => chrome.tabs.create({ url: chrome.runtime.getURL('batch.html') }) },
     { name: 'Copy URL', description: 'Copy the repo source URL', shortcut: 'U', action: () => document.getElementById('copy-url')?.click() },
     { name: 'Copy Markdown', description: 'Copy this analysis as MD', shortcut: 'M', action: () => document.getElementById('copy-md')?.click() },
@@ -1578,6 +1580,13 @@ function renderHeader(d) {
     d.platform
   ].filter(p => p && p !== 'Unknown');
   pillContainer.innerHTML = pills.map(p => `<span class="pill">${esc(p)}</span>`).join('');
+
+  // Update board button label based on current membership
+  listCollections().then((cols) => {
+    const btn = document.getElementById('add-to-board');
+    if (!btn || !d.repoId) return;
+    btn.textContent = cols.some((c) => collectionContains(c, d.repoId)) ? '✓ Board' : '+ Board';
+  }).catch(() => {});
 }
 
 function verdictDashboard(d) {
@@ -1994,6 +2003,76 @@ document.getElementById('open-library')?.addEventListener('click', () => {
 
 document.getElementById('whats-new-btn')?.addEventListener('click', () => {
   chrome.tabs.create({ url: chrome.runtime.getURL('whats-new.html') });
+});
+
+// ─── Add to Board popover ─────────────────────────────────────────────────────
+const safeHex = (v) => (/^#[0-9a-fA-F]{3,8}$/.test(v) ? v : COLLECTION_COLORS[0]);
+let _boardPop = null;
+
+function closeBoardPop() {
+  if (!_boardPop) return;
+  _boardPop.remove();
+  _boardPop = null;
+  document.removeEventListener('click', _onBoardDocClick, true);
+  document.removeEventListener('keydown', _onBoardKey, true);
+}
+function _onBoardDocClick(e) { if (_boardPop && !_boardPop.contains(e.target)) closeBoardPop(); }
+function _onBoardKey(e) { if (e.key === 'Escape') closeBoardPop(); }
+
+async function openBoardPop(repoId, anchor) {
+  closeBoardPop();
+  const btn = document.getElementById('add-to-board');
+  const cols = sortedCollections(await listCollections().catch(() => []));
+  const list = cols.length
+    ? cols.map((c) => `<button class="bp-row" data-id="${esc(c.id)}">` +
+        `<span class="bp-check">${collectionContains(c, repoId) ? '✓' : ''}</span>` +
+        `<span class="coll-dot" style="background:${safeHex(c.color)}"></span>` +
+        `<span class="bp-name">${esc(c.name)}</span></button>`).join('')
+    : `<div class="bp-empty">No boards yet — create one in the Library.</div>`;
+  const pop = document.createElement('div');
+  pop.className = 'boards-pop';
+  pop.innerHTML = list + `<button class="bp-row bp-new" id="bp-open-lib">＋ Manage Boards…</button>`;
+  document.body.appendChild(pop);
+
+  const r = anchor.getBoundingClientRect();
+  const left = Math.min(window.scrollX + r.left, window.scrollX + window.innerWidth - pop.offsetWidth - 12);
+  pop.style.top = `${window.scrollY + r.bottom + 6}px`;
+  pop.style.left = `${Math.max(window.scrollX + 8, left)}px`;
+  _boardPop = pop;
+
+  let localCols = cols;
+  pop.querySelectorAll('.bp-row[data-id]').forEach((b) => {
+    b.addEventListener('click', async () => {
+      const idx = localCols.findIndex((c) => c.id === b.dataset.id);
+      if (idx < 0) return;
+      const updated = toggleRepoInCollection(localCols[idx], repoId, { now: new Date().toISOString() });
+      localCols = localCols.map((c, i) => (i === idx ? updated : c));
+      try { await saveCollection(updated); } catch { /* best-effort */ }
+      b.querySelector('.bp-check').textContent = collectionContains(updated, repoId) ? '✓' : '';
+      if (btn) {
+        const inAny = localCols.some((c) => collectionContains(c, repoId));
+        btn.textContent = inAny ? '✓ Board' : '+ Board';
+      }
+    });
+  });
+  pop.getElementById?.('bp-open-lib')?.addEventListener('click', () => {
+    chrome.tabs.create({ url: chrome.runtime.getURL('library.html') });
+    closeBoardPop();
+  });
+  pop.querySelector('#bp-open-lib')?.addEventListener('click', () => {
+    chrome.tabs.create({ url: chrome.runtime.getURL('library.html') });
+    closeBoardPop();
+  });
+  setTimeout(() => {
+    document.addEventListener('click', _onBoardDocClick, true);
+    document.addEventListener('keydown', _onBoardKey, true);
+  }, 0);
+}
+
+document.getElementById('add-to-board')?.addEventListener('click', async (e) => {
+  if (!lastData?.repoId) return;
+  if (_boardPop) { closeBoardPop(); return; }
+  await openBoardPop(lastData.repoId, e.currentTarget);
 });
 
 const copyMdBtn = document.getElementById('copy-md');

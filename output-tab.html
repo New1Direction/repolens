@@ -109,6 +109,14 @@
   .alt-in-lib { font-size: 10px; font-weight: 600; background: color-mix(in srgb, var(--ok) 15%, transparent); color: var(--ok); border-radius: 4px; padding: 2px 6px; letter-spacing: .02em; }
   .alt-scan-link { font-size: 10px; color: var(--text-faint); text-decoration: none; }
   .alt-scan-link:hover { color: var(--accent); }
+  .boards-pop { position: absolute; z-index: 200; min-width: 200px; max-width: 280px; background: var(--panel, #0e1822); border: 1px solid var(--border-2, #2a3a4d); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.5); overflow: hidden; }
+  .bp-row { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; font: 600 12px var(--sans); color: var(--text); background: transparent; border: none; padding: 9px 13px; cursor: pointer; transition: background .12s; }
+  .bp-row:hover { background: var(--surface-alt, #141f2d); }
+  .bp-check { width: 14px; flex-shrink: 0; color: var(--accent); font-weight: 800; }
+  .bp-name { flex: 1; }
+  .bp-empty { font-size: 12px; color: var(--text-faint); padding: 12px 13px; }
+  .bp-new { color: var(--text-sub); border-top: 1px solid var(--border, #1c2b3e); margin-top: 4px; }
+  .coll-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
   .curve-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
   .curve-label { font-size: 11px; color: var(--text-muted); min-width: 120px; }
@@ -753,6 +761,7 @@
     <div class="health-bar">
       <div class="export-bar">
         <button class="export-btn" id="open-library" title="Browse every repo you've analyzed">📚 Library</button>
+        <button class="export-btn" id="add-to-board" title="Add this repo to a Board">+ Board</button>
         <button class="export-btn" id="copy-url" title="Copy repo URL to clipboard (U)">Copy URL</button>
         <button class="export-btn" id="copy-md" title="Copy this analysis as Markdown (M)">Copy MD</button>
         <button class="export-btn" id="export-scaffold" title="Download a CLAUDE.md / Notion integration scaffold">Scaffold</button>
