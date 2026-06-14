@@ -182,6 +182,17 @@ function render() {
     });
     const cb = el.querySelector('.lc-check');
     cb?.addEventListener('change', () => toggleSelect(el.dataset.repo, el, cb.checked));
+    // Hover preview — show rich flyout for cached repos after a short delay
+    if (cacheByRepo.has(el.dataset.repo)) {
+      let hoverTimer = null;
+      el.addEventListener('mouseenter', () => {
+        hoverTimer = setTimeout(() => showHoverPreview(el.dataset.repo, el), 350);
+      });
+      el.addEventListener('mouseleave', () => {
+        clearTimeout(hoverTimer);
+        scheduleHidePreview();
+      });
+    }
   });
   grid.querySelectorAll('.lc-act').forEach((btn) => {
     btn.addEventListener('click', (e) => {
@@ -233,6 +244,52 @@ function openQuickAsk(repoId, btn) {
 
   input?.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.stopPropagation(); doAsk(); } });
   // Clear the event after first use by removing and re-adding the panel hidden on next render
+}
+
+// --- Hover preview ---
+let hidePreviewTimer = null;
+
+function scheduleHidePreview() {
+  hidePreviewTimer = setTimeout(() => {
+    const panel = document.getElementById('lc-hover-card');
+    if (panel) panel.hidden = true;
+  }, 120);
+}
+
+function showHoverPreview(repoId, cardEl) {
+  const full = cacheByRepo.get(repoId);
+  if (!full) return;
+
+  const panel = document.getElementById('lc-hover-card');
+  if (!panel) return;
+
+  const eli5 = full.eli5 ? `<p class="lchc-eli5">${full.eli5.slice(0, 200)}</p>` : '';
+  const pros = Array.isArray(full.pros) && full.pros.length
+    ? `<p class="lchc-section">Strengths</p><ul class="lchc-list lchc-pros">${full.pros.slice(0, 3).map((p) => `<li>${p}</li>`).join('')}</ul>`
+    : '';
+  const cons = Array.isArray(full.cons) && full.cons.length
+    ? `<p class="lchc-section">Weaknesses</p><ul class="lchc-list lchc-cons">${full.cons.slice(0, 2).map((c) => `<li>${c}</li>`).join('')}</ul>`
+    : '';
+
+  panel.innerHTML = eli5 + pros + cons;
+
+  // Position: right of card if room, else left
+  const rect = cardEl.getBoundingClientRect();
+  const GAP = 10;
+  const W = 260;
+  let left = rect.right + GAP;
+  if (left + W > window.innerWidth - 8) left = rect.left - W - GAP;
+  left = Math.max(8, left);
+
+  const top = Math.min(rect.top, window.innerHeight - panel.offsetHeight - 8);
+  panel.style.left = `${left}px`;
+  panel.style.top = `${Math.max(8, top)}px`;
+  panel.hidden = false;
+
+  // Let the mouse move onto the panel without dismissing it
+  panel.classList.add('interactive');
+  panel.onmouseenter = () => clearTimeout(hidePreviewTimer);
+  panel.onmouseleave = scheduleHidePreview;
 }
 
 async function copyCardMd(repoId, btn) {

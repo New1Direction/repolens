@@ -346,6 +346,17 @@
   #lib-btn-radar.on { color: var(--text); background: var(--surface); border-color: var(--border-2); }
   .radar-toolbar { display: flex; justify-content: flex-end; margin-bottom: 12px; }
   @media (max-width: 640px) { .radar-grid { grid-template-columns: repeat(2, 1fr); } }
+  /* Hover preview card */
+  #lc-hover-card { position: fixed; z-index: 9999; width: 260px; padding: 12px 14px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border-2); box-shadow: 0 8px 24px rgba(0,0,0,.18); pointer-events: none; animation: lc-hover-in 150ms var(--ease-out, ease) both; }
+  #lc-hover-card.interactive { pointer-events: auto; }
+  @keyframes lc-hover-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  .lchc-eli5 { font-size: 12px; color: var(--sub); line-height: 1.55; margin: 0 0 10px; }
+  .lchc-section { font: 600 10px/1 var(--mono); letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin: 0 0 5px; }
+  .lchc-list { margin: 0 0 8px; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 3px; }
+  .lchc-list li { font-size: 11px; color: var(--text); line-height: 1.4; padding-left: 12px; position: relative; }
+  .lchc-list li::before { content: attr(data-bullet); position: absolute; left: 0; }
+  .lchc-pros li::before { content: '+'; color: var(--green, #22c55e); }
+  .lchc-cons li::before { content: '−'; color: var(--red, #ef4444); }
 </style>
 </head>
 <body>
@@ -412,6 +423,7 @@
     <div id="grid"></div>
     <div class="lib-empty hidden" id="empty"></div>
   </div>
+  <div id="lc-hover-card" hidden aria-hidden="true"></div>
   <script src="library.js" type="module"></script>
 </body>
 </html>
