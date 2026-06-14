@@ -1788,6 +1788,10 @@ document.addEventListener('keydown', (e) => {
     const row = allRows.find((r) => r.repoId === repoId);
     if (row) window.open(sourceUrl(row), '_blank', 'noopener');
   }
+  if (e.key === 'r') {
+    e.preventDefault();
+    rescan(repoId);
+  }
 });
 
 // ─── Library palette ─────────────────────────────────────────────────────────
