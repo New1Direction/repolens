@@ -197,7 +197,7 @@ function wireGridEvents(grid) {
       e.stopPropagation();
       const cap = tag.dataset.cap;
       state.capability = state.capability === cap ? '' : cap;
-      document.querySelectorAll('.lib-cap').forEach((b) => b.classList.toggle('on', b.dataset.cap === state.capability));
+      renderCaps();
       render();
       return;
     }
@@ -800,17 +800,43 @@ async function buildStack() {
   setSelectionMode(false);
 }
 
+const CAPS_VISIBLE = 10;
+
 function renderCaps() {
   const host = document.getElementById('caps');
-  host.innerHTML = allCapabilities(allRows).map((c) => `<button class="lib-cap" data-cap="${esc(c)}">${esc(c)}</button>`).join('');
-  host.querySelectorAll('.lib-cap').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const cap = btn.dataset.cap;
-      state.capability = state.capability === cap ? '' : cap;
-      host.querySelectorAll('.lib-cap').forEach((b) => b.classList.toggle('on', b.dataset.cap === state.capability));
+  const caps = allCapabilities(allRows);
+  if (!caps.length) { host.innerHTML = ''; return; }
+
+  const visibleCaps = caps.slice(0, CAPS_VISIBLE);
+  const hiddenCaps = caps.slice(CAPS_VISIBLE);
+  const showAll = host.dataset.expanded === '1';
+  const renderCap = (c) => `<button class="lib-cap${state.capability === c ? ' on' : ''}" data-cap="${esc(c)}">${esc(c)}</button>`;
+
+  const moreBtn = hiddenCaps.length
+    ? (showAll
+        ? `<button class="lib-cap lib-cap-more" data-toggle-caps>− less</button>`
+        : `<button class="lib-cap lib-cap-more" data-toggle-caps>+ ${hiddenCaps.length} more</button>`)
+    : '';
+
+  host.innerHTML = visibleCaps.map(renderCap).join('')
+    + (showAll ? hiddenCaps.map(renderCap).join('') : '')
+    + moreBtn;
+
+  if (!host._capsDelegated) {
+    host._capsDelegated = true;
+    host.addEventListener('click', (e) => {
+      if (e.target.dataset.toggleCaps !== undefined) {
+        host.dataset.expanded = host.dataset.expanded === '1' ? '' : '1';
+        renderCaps();
+        return;
+      }
+      const btn = e.target.closest('[data-cap]');
+      if (!btn) return;
+      state.capability = state.capability === btn.dataset.cap ? '' : btn.dataset.cap;
+      renderCaps();
       render();
     });
-  });
+  }
 }
 
 // ─── Tech Radar view ─────────────────────────────────────────────────────────
