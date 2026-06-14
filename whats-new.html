@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RepoLens — 3 days, 15 releases</title>
+<title>RepoLens — 3 days, 20 releases</title>
 <style>
   :root {
     --bg: #06060d;
@@ -226,15 +226,15 @@
   <header class="hero">
     <span class="kicker"><span class="pulse"></span> Shipped · Jun 12–14, 2026</span>
     <div class="hero-vee"><span class="vee is-scanning" id="heroVee" aria-hidden="true"></span></div>
-    <h1>Three days.<br><span class="grad">Fifteen releases.</span></h1>
-    <p class="hero-sub">RepoLens now helps you decide — a Tech Radar in the library, decision badges everywhere, fit verdict chip in the header, keyboard shortcuts for every surface, and a Markdown export of your tech radar for team docs.</p>
-    <div class="hero-meta">🔭 RepoLens · v1.1.0 → v2.3.0</div>
+    <h1>Three days.<br><span class="grad">Twenty releases.</span></h1>
+    <p class="hero-sub">RepoLens remembers — persistent Ask history across sessions, multi-turn Q&amp;A with real conversation context, library pinning, URL-to-analyze from search, and a fit distribution bar at a glance.</p>
+    <div class="hero-meta">🔭 RepoLens · v1.1.0 → v2.4.0</div>
   </header>
 
   <!-- STATS -->
   <section class="stats reveal">
-    <div class="stat"><div class="n">15</div><div class="l">Releases</div></div>
-    <div class="stat"><div class="n">674</div><div class="l">Tests passing</div></div>
+    <div class="stat"><div class="n">20</div><div class="l">Releases</div></div>
+    <div class="stat"><div class="n">676</div><div class="l">Tests passing</div></div>
     <div class="stat"><div class="n">13</div><div class="l">Themes</div></div>
     <div class="stat"><div class="n">20+</div><div class="l">AI providers</div></div>
     <div class="stat"><div class="n">100%</div><div class="l">Client-side</div></div>
@@ -244,49 +244,50 @@
   <section class="sec">
     <div class="reveal">
       <div class="sec-eyebrow">Just shipped</div>
-      <h2 class="sec-title">v2.3.0 — Decide.</h2>
-      <p class="sec-note">Your decisions are now first-class. Adopt/Trial/Hold/Reject badges appear in the header and at the top of the verdict. A new Tech Radar view organizes your whole library by decision ring — and exports as Markdown for team docs.</p>
+      <h2 class="sec-title">v2.4.0 — Memory.</h2>
+      <p class="sec-note">RepoLens now remembers. Ask history persists across browser sessions so you never re-ask the same question. The AI sees your prior conversation for smarter follow-ups. Pin your most-used repos to the top of the library. And paste any URL into library search to open it for analysis immediately.</p>
     </div>
 
     <div class="latest-card reveal">
       <div class="latest-top">
-        <span class="vtag new">v2.3.0</span>
+        <span class="vtag new">v2.4.0</span>
         <span class="vnew">● NEWEST</span>
-        <span class="vtheme">Decide.</span>
+        <span class="vtheme">Memory.</span>
         <span class="vdate">Jun 14</span>
       </div>
 
       <div class="bento bento-2x2">
         <div class="feat">
-          <div class="ic">🎯</div>
-          <h3>Tech Radar view</h3>
-          <p>The library now has a <strong>🎯 Radar</strong> toggle that organizes all your repos into four columns — Adopt, Trial, Hold, and Reject — based on your recorded decisions. Click any chip to reopen the analysis instantly.</p>
-          <div class="tagrow"><span class="tag">library</span><span class="tag">decisions</span><span class="tag">4-column</span></div>
+          <div class="ic">💬</div>
+          <h3>Persistent Ask history</h3>
+          <p>Questions and answers in the Ask tab are saved to local storage. Return to any repo and your entire Q&amp;A history is right there — no need to re-ask. A <em>Clear history</em> link resets it. Up to 10 pairs per repo.</p>
+          <div class="tagrow"><span class="tag">ask</span><span class="tag">persistent</span><span class="tag">memory</span></div>
         </div>
         <div class="feat">
-          <div class="ic">📋</div>
-          <h3>Decision badge everywhere</h3>
-          <p>Your Adopt / Trial / Hold / Reject decision now appears as a colored badge in the output-tab header (always visible) and as a banner at the top of the Verdict tab — with your note and how long ago you decided.</p>
-          <div class="tagrow"><span class="tag">header badge</span><span class="tag">verdict preview</span><span class="tag">instant context</span></div>
+          <div class="ic">🧵</div>
+          <h3>Multi-turn conversation</h3>
+          <p>Follow-up questions now get contextually aware answers. The AI sees the last 4 Q&amp;A pairs as a <em>Prior conversation</em> section in the prompt — so "what about testing?" makes sense after you already asked about TypeScript support.</p>
+          <div class="tagrow"><span class="tag">multi-turn</span><span class="tag">context</span><span class="tag">smarter</span></div>
         </div>
         <div class="feat">
-          <div class="ic">⌨️</div>
-          <h3>Five new shortcuts</h3>
-          <p><kbd>v</kbd> Verdict · <kbd>e</kbd> ELI5 · <kbd>h</kbd> Health · <kbd>l</kbd> Library · <kbd>o</kbd> Open source repo. Every important destination now has a single key — no need to reach for the mouse.</p>
-          <div class="tagrow"><span class="tag">keyboard</span><span class="tag">speed</span><span class="tag">palette shortcuts</span></div>
+          <div class="ic">📌</div>
+          <h3>Library pinning</h3>
+          <p>Pin any repo to the top of the library with the 📌 button in the card actions. Pinned repos float above the sorted grid regardless of sort order or active filters. Palette command <em>Unpin all</em> clears in one shot.</p>
+          <div class="tagrow"><span class="tag">library</span><span class="tag">pin</span><span class="tag">quick access</span></div>
         </div>
         <div class="feat">
-          <div class="ic">📤</div>
-          <h3>Export Radar as Markdown</h3>
-          <p>In Radar view, one click copies your entire tech radar as a formatted Markdown table — Adopt, Trial, Hold, Reject columns with repo links and notes — ready to paste into Notion, GitHub, or a team doc.</p>
-          <div class="tagrow"><span class="tag">export</span><span class="tag">team sharing</span><span class="tag">markdown</span></div>
+          <div class="ic">🔗</div>
+          <h3>URL-to-analyze from search</h3>
+          <p>Paste any GitHub, GitLab, npm, or PyPI URL into the library search box and press Enter — RepoLens opens the page in a new tab to trigger analysis immediately, without navigating there first.</p>
+          <div class="tagrow"><span class="tag">library</span><span class="tag">search</span><span class="tag">shortcut</span></div>
         </div>
       </div>
 
       <div class="changed">
-        <div class="chg"><span class="ci">🏷</span><div><b>Fit chip in header.</b> <span>Strong / Solid / Use with care / Risky now appears below the health score — at a glance without switching to the Verdict tab.</span></div></div>
-        <div class="chg"><span class="ci">📋</span><div><b>Richer ⧉ Copy verdict.</b> <span>The verdict copy text now includes health score, star count, license, and top pros/cons in addition to the fit label and flags.</span></div></div>
-        <div class="chg"><span class="ci">🧪</span><div><b>674 tests, all green.</b> <span>All prior suites passing across 59 test files.</span></div></div>
+        <div class="chg"><span class="ci">💡</span><div><b>Follow-up suggestions stay visible.</b> <span>After each answer, 3 fresh suggestion chips appear (excluding already-asked questions) to keep exploration going.</span></div></div>
+        <div class="chg"><span class="ci">📊</span><div><b>Fit distribution bar in library stats.</b> <span>A compact color-coded bar shows your library's Strong/Solid/Care/Risky split at a glance.</span></div></div>
+        <div class="chg"><span class="ci">🗓</span><div><b>Today badge on recently-scanned cards.</b> <span>Cards scanned within 24h show an accented "Today" badge instead of a relative timestamp.</span></div></div>
+        <div class="chg"><span class="ci">🧪</span><div><b>676 tests, all green.</b> <span>All suites passing across 59 test files.</span></div></div>
       </div>
     </div>
   </section>
@@ -300,6 +301,10 @@
     </div>
 
     <div class="timeline">
+      <div class="rel reveal">
+        <div class="rel-head"><span class="rel-v">v2.3.0</span><span class="rel-theme">Decide.</span><span class="rel-date">Jun 14</span></div>
+        <div class="rel-body">Tech Radar organizes your library by Adopt/Trial/Hold/Reject. Decision badge in the output-tab header and at the top of the Verdict tab. Five new keyboard shortcuts (<kbd>v</kbd> <kbd>e</kbd> <kbd>h</kbd> <kbd>l</kbd> <kbd>o</kbd>). Fit chip in header. Richer verdict copy text. Export radar as Markdown.</div>
+      </div>
       <div class="rel reveal">
         <div class="rel-head"><span class="rel-v">v2.2.0</span><span class="rel-theme">Navigate.</span><span class="rel-date">Jun 14</span></div>
         <div class="rel-body">Every tab deep-linkable via URL hash, repo name is a clickable link to source, <kbd>f</kbd> for fresh scan from anywhere, star counts on library cards, batch-scan notification on completion, diff first-scan CTA, per-repo tab memory, decision filter in library.</div>
@@ -417,7 +422,7 @@
       <span class="pill">Manifest V3</span>
     </div>
     <div>🔭 <b>RepoLens</b> — built for people who read code before they trust it.<br>
-    Full detail in the <a href="CHANGELOG.md">changelog</a>. Now at v2.3.0.</div>
+    Full detail in the <a href="CHANGELOG.md">changelog</a>. Now at v2.4.0.</div>
   </footer>
 
 </div>
