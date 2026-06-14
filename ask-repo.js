@@ -11,8 +11,11 @@ function trunc(s, max) {
 /**
  * Build a grounded Q&A prompt using the analysis data for one repo.
  * Returns '' when question or repoId are missing.
+ * @param {string} question
+ * @param {object} analysis
+ * @param {Array<{question:string,answer:string}>} [history]
  */
-export function buildAskRepoPrompt(question, analysis) {
+export function buildAskRepoPrompt(question, analysis, history = []) {
   if (!question || !analysis?.repoId) return '';
 
   const a = analysis;
@@ -38,7 +41,11 @@ export function buildAskRepoPrompt(question, analysis) {
     a.alternatives?.length ? `\nAlternatives: ${a.alternatives.slice(0, 4).map((x) => x.name || x).join(', ')}` : '',
   ].filter(Boolean).join('\n');
 
-  return `${lines}\n\nQuestion: ${question}`;
+  const historySection = history.length
+    ? `\n\n## Prior conversation\n${history.map((h) => `Q: ${h.question}\nA: ${trunc(h.answer, 200)}`).join('\n\n')}`
+    : '';
+
+  return `${lines}${historySection}\n\nQuestion: ${question}`;
 }
 
 /** Trim raw AI text — the model returns plain prose. */

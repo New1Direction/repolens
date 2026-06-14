@@ -308,7 +308,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         }
         const history = sessionHistory.slice(-4); // keep last 4 completed pairs for AI context
         await setAsk({ pending: { status: 'thinking', question: msg.question }, history });
-        const prompt = buildAskRepoPrompt(msg.question, cur);
+        const prompt = buildAskRepoPrompt(msg.question, cur, history);
         if (!prompt) { await setAsk({ pending: { status: 'error', question: msg.question, error: 'Not enough context — try re-scanning first.' }, history }); return; }
         const text = await callAI(keys, prompt, 'ask');
         const answer = parseAskRepoAnswer(text);

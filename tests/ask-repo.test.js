@@ -60,6 +60,23 @@ describe('buildAskRepoPrompt', () => {
     expect(p).toContain('x/y');
     expect(p).toContain('What is this?');
   });
+
+  it('includes prior conversation history when provided', () => {
+    const history = [
+      { question: 'Does it support TypeScript?', answer: 'Yes, full TypeScript support.' },
+      { question: 'What about testing?', answer: 'It includes a built-in test runner.' },
+    ];
+    const p = buildAskRepoPrompt('Any other features?', base, history);
+    expect(p).toContain('Prior conversation');
+    expect(p).toContain('Does it support TypeScript?');
+    expect(p).toContain('Yes, full TypeScript support.');
+    expect(p).toContain('What about testing?');
+  });
+
+  it('omits history section when history is empty', () => {
+    const p = buildAskRepoPrompt('What is this?', base, []);
+    expect(p).not.toContain('Prior conversation');
+  });
 });
 
 describe('parseAskRepoAnswer', () => {
