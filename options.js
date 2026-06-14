@@ -100,6 +100,15 @@ sktpgInput.addEventListener('change', () => {
   chrome.storage.local.set({ sktpgEnabled: sktpgInput.checked });
 });
 
+// ─── Interface: the "Vee" mascot toggle (default ON) ─────────────────────────
+const mascotInput = document.getElementById('mascotEnabled');
+chrome.storage.local.get('mascotEnabled', ({ mascotEnabled }) => {
+  mascotInput.checked = mascotEnabled !== false;
+});
+mascotInput.addEventListener('change', () => {
+  chrome.storage.local.set({ mascotEnabled: mascotInput.checked });
+});
+
 // ─── Voice / tone ────────────────────────────────────────────────────────────
 chrome.storage.local.get('tone', ({ tone }) => renderTonePicker(tone || DEFAULT_TONE));
 

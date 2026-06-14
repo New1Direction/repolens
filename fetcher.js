@@ -23,9 +23,10 @@ function bytesToComposition(langs) {
 }
 
 async function fetchGitHub(repoId) {
-  const [meta, readmeRes] = await Promise.all([
+  const [meta, readmeRes, langRes] = await Promise.all([
     fetchJson(`https://api.github.com/repos/${repoId}`),
-    fetch(`https://api.github.com/repos/${repoId}/readme`).catch(() => ({ ok: false }))
+    fetch(`https://api.github.com/repos/${repoId}/readme`).catch(() => ({ ok: false })),
+    fetch(`https://api.github.com/repos/${repoId}/languages`).catch(() => ({ ok: false })),
   ]);
   let readme = '';
   if (readmeRes.ok) {
@@ -34,12 +35,10 @@ async function fetchGitHub(repoId) {
       readme = atob(readmeData.content.replace(/\n/g, ''));
     }
   }
-  // Language composition for the Tech Stack bar — best effort, never fatal.
   let languages = [];
   try {
-    const langRes = await fetch(`https://api.github.com/repos/${repoId}/languages`);
-    if (langRes && langRes.ok) languages = bytesToComposition(await langRes.json());
-  } catch { /* leave empty; the bar falls back to the single language */ }
+    if (langRes?.ok) languages = bytesToComposition(await langRes.json());
+  } catch { /* leave empty; bar falls back to single language */ }
   if (!languages.length && meta.language) languages = [{ name: meta.language, pct: 100 }];
 
   return {
@@ -51,15 +50,16 @@ async function fetchGitHub(repoId) {
 
 async function fetchGitLab(repoId) {
   const encoded = encodeURIComponent(repoId);
-  const meta = await fetchJson(`https://gitlab.com/api/v4/projects/${encoded}`);
+  const [meta, readmeRes, langRes] = await Promise.all([
+    fetchJson(`https://gitlab.com/api/v4/projects/${encoded}`),
+    fetch(`https://gitlab.com/api/v4/projects/${encoded}/repository/files/README.md/raw?ref=HEAD`).catch(() => null),
+    fetch(`https://gitlab.com/api/v4/projects/${encoded}/languages`).catch(() => ({ ok: false })),
+  ]);
   let readme = '';
-  const readmeRes = await fetch(`https://gitlab.com/api/v4/projects/${encoded}/repository/files/README.md/raw?ref=HEAD`).catch(() => null);
   if (readmeRes?.ok) readme = await readmeRes.text();
-  // GitLab's languages endpoint already returns percentages.
   let languages = [];
   try {
-    const langRes = await fetch(`https://gitlab.com/api/v4/projects/${encoded}/languages`);
-    if (langRes && langRes.ok) {
+    if (langRes?.ok) {
       const langs = await langRes.json();
       languages = Object.entries(langs).sort((a, b) => b[1] - a[1]).slice(0, 5)
         .map(([name, pct]) => ({ name, pct: Math.round(pct) }));
@@ -94,6 +94,38 @@ function parsePyDep(spec) {
   if (!m) return null;
   const version = (m[2] || '').replace(/[()]/g, '').trim();
   return { name: m[1], version };
+}
+
+/**
+ * Fetch GitHub-specific maintenance signals: last push, archived flag,
+ * issue/fork counts, and top-5 contributor login + commit share.
+ * Returns null for non-GitHub repos or on failure.
+ */
+export async function fetchMaintenanceSignals(platform, repoId) {
+  if (platform !== 'github') return null;
+  try {
+    const [meta, contribRes] = await Promise.all([
+      fetchJson(`https://api.github.com/repos/${repoId}`),
+      fetch(`https://api.github.com/repos/${repoId}/contributors?per_page=5&anon=0`).catch(() => ({ ok: false })),
+    ]);
+    let topContributors = [];
+    if (contribRes.ok) {
+      const data = await contribRes.json().catch(() => []);
+      if (Array.isArray(data)) {
+        topContributors = data.slice(0, 5).map(c => ({ login: String(c.login || ''), contributions: Number(c.contributions) || 0 }));
+      }
+    }
+    return {
+      pushedAt: meta.pushed_at || null,
+      archived: !!meta.archived,
+      openIssues: meta.open_issues_count || 0,
+      forks: meta.forks_count || 0,
+      watchers: meta.subscribers_count || 0,
+      topContributors,
+    };
+  } catch {
+    return null;
+  }
 }
 
 async function fetchPyPI(repoId) {

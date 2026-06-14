@@ -19,12 +19,12 @@ describe('buildBackup', () => {
     expect(b.format).toBe(BACKUP_FORMAT);
     expect(b.version).toBe(BACKUP_VERSION);
     expect(b.exportedAt).toBe('2026-06-12T00:00:00.000Z');
-    expect(b.counts).toEqual({ repos: 2, nodes: 1, edges: 1, cache: 1 });
+    expect(b.counts).toEqual({ repos: 2, nodes: 1, edges: 1, cache: 1, collections: 0, decisions: 0 });
     expect(b.repos).toEqual(repos);
   });
   it('tolerates missing sections (empty library export)', () => {
     const b = buildBackup();
-    expect(b.counts).toEqual({ repos: 0, nodes: 0, edges: 0, cache: 0 });
+    expect(b.counts).toEqual({ repos: 0, nodes: 0, edges: 0, cache: 0, collections: 0, decisions: 0 });
     expect(b.repos).toEqual([]);
     expect(typeof b.exportedAt).toBe('string');
   });
@@ -75,7 +75,7 @@ describe('validateBackup', () => {
   });
   it('always returns a safe normalized value even on failure', () => {
     const { value } = validateBackup(undefined);
-    expect(value).toEqual({ repos: [], nodes: [], edges: [], cache: [] });
+    expect(value).toEqual({ repos: [], nodes: [], edges: [], cache: [], collections: [], decisions: [] });
   });
   it('clamps oversized sections and warns instead of importing unbounded rows', () => {
     const repos = Array.from({ length: 5001 }, (_, i) => ({ id: i + 1, payload: { repoId: `o/r${i}` } }));
@@ -85,10 +85,30 @@ describe('validateBackup', () => {
   });
 });
 
+describe('collections in the envelope', () => {
+  const collections = [{ id: 'c1', payload: { id: 'c1', name: 'My Stack', color: '#818cf8', repoIds: ['a/one'] } }];
+  it('round-trips collections through build → validate', () => {
+    const b = buildBackup({ repos, collections, exportedAt: '2026-06-12T00:00:00.000Z' });
+    expect(b.counts.collections).toBe(1);
+    const { ok, value } = validateBackup(JSON.parse(JSON.stringify(b)));
+    expect(ok).toBe(true);
+    expect(value.collections).toHaveLength(1);
+    expect(value.collections[0].payload.name).toBe('My Stack');
+  });
+  it('drops malformed collection rows but keeps valid ones', () => {
+    const dirty = { format: BACKUP_FORMAT, version: 1, collections: [{ id: 'ok', payload: { name: 'A' } }, { id: 'bad' }, { payload: { name: 'no-id' } }, null] };
+    expect(validateBackup(dirty).value.collections).toHaveLength(1);
+  });
+  it('treats an old backup with no collections key as zero collections (backward-compatible)', () => {
+    const old = { format: BACKUP_FORMAT, version: 1, repos: [{ id: 1, payload: { repoId: 'a/b' } }] };
+    expect(validateBackup(old).value.collections).toEqual([]);
+  });
+});
+
 describe('summarizeBackup', () => {
   it('counts importable rows from the actual data, not the self-reported counts', () => {
     const lying = { format: BACKUP_FORMAT, version: 1, counts: { repos: 999 }, repos: [{ id: 1, payload: { repoId: 'a/b' } }] };
-    expect(summarizeBackup(lying)).toEqual({ repos: 1, nodes: 0, edges: 0, cache: 0 });
+    expect(summarizeBackup(lying)).toEqual({ repos: 1, nodes: 0, edges: 0, cache: 0, collections: 0, decisions: 0 });
   });
 });
 

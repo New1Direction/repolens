@@ -24,6 +24,7 @@ import { estimateTokens } from './estimate.js';
 import { buildTagPrompt, parseTags } from './tag-prompt.js';
 import { nodeIdFor, edgeIdFor, ideaIdFor } from './graph.js';
 import { deriveCapabilities } from './taxonomy.js';
+import { deriveFit } from './verdict.js';
 import { combineCandidates } from './combinator.js';
 import { buildCombinatorPrompt, parseCombinator } from './combinator-prompt.js';
 import { refreshXaiToken, XAI_CHAT_PROXY } from './oauth-xai.js';
@@ -50,10 +51,43 @@ import { buildIdeatePrompt, parseIdeate, isIdeateFramework } from './ideate.js';
 import { buildHeuristicsPrompt, parseHeuristics, isHeuristicFramework } from './heuristics.js';
 import { withTone } from './tone.js';
 import { buildSktpgPrompt, parseSktpg } from './sktpg.js';
+import { buildDocsQualityPrompt, parseDocsQuality } from './docs-quality.js';
 import { buildVersusPrompt, parseVersus } from './versus.js';
+import { buildAskPrompt, parseAskAnswer, buildFilterPrompt, parseFilterResult } from './ask-library.js';
+import { buildMaintenancePrompt, parseMaintenance } from './maintenance.js';
+import { fetchMaintenanceSignals } from './fetcher.js';
 import { buildSynergiesPrompt, parseSynergies } from './synergies.js';
-import { cacheAnalysis, getCached } from './cache.js';
+import { cacheAnalysis, getCached, listCached } from './cache.js';
 import { emptyLens, withRun, setActive } from './lens-runs.js';
+import { diffAnalyses } from './diff-analysis.js';
+import { buildFitsStackPrompt, parseFitsStack } from './fits-stack.js';
+import { buildStackPrompt, parseStack } from './stack-prompt.js';
+import { buildAskRepoPrompt, parseAskRepoAnswer } from './ask-repo.js';
+import { buildComparePrompt, parseCompareResult } from './compare-repos.js';
+
+// Notify when a scan completes — clicking the notification focuses the result tab.
+chrome.notifications.onClicked.addListener(async (notifId) => {
+  chrome.notifications.clear(notifId);
+  if (notifId.startsWith('rl_scan_')) {
+    const tabUrl = notifId.slice('rl_scan_'.length);
+    const [existing] = await chrome.tabs.query({ url: tabUrl });
+    if (existing) {
+      await chrome.tabs.update(existing.id, { active: true });
+      await chrome.windows.update(existing.windowId, { focused: true });
+    } else {
+      chrome.tabs.create({ url: tabUrl });
+    }
+  } else if (notifId.startsWith('rl_batch_')) {
+    const libUrl = chrome.runtime.getURL('library.html');
+    const [existing] = await chrome.tabs.query({ url: libUrl });
+    if (existing) {
+      await chrome.tabs.update(existing.id, { active: true });
+      await chrome.windows.update(existing.windowId, { focused: true });
+    } else {
+      chrome.tabs.create({ url: libUrl });
+    }
+  }
+});
 
 // Best-effort semantic-graph write: upsert both endpoint nodes, then a deterministic
 // (idempotent) edge. Graph write errors are swallowed — building the graph
@@ -100,6 +134,51 @@ const SESSION_KEY_PREFIX = 'repolens_';
 // First run: open Settings so the user can connect a provider and see Getting Started.
 chrome.runtime.onInstalled.addListener(({ reason }) => {
   if (reason === 'install') chrome.runtime.openOptionsPage();
+  // Register "Scan with RepoLens" on link right-clicks — recreated on every install/update.
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: 'repolens-scan-link',
+      title: 'Scan with RepoLens',
+      contexts: ['link'],
+    });
+  });
+  // Drift check alarm — fires once a day to count stale repos.
+  chrome.alarms.create('repolens-drift', { delayInMinutes: 1, periodInMinutes: 60 * 24 });
+});
+
+// Count repos not scanned in 14+ days and write a summary for the library banner.
+chrome.alarms.onAlarm.addListener(async (alarm) => {
+  if (alarm.name !== 'repolens-drift') return;
+  try {
+    const points = await scrollPoints({ limit: 2000 });
+    const STALE_MS = 14 * 24 * 60 * 60 * 1000;
+    const staleCount = points.filter(p => p.payload?.savedAt && (Date.now() - Date.parse(p.payload.savedAt)) > STALE_MS).length;
+    await chrome.storage.local.set({ repolens_drift: { staleCount, checkedAt: new Date().toISOString() } });
+  } catch { /* offline or IDB unavailable */ }
+});
+
+// Scan a link right-clicked anywhere — detect platform from the href, open output tab.
+chrome.contextMenus.onClicked.addListener(async (info) => {
+  if (info.menuItemId !== 'repolens-scan-link') return;
+  const url = info.linkUrl || '';
+  const detected = detectPlatform(url);
+  if (!detected) {
+    const sessionKey = SESSION_KEY_PREFIX + crypto.randomUUID();
+    await chrome.storage.session.set({ [sessionKey]: { loading: false, error: `Not a supported repo URL: ${url}` } });
+    chrome.tabs.create({ url: chrome.runtime.getURL(`output-tab.html?key=${sessionKey}`) });
+    return;
+  }
+  const gateKeys = await chrome.storage.local.get(['anthropicKey', 'googleKey', 'openrouterKey', 'xaiKey', 'nousKey', ...compatStorageKeys()]);
+  const hasKey = gateKeys.anthropicKey || gateKeys.googleKey || gateKeys.openrouterKey || gateKeys.xaiKey || gateKeys.nousKey || compatStorageKeys().some(k => gateKeys[k]);
+  const sessionKey = SESSION_KEY_PREFIX + crypto.randomUUID();
+  if (!hasKey) {
+    await chrome.storage.session.set({ [sessionKey]: { loading: false, error: 'No AI provider configured — open Settings to add a key.', errorKind: 'none' } });
+    chrome.tabs.create({ url: chrome.runtime.getURL(`output-tab.html?key=${sessionKey}`) });
+    return;
+  }
+  await chrome.storage.session.set({ [sessionKey]: { loading: true, status: 'fetching', ...detected } });
+  chrome.tabs.create({ url: chrome.runtime.getURL(`output-tab.html?key=${sessionKey}`) });
+  runAnalysis(sessionKey, detected);
 });
 
 // ─── Listen for content script + output-tab signals ──────────────────────────
@@ -160,6 +239,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
 
+  // Docs Quality from the output tab — on-demand README + file-tree scan.
+  if (msg.type === 'DOCS_QUALITY' && msg.sessionKey && msg.platform && msg.repoId) {
+    sendResponse({ ok: true });
+    runDocsQuality(msg.sessionKey, { platform: msg.platform, repoId: msg.repoId });
+    return true;
+  }
+
   // Synergies from the output tab — complementary repos grounded in the library.
   if (msg.type === 'SYNERGIES' && msg.sessionKey && msg.platform && msg.repoId) {
     sendResponse({ ok: true });
@@ -182,6 +268,142 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'TAG_LIBRARY' && msg.sessionKey) {
     sendResponse({ ok: true });
     runTagLibrary(msg.sessionKey);
+    return true;
+  }
+
+  // Maintenance & Abandonment lens — commit recency, bus factor, CI, open issues.
+  if (msg.type === 'MAINTENANCE' && msg.sessionKey && msg.platform && msg.repoId) {
+    sendResponse({ ok: true });
+    runMaintenance(msg.sessionKey, { platform: msg.platform, repoId: msg.repoId });
+    return true;
+  }
+
+  // Fits MY Stack? — library-grounded "does this slot in, conflict, or shift the paradigm?"
+  if (msg.type === 'FITS_STACK' && msg.sessionKey && msg.platform && msg.repoId) {
+    sendResponse({ ok: true });
+    runFitsStack(msg.sessionKey, { platform: msg.platform, repoId: msg.repoId });
+    return true;
+  }
+
+  // Batch Scan — queue multiple repo URLs for sequential analysis.
+  if (msg.type === 'BATCH_SCAN' && msg.sessionKey && Array.isArray(msg.urls) && msg.urls.length) {
+    sendResponse({ ok: true });
+    runBatchScan(msg.sessionKey, msg.urls);
+    return true;
+  }
+
+  // Tech-Stack Builder — multi-repo wiring diagram from the library.
+  if (msg.type === 'STACK_BUILD' && msg.sessionKey && Array.isArray(msg.repoIds) && msg.repoIds.length >= 2) {
+    sendResponse({ ok: true });
+    runStackBuild(msg.sessionKey, msg.repoIds);
+    return true;
+  }
+
+  // Ask This Repo — grounded Q&A over the current analysis in session storage.
+  // Stores up to 5 Q&A pairs in askRepo.history; current pending is askRepo.pending.
+  if (msg.type === 'ASK_REPO' && msg.sessionKey && msg.question) {
+    sendResponse({ ok: true });
+    (async () => {
+      const getSession = async () => (await chrome.storage.session.get(msg.sessionKey))[msg.sessionKey] || {};
+      const setAsk = async (patch) => {
+        const cur = await getSession();
+        await chrome.storage.session.set({ [msg.sessionKey]: { ...cur, askRepo: { ...(cur.askRepo || {}), ...patch } } });
+      };
+      try {
+        const keys = await chrome.storage.local.get([...PROVIDER_KEYS, 'tone']);
+        const cur = await getSession();
+        // Seed session history from local storage if this is the first question in the session
+        let sessionHistory = cur.askRepo?.history || [];
+        if (!sessionHistory.length && cur.repoId) {
+          try {
+            const persisted = await chrome.storage.local.get(`repolens_ask_${cur.repoId}`);
+            sessionHistory = persisted[`repolens_ask_${cur.repoId}`] || [];
+          } catch (_) {}
+        }
+        const history = sessionHistory.slice(-4); // keep last 4 completed pairs for AI context
+        await setAsk({ pending: { status: 'thinking', question: msg.question }, history });
+        const prompt = buildAskRepoPrompt(msg.question, cur, history);
+        if (!prompt) { await setAsk({ pending: { status: 'error', question: msg.question, error: 'Not enough context — try re-scanning first.' }, history }); return; }
+        const text = await callAI(keys, prompt, 'ask');
+        const answer = parseAskRepoAnswer(text);
+        const updated = [...history, { question: msg.question, answer }].slice(-5);
+        await setAsk({ pending: null, history: updated });
+        if (cur.repoId) {
+          chrome.storage.local.set({ [`repolens_ask_${cur.repoId}`]: updated.slice(-10) });
+        }
+      } catch (e) {
+        const cur = await getSession();
+        const history = cur.askRepo?.history || [];
+        await setAsk({ pending: { status: 'error', question: msg.question, error: e?.message || 'Ask failed' }, history });
+      }
+    })();
+    return true;
+  }
+
+  // Quick Ask — grounded Q&A for a single cached repo (no session key needed).
+  if (msg.type === 'ASK_CACHED' && msg.question && msg.analysis?.repoId) {
+    (async () => {
+      try {
+        const keys = await chrome.storage.local.get([...PROVIDER_KEYS, 'tone']);
+        const prompt = buildAskRepoPrompt(msg.question, msg.analysis);
+        if (!prompt) { sendResponse({ ok: false, error: 'Not enough context.' }); return; }
+        const text = await callAI(keys, prompt, 'ask');
+        sendResponse({ ok: true, answer: parseAskRepoAnswer(text) });
+      } catch (e) {
+        sendResponse({ ok: false, error: e?.message || 'Ask failed' });
+      }
+    })();
+    return true;
+  }
+
+  // AI-powered head-to-head comparison of two cached repos.
+  if (msg.type === 'COMPARE_REPOS' && msg.a?.repoId && msg.b?.repoId) {
+    (async () => {
+      try {
+        const keys = await chrome.storage.local.get([...PROVIDER_KEYS, 'tone']);
+        const prompt = buildComparePrompt(msg.a, msg.b);
+        if (!prompt) { sendResponse({ ok: false, error: 'Not enough context to compare.' }); return; }
+        const text = await callAI(keys, prompt, 'ask');
+        const result = parseCompareResult(text);
+        if (!result) { sendResponse({ ok: false, error: 'Could not parse comparison result.' }); return; }
+        sendResponse({ ok: true, result });
+      } catch (e) {
+        sendResponse({ ok: false, error: e?.message || 'Comparison failed' });
+      }
+    })();
+    return true;
+  }
+
+  // Natural-language library filter — ranks matching repo IDs for a query.
+  if (msg.type === 'FILTER_LIBRARY' && msg.question && Array.isArray(msg.docs)) {
+    (async () => {
+      try {
+        const keys = await chrome.storage.local.get([...PROVIDER_KEYS, 'tone']);
+        const prompt = buildFilterPrompt(msg.question, msg.docs);
+        if (!prompt) { sendResponse({ ok: false, error: 'No question or context provided.' }); return; }
+        const text = await callAI(keys, prompt, 'ask');
+        const ids = parseFilterResult(text);
+        sendResponse({ ok: true, ids });
+      } catch (e) {
+        sendResponse({ ok: false, error: e?.message || String(e) });
+      }
+    })();
+    return true;
+  }
+
+  // Ask Across My Library — grounded Q&A over the user's saved analyses.
+  if (msg.type === 'ASK_LIBRARY' && msg.question && Array.isArray(msg.docs)) {
+    (async () => {
+      try {
+        const keys = await chrome.storage.local.get([...PROVIDER_KEYS, 'tone']);
+        const prompt = buildAskPrompt(msg.question, msg.docs);
+        if (!prompt) { sendResponse({ ok: false, error: 'No question or context provided.' }); return; }
+        const text = await callAI(keys, prompt, 'ask');
+        sendResponse({ ok: true, answer: parseAskAnswer(text) });
+      } catch (e) {
+        sendResponse({ ok: false, error: e?.message || String(e) });
+      }
+    })();
     return true;
   }
 
@@ -350,6 +572,80 @@ const PROVIDER_KEYS = [
   'partRouting', // per-part model routing map (loaded alongside provider keys)
 ];
 
+// ─── Batch Scan ──────────────────────────────────────────────────────────────
+// Processes a list of URLs sequentially, writing progress to batchKey.
+async function runBatchScan(batchKey, urls) {
+  const items = urls.map((url) => {
+    const parsed = detectPlatform(url);
+    return parsed
+      ? { url, platform: parsed.platform, repoId: parsed.repoId, status: 'queued', fit: null, error: null }
+      : { url, platform: null, repoId: null, status: 'error', fit: null, error: 'Unrecognised URL' };
+  });
+
+  const writeBatch = (done = false) =>
+    chrome.storage.session.set({ [batchKey]: { type: 'batch', total: items.length, items: items.map((i) => ({ ...i })), done } });
+
+  await writeBatch(false);
+
+  for (let i = 0; i < items.length; i++) {
+    if (items[i].status === 'error') continue; // skip unrecognised URLs immediately
+
+    items[i].status = 'scanning';
+    await writeBatch(false);
+
+    const subKey = SESSION_KEY_PREFIX + crypto.randomUUID();
+    try {
+      await chrome.storage.session.set({ [subKey]: { loading: true, status: 'fetching', platform: items[i].platform, repoId: items[i].repoId } });
+      runAnalysis(subKey, { platform: items[i].platform, repoId: items[i].repoId });
+
+      // Poll until the sub-analysis finishes (max 90 s per repo)
+      const deadline = Date.now() + 90_000;
+      while (Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 600));
+        const stored = await chrome.storage.session.get(subKey).catch(() => ({}));
+        const result = stored[subKey];
+        if (result && !result.loading) {
+          items[i].status = result.error ? 'error' : 'done';
+          items[i].fit = result.fit?.level ?? null;
+          items[i].error = result.error ?? null;
+          items[i].repoId = result.repoId || items[i].repoId;
+          await chrome.storage.session.remove(subKey).catch(() => {});
+          break;
+        }
+      }
+      if (items[i].status === 'scanning') {
+        items[i].status = 'error';
+        items[i].error = 'Timed out';
+      }
+    } catch (e) {
+      items[i].status = 'error';
+      items[i].error = e?.message || 'Scan failed';
+    }
+
+    await writeBatch(false);
+
+    // Polite pause between scans to respect API rate limits
+    if (i < items.length - 1) await new Promise((r) => setTimeout(r, 1200));
+  }
+
+  await writeBatch(true);
+
+  try {
+    const done = items.filter((i) => i.status === 'done').length;
+    const errors = items.filter((i) => i.status === 'error').length;
+    const msg = errors
+      ? `${done} saved, ${errors} failed`
+      : `${done} repo${done === 1 ? '' : 's'} saved`;
+    chrome.notifications.create(`rl_batch_${batchKey}`, {
+      type: 'basic',
+      iconUrl: chrome.runtime.getURL('icons/icon128.png'),
+      title: 'RepoLens — Batch scan done',
+      message: msg,
+      silent: true,
+    });
+  } catch { /* notifications are best-effort */ }
+}
+
 // Fetch → AI → parse → store. Used by the initial click and by RERUN (retry).
 async function runAnalysis(sessionKey, detected) {
   // Load every provider credential + model + routing in one read; pass the whole
@@ -359,11 +655,36 @@ async function runAnalysis(sessionKey, detected) {
   const { autoSave = true, tone } = settings;
 
   try {
+    // Snapshot the previous cached analysis for diff comparison (before it's overwritten).
+    const prevCached = await getCached(detected.platform, detected.repoId).catch(() => null);
+
     // Fetch metadata + README
+    await chrome.storage.session.set({ [sessionKey]: { loading: true, status: 'fetching', statusMsg: 'Fetching repo metadata…', ...detected } });
     const repoData = await fetchRepoData(detected.platform, detected.repoId);
 
-    // Signal AI is thinking (tab shows cycling copy)
-    await chrome.storage.session.set({ [sessionKey]: { loading: true, status: 'thinking', ...detected } });
+    // Write quick snapshot so the output tab can render something while AI thinks.
+    const quickData = {
+      repoId: repoData.repoId,
+      description: repoData.description,
+      language: repoData.language,
+      license: repoData.license,
+      stars: repoData.stars,
+      languages: repoData.languages,
+    };
+
+    // Name the provider we'll try first so the loading copy is accurate.
+    let primaryProvider = '';
+    try {
+      const plan = buildAttemptPlan({ routing: settings.partRouting || {}, part: 'core', keys: settings });
+      if (plan[0]) primaryProvider = providerLabel(plan[0].provider);
+    } catch { /* leave blank — the tab falls back to a generic phrase */ }
+    await chrome.storage.session.set({
+      [sessionKey]: {
+        loading: true, status: 'thinking',
+        statusMsg: primaryProvider ? `Asking ${primaryProvider}…` : 'Analysing with AI…',
+        quickData, ...detected, provider: primaryProvider,
+      },
+    });
 
     // Call AI provider — tried in order: Nous > Gemini > OpenRouter > Grok > Anthropic,
     // then any connected compatible provider.
@@ -380,8 +701,10 @@ async function runAnalysis(sessionKey, detected) {
       saved: autoSave ? 'pending' : 'skipped',
     };
 
-    await chrome.storage.session.set({ [sessionKey]: fullData });
-    cacheAnalysis(detected.platform, detected.repoId, fullData).catch(() => {}); // history/cache
+    // Attach diff against the previous scan (null on first scan — tab renders "Nothing to compare").
+    const diff = diffAnalyses(prevCached, fullData);
+    await chrome.storage.session.set({ [sessionKey]: { ...fullData, diff } });
+    cacheAnalysis(detected.platform, detected.repoId, fullData).catch(() => {}); // history/cache (no diff stored)
 
     if (autoSave) {
       let saveErr = null;
@@ -393,8 +716,8 @@ async function runAnalysis(sessionKey, detected) {
 
       await chrome.storage.session.set({
         [sessionKey]: saveErr
-          ? { ...fullData, saved: false, saveError: saveErr.message || 'Could not save to your library' }
-          : { ...fullData, saved: true, saveError: null },
+          ? { ...fullData, diff, saved: false, saveError: saveErr.message || 'Could not save to your library' }
+          : { ...fullData, diff, saved: true, saveError: null },
       });
 
       // Semantic graph: this repo + its named alternatives (only when the save worked).
@@ -412,9 +735,28 @@ async function runAnalysis(sessionKey, detected) {
       }
     }
 
+    // Scan-complete notification — fires after the tab is updated so clicking it
+    // focuses the already-loaded result rather than triggering a fresh poll.
+    try {
+      const repoName = fullData.repoId?.split('/').pop() || fullData.repoId || 'Repo';
+      const fit = deriveFit(fullData);
+      const fitMsg = { strong: 'Strong fit', solid: 'Solid fit', care: 'Use with care', risky: 'Risky' }[fit.level] || 'Analysis ready';
+      const tabUrl = chrome.runtime.getURL(`output-tab.html?key=${sessionKey}`);
+      chrome.notifications.create(`rl_scan_${tabUrl}`, {
+        type: 'basic',
+        iconUrl: chrome.runtime.getURL('icons/icon128.png'),
+        title: `RepoLens — ${repoName}`,
+        message: fitMsg,
+        silent: true,
+      });
+    } catch { /* notifications are best-effort */ }
+
   } catch (err) {
+    // AI failures already carry a humanized message + kind; other failures (fetch,
+    // parse) get classified here so the tab can still route the error CTA.
+    const errorKind = err.kind || categorizeError(err).kind;
     await chrome.storage.session.set({
-      [sessionKey]: { ...detected, loading: false, error: err.message }
+      [sessionKey]: { ...detected, loading: false, error: err.message, errorKind }
     });
   }
 }
@@ -532,6 +874,163 @@ async function runSktpg(sessionKey, detected) {
     await setSk({ status: 'done', result });
   } catch (err) {
     await setSk({ status: 'error', error: err.message || 'SKTPG failed' });
+  }
+}
+
+// ─── Docs Quality: README + file-tree documentation score (on-demand) ────────
+async function runDocsQuality(sessionKey, detected) {
+  const keys = await chrome.storage.local.get([...PROVIDER_KEYS, 'tone']);
+
+  const setDq = async (patch) => {
+    const cur = (await chrome.storage.session.get(sessionKey))[sessionKey] || {};
+    await chrome.storage.session.set({
+      [sessionKey]: { ...cur, docsQuality: { ...(cur.docsQuality || {}), ...patch } },
+    });
+  };
+
+  try {
+    const cur = (await chrome.storage.session.get(sessionKey))[sessionKey] || {};
+    const repoData = {
+      repoId: detected.repoId,
+      platform: detected.platform,
+      description: cur.description || '',
+      language: cur.language || '',
+      readme: cur.readme || '',
+    };
+
+    await setDq({ status: 'fetching', error: null, result: null });
+    const source = await fetchSource(detected.platform, detected.repoId);
+
+    await setDq({ status: 'running' });
+    const result = parseDocsQuality(
+      await callAI(keys, withTone(keys.tone, buildDocsQualityPrompt(repoData, source)), 'docs')
+    );
+
+    await setDq({ status: 'done', result });
+  } catch (err) {
+    await setDq({ status: 'error', error: err.message || 'Docs Quality scan failed' });
+  }
+}
+
+// ─── Maintenance & Abandonment: commit recency + bus factor + CI (on-demand) ──
+async function runMaintenance(sessionKey, detected) {
+  const keys = await chrome.storage.local.get([...PROVIDER_KEYS, 'tone']);
+
+  const setM = async (patch) => {
+    const cur = (await chrome.storage.session.get(sessionKey))[sessionKey] || {};
+    await chrome.storage.session.set({
+      [sessionKey]: { ...cur, maintenance: { ...(cur.maintenance || {}), ...patch } },
+    });
+  };
+
+  try {
+    await setM({ status: 'fetching', error: null, result: null });
+
+    const [signals, source] = await Promise.all([
+      fetchMaintenanceSignals(detected.platform, detected.repoId).catch(() => null),
+      fetchSource(detected.platform, detected.repoId).catch(() => ({ tree: [], files: [], degraded: true })),
+    ]);
+
+    const cur = (await chrome.storage.session.get(sessionKey))[sessionKey] || {};
+    const repoData = {
+      repoId: detected.repoId,
+      description: cur.description || '',
+      stars: cur.stars || 0,
+      language: cur.language || '',
+      license: cur.license || '',
+    };
+
+    await setM({ status: 'running' });
+    const result = parseMaintenance(
+      await callAI(keys, withTone(keys.tone, buildMaintenancePrompt(repoData, signals, source.tree)), 'maintenance'),
+      signals
+    );
+    await setM({ status: 'done', result });
+  } catch (err) {
+    await setM({ status: 'error', error: err.message || 'Maintenance scan failed.' });
+  }
+}
+
+// ─── Fits MY Stack?: library-grounded fit analysis ────────────────────────────
+async function runFitsStack(sessionKey, detected) {
+  const setF = async (patch) => {
+    const cur = (await chrome.storage.session.get(sessionKey))[sessionKey] || {};
+    await chrome.storage.session.set({ [sessionKey]: { ...cur, fitsStack: { ...(cur.fitsStack || {}), ...patch } } });
+  };
+  try {
+    const keys = await chrome.storage.local.get([...PROVIDER_KEYS, 'tone']);
+    await setF({ status: 'fetching', error: null });
+    const cur = (await chrome.storage.session.get(sessionKey))[sessionKey] || {};
+    const repoData = {
+      repoId: detected.repoId,
+      description: cur.description || '',
+      language: cur.language || '',
+      category: cur.category || '',
+      capabilities: cur.capabilities || [],
+    };
+    const nearestRepos = await searchLibrary({
+      query: [repoData.language, repoData.category, ...(repoData.capabilities || [])].filter(Boolean).join(' '),
+      topK: 8,
+      excludeRepoId: detected.repoId,
+    });
+
+    if (!nearestRepos.length) {
+      await setF({ status: 'done', result: {
+        verdict: 'new-paradigm',
+        summary: 'Your library is empty — scan a few repos first to get a personalised stack fit.',
+        integrations: [], risks: [],
+        recommendation: 'Scan more repos, then re-run Fits MY Stack?',
+      }});
+      return;
+    }
+
+    await setF({ status: 'running' });
+    const prompt = buildFitsStackPrompt(repoData, nearestRepos);
+    const text = await callAI(keys, withTone(keys.tone, prompt), 'fits');
+    const result = parseFitsStack(text);
+    if (!result) throw new Error('Could not parse stack fit response.');
+    await setF({ status: 'done', result });
+  } catch (err) {
+    await setF({ status: 'error', error: err.message || 'Stack fit analysis failed.' });
+  }
+}
+
+// ─── Tech-Stack Builder: multi-repo wiring diagram ────────────────────────────
+async function runStackBuild(sessionKey, repoIds) {
+  const set = async (data) => {
+    const cur = (await chrome.storage.session.get(sessionKey))[sessionKey] || {};
+    await chrome.storage.session.set({ [sessionKey]: { ...cur, ...data } });
+  };
+  try {
+    const keys = await chrome.storage.local.get([...PROVIDER_KEYS, 'tone']);
+    await set({ loading: true, status: 'fetching', error: null });
+
+    // Gather repo data from the library + cache.
+    const libRepos = await scrollLibrary({ limit: 500 });
+    const libMap = new Map(libRepos.map(r => [r.repoId, r]));
+    const cacheList = await listCached().catch(() => []);
+    const cacheMap = new Map(cacheList.map(c => [c.repoId, c]));
+
+    const repos = repoIds.map(id => {
+      const lib = libMap.get(id) || {};
+      const cached = cacheMap.get(id) || {};
+      return {
+        repoId: id,
+        eli5: cached.eli5 || lib.eli5 || '',
+        capabilities: lib.capabilities || cached.capabilities || [],
+        category: cached.category || lib.category || '',
+        language: cached.language || lib.language || '',
+      };
+    });
+
+    await set({ status: 'thinking' });
+    const prompt = buildStackPrompt(repos);
+    const text = await callAI(keys, withTone(keys.tone, prompt), 'stack');
+    const result = parseStack(text);
+    if (!result) throw new Error('Could not parse stack builder response.');
+    await set({ loading: false, error: null, repos, result });
+  } catch (err) {
+    await set({ loading: false, error: err.message || 'Stack build failed.', errorKind: 'api' });
   }
 }
 
@@ -887,9 +1386,17 @@ async function callAIInner(keys, prompt, part) {
       failures.push({ provider: label, error: e });
     }
   }
-  if (!failures.length) throw new Error('No AI provider configured — open Settings to connect one.');
-  // Surface the single most actionable failure instead of concatenating all of them.
-  throw new Error(rankErrors(failures).userMessage);
+  if (!failures.length) {
+    const e = new Error('No AI provider configured — open Settings to connect one.');
+    e.kind = 'none';
+    throw e;
+  }
+  // Surface the single most actionable failure instead of concatenating all of them,
+  // and carry its kind so the output tab can route the error CTA (Settings vs Retry).
+  const ranked = rankErrors(failures);
+  const err = new Error(ranked.userMessage);
+  err.kind = ranked.kind;
+  throw err;
 }
 
 // Anthropic Messages API with a standard Console API key (sk-ant-api…) via x-api-key.

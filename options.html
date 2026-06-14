@@ -49,7 +49,8 @@
   .svc-btn {
     background: var(--border); color: var(--text-sub); border: 1px solid var(--border-2);
     border-radius: 6px; padding: 7px 14px; font-size: 12px; font-weight: 600;
-    cursor: pointer; white-space: nowrap; transition: all .15s;
+    cursor: pointer; white-space: nowrap;
+    transition: color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
   }
   .svc-btn:hover { background: var(--accent-deep); color: var(--text-strong); border-color: var(--accent-deep); }
   .svc-btn.disconnect { background: transparent; color: var(--text-faint); border-color: var(--border); }
@@ -139,6 +140,24 @@
       transition-duration: .001ms !important; scroll-behavior: auto !important;
     }
   }
+
+  /* ── Subtle motion pass ───────────────────────────────────────────────
+     Press feedback is instant for everyone; transitions + the panel reveal
+     are gated to (prefers-reduced-motion: no-preference). Reduce reset wins. */
+  .svc-btn:active, .save-btn:active, .token-row button:active, .cc-test-btn:active,
+  .theme-chip:active, .tone-chip:active { transform: scale(0.97); }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .save-btn, .token-row button, .cc-test-btn, .theme-chip, .tone-chip, .key-toggle {
+      transition: color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out), box-shadow var(--dur) var(--ease-out);
+    }
+    /* Provider config + model rows actually reveal now (the comment promised a
+       slide-in; it was an instant display swap). display still drives layout;
+       the animation plays when .open / .visible is added. */
+    .token-panel.open { animation: panel-in var(--dur-slow) var(--ease-out) both; }
+    .model-row.visible { animation: panel-in var(--dur-slow) var(--ease-out) both; }
+    @keyframes panel-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+  }
 </style>
 </head>
 <body>
@@ -175,6 +194,13 @@
     <div class="section-title">Skills</div>
     <label class="checkbox-row"><input type="checkbox" id="sktpgEnabled"><span>SKTPG — Directional intelligence (one-tap, on the repo)</span></label>
     <p class="field-hint" style="margin-top:8px">Adds a one-tap SKTPG tab to every scan — where the repo is heading, not just what it is. On by default.</p>
+  </div>
+
+  <!-- Interface -->
+  <div class="section">
+    <div class="section-title">Interface</div>
+    <label class="checkbox-row"><input type="checkbox" id="mascotEnabled"><span>Show “Vee”, the lens mascot</span></label>
+    <p class="field-hint" style="margin-top:8px">A small lens character that reacts to your scans — scanning as it reads, wide open on a strong fit, eyes narrowed on a risky one. Decorative only; reduced-motion shows a static glyph. On by default.</p>
   </div>
 
   <!-- History -->

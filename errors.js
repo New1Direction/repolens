@@ -67,6 +67,25 @@ export function categorizeError(err, provider = '') {
   return { kind, retryable: meta.retryable, fixable: meta.fixable, priority: meta.priority, userMessage: humanize(kind, provider, msg) };
 }
 
+// Kinds the user can fix in Settings (a key, a model, a connection). The rest are
+// transient — the way forward is to retry, not to open Settings.
+const FIXABLE_KINDS = new Set(['none', 'auth', 'not_found', 'bad_request']);
+
+/**
+ * Decide which call-to-action buttons an error screen should offer.
+ * Fixable errors get an "Open Settings" button; everything transient (and
+ * anything with a known repo to re-run) gets "Retry". A purely-fixable error
+ * with no repo context shows only Settings, so we never dead-end the user.
+ * @param {string} kind one of the categorizeError kinds
+ * @param {boolean} canRetry whether we know the repo well enough to re-run
+ * @returns {{ settings: boolean, retry: boolean }}
+ */
+export function errorActions(kind, canRetry) {
+  const settings = FIXABLE_KINDS.has(kind);
+  const retry = Boolean(canRetry) || !settings;
+  return { settings, retry };
+}
+
 /**
  * From a list of attempt failures, surface the single most actionable message.
  * Fixable issues (bad key, wrong model) outrank transient ones, since those are

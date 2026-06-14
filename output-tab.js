@@ -1,4 +1,4 @@
-import { findSimilar, getEgoGraph } from './store.js';
+import { findSimilar, getEgoGraph, getLibraryIndex, listCollections, saveCollection } from './store.js';
 import { egoGraphSvg } from './graph.js';
 import { esc, paras, formatStars } from './format.js';
 import { formatTokens } from './estimate.js';
@@ -6,7 +6,7 @@ import { THEMES, initTheme, saveTheme } from './theme.js';
 import { SYSTEMS_FRAMEWORKS } from './systems.js';
 import { IDEATE_FRAMEWORKS } from './ideate.js';
 import { HEURISTICS_FRAMEWORKS } from './heuristics.js';
-import { toMarkdown, toHtml, slugify } from './exporter.js';
+import { toMarkdown, toHtml, toScaffold, toSlackPost, slugify } from './exporter.js';
 import { lineageSvg, loopSvg } from './diagram.js';
 import { explainerFor, SCAN_EXPLAINERS } from './explainers.js';
 import { deriveFit, firstSentence, verdictCopyText } from './verdict.js';
@@ -14,6 +14,19 @@ import { pingRunner } from './runner.js';
 import { emptyLens, runOf } from './lens-runs.js';
 import { spine, flow, ranked, matrix2x2, optionMatrix } from './layouts.js';
 import { guideFor } from './lens-guide.js';
+import { categorizeError, errorActions } from './errors.js';
+import { renderMascot, setMascotState, setMascotFromFit } from './mascot.js';
+import { DOCS_GRADES } from './docs-quality.js';
+import { MAINT_BANDS, BUS_FACTORS } from './maintenance.js';
+import { bucketFor, bucketLabel, checkLibraryCompat } from './license-compat.js';
+import { allLicenses } from './store.js';
+import { DECISIONS, DECISION_META } from './decision-log.js';
+import { saveDecision, getDecision, clearDecision } from './store.js';
+import { encodeShareCard } from './share-card.js';
+import { FITS_VERDICTS } from './fits-stack.js';
+import { initPalette } from './palette.js';
+import { toggleRepoInCollection, collectionContains, sortedCollections, COLLECTION_COLORS } from './collections.js';
+import { detectPlatform } from './url-detector.js';
 
 // Apply the saved theme ASAP (before render) to minimise flash.
 initTheme();
@@ -46,13 +59,24 @@ const errorState = document.getElementById('error-state');
 const errorMsg = document.getElementById('error-msg');
 const main = document.getElementById('main-content');
 
+// Mascot ("Vee") — opt-in (default on), decorative, reduced-motion-safe. The
+// module never touches storage, so the on/off gate lives here.
+let mascotOn = false;
+let headerVee = null;
+async function isMascotEnabled() {
+  try { const { mascotEnabled } = await chrome.storage.local.get('mascotEnabled'); return mascotEnabled !== false; }
+  catch { return true; }
+}
+function veeToVerdict() {
+  if (mascotOn && headerVee && lastData) setMascotFromFit(headerVee, deriveFit(lastData).level);
+}
+
 const FETCH_PHRASES = [
   'Pulling the README…',
   'Grabbing the metadata…',
 ];
 
 const THINK_PHRASES = [
-  'Asking Claude to read this…',
   'Mapping the architecture…',
   'Reading between the lines…',
   'Weighing the trade-offs…',
@@ -63,6 +87,11 @@ const THINK_PHRASES = [
   'Building your breakdown…',
   'Almost there…',
 ];
+
+// Lead with the provider actually being used (not a hardcoded "Claude").
+function thinkPhrases(provider) {
+  return [`Asking ${provider || 'the model'} to read this…`, ...THINK_PHRASES];
+}
 
 function setLoadingMsg(msg) {
   const el = document.getElementById('loading-msg');
@@ -77,10 +106,11 @@ function setLoadingName(name) {
 }
 
 async function waitForData() {
-  const deadline = Date.now() + 60_000;
+  const deadline = Date.now() + 90_000;
   let phraseIndex = 0;
   let lastStatus = null;
   let cycleTimer = null;
+  let pollMs = 150; // adaptive: start fast, back off when idle
 
   const startCycling = (phrases) => {
     if (cycleTimer) clearInterval(cycleTimer);
@@ -98,16 +128,38 @@ async function waitForData() {
       const stored = await chrome.storage.session.get(sessionKey);
       const data = stored[sessionKey];
 
-      if (!data) { await sleep(300); continue; }
+      if (!data) { await sleep(150); continue; }
 
       if (data.loading) {
+        let changed = false;
         if (data.repoId) setLoadingName(data.repoId);
-        if (data.status !== lastStatus) {
+        if (data.statusMsg) {
+          if (cycleTimer) { clearInterval(cycleTimer); cycleTimer = null; }
+          setLoadingMsg(data.statusMsg);
+          if (data.status !== lastStatus) { lastStatus = data.status; changed = true; }
+        } else if (data.status !== lastStatus) {
           lastStatus = data.status;
-          if (data.status === 'thinking') startCycling(THINK_PHRASES);
+          changed = true;
+          if (data.status === 'thinking') startCycling(thinkPhrases(data.provider));
           else startCycling(FETCH_PHRASES);
         }
-        await sleep(400);
+        // Progress bar: fetching=15%, quickData ready=40%, thinking=55-90% (animated)
+        const bar = document.getElementById('loading-bar');
+        if (bar) {
+          const pct = data.status === 'thinking'
+            ? (data.quickData ? 55 : 40)
+            : 15;
+          bar.style.width = pct + '%';
+          if (data.status === 'thinking') {
+            bar.style.transition = 'width 25s cubic-bezier(.1,0,.4,1)';
+            if (changed) bar.style.width = '92%'; // crawl toward 92 over 25s
+          }
+        }
+        if (data.quickData) renderQuickVerdict(data.quickData);
+        // Back off when idle; snap back to fast when something changes.
+        if (changed) pollMs = 150;
+        else pollMs = Math.min(pollMs * 1.4, 600);
+        await sleep(pollMs);
         continue;
       }
 
@@ -120,10 +172,102 @@ async function waitForData() {
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+function renderQuickVerdict(qd) {
+  const host = document.getElementById('quick-verdict');
+  if (!host || !qd?.repoId) return;
+  const fmtStars = (n) => n >= 1_000_000 ? (n / 1_000_000).toFixed(1) + 'M' : n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n || 0);
+  const pills = [
+    qd.language ? `<span style="font:600 10px ui-monospace,monospace;background:var(--surface-alt);border:1px solid var(--border);border-radius:20px;padding:2px 8px;color:var(--text-sub)">${esc(qd.language)}</span>` : '',
+    qd.stars ? `<span style="font:600 10px ui-monospace,monospace;background:var(--surface-alt);border:1px solid var(--border);border-radius:20px;padding:2px 8px;color:var(--text-sub)">${fmtStars(qd.stars)} ★</span>` : '',
+    qd.license && qd.license !== 'Unknown' ? `<span style="font:600 10px ui-monospace,monospace;background:var(--surface-alt);border:1px solid var(--border);border-radius:20px;padding:2px 8px;color:var(--text-sub)">${esc(qd.license)}</span>` : '',
+  ].filter(Boolean).join('');
+  host.innerHTML = `
+    <div style="font:700 10px/1 ui-monospace,monospace;letter-spacing:1px;text-transform:uppercase;color:var(--text-faint);margin-bottom:8px">Quick Info</div>
+    <div style="font:700 13px var(--font);color:var(--text);margin-bottom:4px">${esc(qd.repoId)}</div>
+    ${qd.description ? `<div style="font:400 12px var(--font);color:var(--text-sub);line-height:1.5;margin-bottom:10px">${esc(qd.description)}</div>` : ''}
+    ${pills ? `<div style="display:flex;gap:6px;flex-wrap:wrap">${pills}</div>` : ''}
+    <div style="margin-top:10px;font:400 11px var(--font);color:var(--text-faint)">Full analysis is running…</div>`;
+  host.style.display = 'block';
+}
+
+async function initOutputPalette(data) {
+  const commands = [
+    // Navigation
+    { section: 'Navigation', name: 'Verdict', description: 'Overall fit + score', shortcut: 'V', action: () => show(9) },
+    { name: 'ELI5', description: 'Plain-English summary', shortcut: 'E', action: () => show(0) },
+    { name: 'Technical', description: 'Architecture & internals', action: () => show(1) },
+    { name: 'Use Cases', description: "Who it's for", action: () => show(2) },
+    { name: 'Skip If', description: 'When to avoid it', action: () => show(3) },
+    { name: 'Enables', description: 'What it unlocks', action: () => show(4) },
+    { name: 'Pros / Cons', description: 'Trade-off breakdown', action: () => show(5) },
+    { name: 'Alternatives', description: 'Comparable tools', action: () => show(6) },
+    { name: 'Health', description: 'Repo vitality signals', shortcut: 'H', action: () => show(7) },
+    { name: 'Red Flags', description: 'Risks and warnings', action: () => show(8) },
+    { name: 'Tech Stack', description: 'Dependencies & languages', action: () => show(15) },
+    { name: 'Similar', description: 'From your library', action: () => show(16) },
+    { name: 'Synergies', description: 'Works-well-with analysis', action: () => show(18) },
+    { name: 'Versus', description: 'Side-by-side comparison', action: () => show(17) },
+    { name: 'Connections', description: 'Dependency graph', action: () => show(19) },
+    { name: 'Combine', description: 'What you can build together', action: () => show(20) },
+    // On-demand lenses
+    { section: 'Lenses', name: 'Run Deep Dive', description: 'Full strategic analysis', action: () => { show(10); startDeepDive(data); } },
+    { name: 'Run Docs Quality', description: 'Documentation score', action: () => { show(21); startDocsQuality(data); } },
+    { name: 'Run Maintenance', description: 'Long-term upkeep signal', action: () => { show(22); startMaintenance(data); } },
+    { name: 'Run License Check', description: 'License compatibility', action: () => show(23) },
+    { name: 'Run Since Last Scan', description: 'What changed since you last looked', action: () => show(24) },
+    { name: 'Run Fits MY Stack?', description: 'Match against your tech stack', action: () => { show(25); startFitsStack(data); } },
+    { name: 'Ask This Repo', description: 'Ask a specific question about this repo', action: () => show(26) },
+    { name: 'Run All Lenses', description: 'Fire every on-demand lens', action: () => runAllLenses() },
+    // Actions
+    { section: 'Actions', name: 'Add to Board', description: 'Save this repo to a collection', action: () => document.getElementById('add-to-board')?.click() },
+    { name: 'Open Library', description: 'Browse your saved repos', action: () => chrome.tabs.create({ url: chrome.runtime.getURL('library.html') }) },
+    { name: 'Batch Scan', description: 'Scan multiple repos at once', action: () => chrome.tabs.create({ url: chrome.runtime.getURL('batch.html') }) },
+    { name: 'Run Fresh Scan', description: 'Bypass cache and re-analyse this repo', shortcut: 'F', action: () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', bubbles: true })) },
+    { name: 'Open Repo Source', description: 'Open the GitHub / npm / PyPI page', shortcut: 'O', action: () => { if (lastData) { const url = repoSourceUrl(lastData.platform, lastData.repoId); if (url) chrome.tabs.create({ url }); } } },
+    { name: 'Share Verdict Card', description: 'Generate a shareable verdict card', action: () => document.getElementById('v-share')?.click() },
+    { name: 'Copy URL', description: 'Copy the repo source URL', shortcut: 'U', action: () => document.getElementById('copy-url')?.click() },
+    { name: 'Copy Markdown', description: 'Copy this analysis as MD', shortcut: 'M', action: () => document.getElementById('copy-md')?.click() },
+    { name: 'Copy Slack Post', description: 'Copy compact summary for Slack/Discord', action: () => copySlackBtn?.click() },
+    { name: 'Export Scaffold', description: 'Download CLAUDE.md scaffold', action: () => document.getElementById('export-scaffold')?.click() },
+    { name: 'Export HTML', description: 'Download self-contained report', action: () => document.getElementById('export-html')?.click() },
+    { name: 'Open Settings', description: 'Configure API keys and providers', action: () => chrome.runtime.openOptionsPage() },
+    { name: 'Open Guide', description: 'Feature overview and keyboard shortcuts', action: () => document.getElementById('open-guide')?.click() },
+    { name: "What's New", description: 'Release notes and recent features', action: () => chrome.tabs.create({ url: chrome.runtime.getURL('whats-new.html') }) },
+  ];
+
+  // Append recent repos from library as jump targets (opens library pre-searched to that repo)
+  const allCommands = [...commands];
+  try {
+    const idx = await getLibraryIndex();
+    if (idx.size) {
+      const recentCmds = [...idx.values()]
+        .sort((a, b) => (Date.parse(b.savedAt) || 0) - (Date.parse(a.savedAt) || 0))
+        .slice(0, 8)
+        .filter((r) => r.repoId !== data.repoId)
+        .map((r, i) => ({
+          section: i === 0 ? 'Recent repos' : undefined,
+          name: r.repoId,
+          description: r.blurb || r.category || 'Open in library',
+          action: () => chrome.tabs.create({ url: chrome.runtime.getURL(`library.html#search=${encodeURIComponent(r.repoId)}`) }),
+        }));
+      allCommands.push(...recentCmds);
+    }
+  } catch (_) {}
+
+  initPalette(allCommands);
+  document.getElementById('open-palette')?.addEventListener('click', () => {
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }));
+  });
+}
+
 async function init() {
+  mascotOn = await isMascotEnabled();
+  if (mascotOn) renderMascot(document.getElementById('loading-vee'), 'scanning');
+
   if (!sessionKey) {
     loading.style.display = 'none';
     errorMsg.textContent = 'No session key — please re-run the analysis by clicking the extension icon.';
+    if (mascotOn) renderMascot(document.getElementById('error-vee'), 'error');
     errorState.style.display = 'flex';
     return;
   }
@@ -132,13 +276,43 @@ async function init() {
 
   if (data.error) {
     errorMsg.textContent = data.error;
-    // Retry can only re-run when we know which repo to analyse.
-    if (data.platform && data.repoId) {
-      retryContext = { platform: data.platform, repoId: data.repoId };
-      if (retryBtn) retryBtn.style.display = '';
-    } else if (retryBtn) {
-      retryBtn.style.display = 'none';
+    // Show a specific recovery hint below the error message.
+    const canRetry = Boolean(data.platform && data.repoId);
+    if (canRetry) retryContext = { platform: data.platform, repoId: data.repoId };
+    const kind = data.errorKind || categorizeError(data.error).kind;
+    const actions = errorActions(kind, canRetry);
+    const HINTS = {
+      none: 'Add an API key in Settings → it only takes 30 seconds.',
+      auth: 'Your API key was rejected. Regenerate it from the provider\'s console, then paste it in Settings.',
+      rate_limit: 'You\'ve hit the rate limit. Wait a minute and retry — or switch to a different provider in Settings.',
+      not_found: 'The model name is unrecognised. Open Settings and pick a valid model from the dropdown.',
+      network: 'Can\'t reach the provider. Check your internet connection, then retry.',
+      server: 'The provider is temporarily down. Retry in a few seconds.',
+    };
+    const hint = HINTS[kind];
+    let hintEl = document.getElementById('error-hint');
+    if (!hintEl) {
+      hintEl = document.createElement('div');
+      hintEl.id = 'error-hint';
+      hintEl.style.cssText = 'font-size:12px;color:var(--text-muted);text-align:center;max-width:360px;line-height:1.6;margin-top:-4px';
+      errorMsg.insertAdjacentElement('afterend', hintEl);
     }
+    hintEl.textContent = hint || '';
+    if (settingsBtn) settingsBtn.style.display = actions.settings ? '' : 'none';
+    if (retryBtn) retryBtn.style.display = actions.retry ? '' : 'none';
+    const pasteForm = document.getElementById('paste-url-form');
+    if (pasteForm) {
+      pasteForm.style.display = 'flex';
+      // Pre-fill if clipboard has a recognized URL (silent — no browser prompt shown).
+      navigator.clipboard?.readText?.().then((txt) => {
+        const trimmed = (txt || '').trim();
+        if (detectPlatform(trimmed)) {
+          const inp = document.getElementById('paste-url-input');
+          if (inp && !inp.value) inp.value = trimmed;
+        }
+      }).catch(() => {});
+    }
+    if (mascotOn) renderMascot(document.getElementById('error-vee'), 'error');
     errorState.style.display = 'flex';
     return;
   }
@@ -146,16 +320,49 @@ async function init() {
   lastData = data;
   renderPage(data);
   main.style.display = 'block';
-  document.title = `RepoLens — ${data.repoId}`;
+  const fitEmoji = { strong: '✅', solid: '✓', care: '⚠️', risky: '🔴' }[deriveFit(data).level] || '';
+  document.title = `${fitEmoji} ${data.repoId} — RepoLens`;
+  initOutputPalette(data);
+
+  // Restore tab: URL hash takes priority (explicit intent), then per-repo memory.
+  const hashTab = SLUG_TO_TAB[location.hash.slice(1)];
+  if (hashTab != null) {
+    show(hashTab, { updateHash: false });
+  } else if (data.repoId) {
+    chrome.storage.local.get(`repolens_tab_${data.repoId}`).then((res) => {
+      const stored = res[`repolens_tab_${data.repoId}`];
+      if (stored != null && stored !== 9) show(stored, { updateHash: true });
+    }).catch(() => {});
+  }
+
+  // Header logo becomes Vee, reacting to the verdict (one-shot pop/squint on mount).
+  if (mascotOn) {
+    const logoSlot = document.getElementById('logo-vee');
+    if (logoSlot) {
+      logoSlot.style.background = 'none';
+      headerVee = renderMascot(logoSlot, 'idle');
+      setMascotFromFit(headerVee, deriveFit(data).level);
+    }
+  }
 
   watchSaveStatus(data);
   loadLibraryComparison(data);
+  getLibraryIndex().then(m => {
+    const btn = document.getElementById('open-library');
+    if (btn && m.size > 0) btn.title = `Browse your ${m.size} analyzed repo${m.size === 1 ? '' : 's'}`;
+  }).catch(() => {});
   renderThemeSwitcher();
   renderDeepDive(data);
   renderFrameworkLens(data, SYSTEMS_CFG);
   renderFrameworkLens(data, IDEATE_CFG);
   renderFrameworkLens(data, PRIORITIZE_CFG);
   renderSktpg(data);
+  renderDocsQuality(data);
+  renderMaintenance(data);
+  renderLicenseCompat(data);
+  renderDiff(data);
+  renderFitsStack(data);
+  renderAskRepo(data);
   renderTechStack(data);
   renderSimilar(data);
   renderVersus(data);
@@ -166,7 +373,23 @@ async function init() {
 
 function renderCacheBanner(d) {
   const banner = document.getElementById('cache-banner');
-  if (banner) banner.style.display = d.cached ? 'flex' : 'none';
+  if (!banner) return;
+  if (!d.cached) { banner.style.display = 'none'; return; }
+  banner.style.display = 'flex';
+  const span = banner.querySelector('span');
+  if (!span) return;
+  if (d.saved_at) {
+    const ageMs = Date.now() - new Date(d.saved_at).getTime();
+    const ageDays = Math.floor(ageMs / 86_400_000);
+    const ageLabel = ageDays === 0 ? 'today' : ageDays === 1 ? 'yesterday' : `${ageDays} days ago`;
+    const stale = ageDays >= 7;
+    span.textContent = stale
+      ? `⚠ Cached analysis from ${ageLabel} — repo may have changed`
+      : `⚡ Loaded from cache · scanned ${ageLabel}`;
+    banner.classList.toggle('stale-banner', stale);
+  } else {
+    span.textContent = '⚡ Loaded from cache — analysis reused, no AI call.';
+  }
 }
 
 document.getElementById('rerun-fresh')?.addEventListener('click', async () => {
@@ -496,12 +719,30 @@ function renderPage(d) {
 
 // ─── Deep Dive tab ────────────────────────────────────────────────────────────
 
+const DD_STAGES = ['fetching', 'atoms', 'lineage', 'feynman'];
 const DD_STAGE_LABELS = {
-  fetching: 'Fetching source…',
-  atoms: 'Atomic deconstruction…',
-  lineage: 'Mapping causal lineage…',
-  feynman: 'Feynman validation…',
+  fetching: 'Fetching source',
+  atoms: 'Atomic deconstruction',
+  lineage: 'Mapping causal lineage',
+  feynman: 'Feynman validation',
 };
+
+function ddProgressHtml(status) {
+  const idx = DD_STAGES.indexOf(status);
+  const step = idx + 1;
+  const total = DD_STAGES.length;
+  const label = DD_STAGE_LABELS[status] || 'Working';
+  const pct = Math.round((step / total) * 100);
+  const dots = DD_STAGES.map((s, i) =>
+    `<span class="dd-step-dot${i < step ? ' done' : i === step - 1 ? ' active' : ''}"></span>`
+  ).join('');
+  return `<div class="dd-progress">
+    <div class="dd-step-track">${dots}</div>
+    <div class="dd-step-label"><span class="dot"></span>${label}…</div>
+    <div class="dd-step-bar"><div class="dd-step-fill" style="width:${pct}%"></div></div>
+    <div class="dd-step-count">Step ${step} of ${total}</div>
+  </div>`;
+}
 
 function startDeepDive(d) {
   chrome.runtime.sendMessage({ type: 'DEEP_DIVE', sessionKey, platform: d.platform, repoId: d.repoId });
@@ -553,6 +794,13 @@ function renderDeepDive(d) {
   if (!host) return;
   const dd = d.deepDive;
 
+  // Vee thinks while a deep dive is in flight, then settles back to the verdict.
+  if (headerVee) {
+    const inFlight = dd && dd.status && dd.status !== 'done' && dd.status !== 'error';
+    if (inFlight) setMascotState(headerVee, 'thinking');
+    else veeToVerdict();
+  }
+
   if (!dd || !dd.status) {
     host.innerHTML = `<div class="dd-cta">
       <h3>Deep Dive</h3>
@@ -573,7 +821,7 @@ function renderDeepDive(d) {
   }
 
   if (dd.status !== 'done') {
-    host.innerHTML = `<div class="dd-progress"><span class="dot"></span>${DD_STAGE_LABELS[dd.status] || 'Working…'}</div>`;
+    host.innerHTML = ddProgressHtml(dd.status);
     return;
   }
 
@@ -850,6 +1098,354 @@ function renderSktpgResult(r) {
   `;
 }
 
+// ─── Docs Quality — on-demand documentation score ────────────────────────────
+
+function startDocsQuality(d) {
+  chrome.runtime.sendMessage({ type: 'DOCS_QUALITY', sessionKey, platform: d.platform, repoId: d.repoId });
+  renderDocsQuality({ ...d, docsQuality: { status: 'fetching' } });
+}
+
+function renderDocsQuality(d) {
+  const host = document.getElementById('t21');
+  if (!host) return;
+  const dq = d.docsQuality;
+
+  if (!dq) {
+    host.innerHTML = `<div class="dd-cta">
+      <h3>Docs Quality</h3>
+      <p>Score this repo's documentation: README completeness, quickstart, code examples, API reference, changelog, and contributing guide. Answers: "can I use this without reading the source?"</p>
+      <button class="dd-run" id="dq-run">Run Docs Quality</button>
+    </div>`;
+    document.getElementById('dq-run')?.addEventListener('click', () => startDocsQuality(d));
+    return;
+  }
+
+  if (dq.status === 'error') {
+    host.innerHTML = `<div class="dd-cta"><h3>Docs Quality failed</h3><p>${esc(dq.error || 'Something went wrong.')}</p><button class="dd-run" id="dq-run">Try again</button></div>`;
+    document.getElementById('dq-run')?.addEventListener('click', () => startDocsQuality(d));
+    return;
+  }
+
+  if (dq.status !== 'done') {
+    host.innerHTML = `<div class="dd-progress"><span class="dot"></span>Scoring the documentation…</div>`;
+    return;
+  }
+
+  host.innerHTML = renderDocsQualityResult(dq.result || {});
+}
+
+function renderDocsQualityResult(r) {
+  const grade = DOCS_GRADES.includes(r.grade) ? r.grade : 'F';
+  const score = Math.max(0, Math.min(100, Math.round(r.score || 0)));
+  const verdict = r.overall_verdict || 'no';
+  const verdictLabel = { yes: '✓ Usable without source', partially: '~ Partially self-documenting', no: '✗ Requires reading the source' }[verdict] || verdict;
+
+  const barColor = (s) => {
+    if (s >= 75) return 'var(--ok)';
+    if (s >= 50) return 'var(--warn)';
+    return 'var(--bad)';
+  };
+
+  const sections = (r.sections || []).map(s => `
+    <div class="dq-section-row">
+      <div class="dq-section-name">${esc(s.name)}</div>
+      <div class="dq-bar-track"><div class="dq-bar-fill" style="width:${s.score}%;background:${barColor(s.score)}"></div></div>
+      <div class="dq-section-score">${s.score}</div>
+    </div>
+    ${s.verdict ? `<div class="dq-section-verdict">${esc(s.verdict)}</div>` : ''}
+  `).join('');
+
+  const strengths = (r.strengths || []).length
+    ? `<ul>${r.strengths.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`
+    : '<p style="color:var(--text-muted);font-size:12px">—</p>';
+
+  const gaps = (r.gaps || []).length
+    ? `<ul>${r.gaps.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`
+    : '<p style="color:var(--text-muted);font-size:12px">—</p>';
+
+  return `
+    <div class="dq-header">
+      <div class="dq-grade ${grade}">${esc(grade)}</div>
+      <div class="dq-meta">
+        <div class="dq-score-line">${score} / 100</div>
+        <span class="dq-verdict-chip ${verdict}">${esc(verdictLabel)}</span>
+      </div>
+    </div>
+    ${r.summary ? `<p class="dq-summary">${esc(r.summary)}</p>` : ''}
+    <div class="dd-section-title first">Section breakdown</div>
+    ${sections}
+    <div class="dq-lists">
+      <div class="dq-list-card">
+        <div class="dq-list-title strengths">Strengths</div>
+        ${strengths}
+      </div>
+      <div class="dq-list-card">
+        <div class="dq-list-title gaps">Gaps</div>
+        ${gaps}
+      </div>
+    </div>
+  `;
+}
+
+// ─── Maintenance & Abandonment — on-demand health scan ───────────────────────
+
+function startMaintenance(d) {
+  chrome.runtime.sendMessage({ type: 'MAINTENANCE', sessionKey, platform: d.platform, repoId: d.repoId });
+  renderMaintenance({ ...d, maintenance: { status: 'fetching' } });
+}
+
+function renderMaintenance(d) {
+  const host = document.getElementById('t22');
+  if (!host) return;
+  const m = d.maintenance;
+
+  if (!m) {
+    host.innerHTML = `<div class="dd-cta">
+      <h3>Maintenance Health</h3>
+      <p>Check commit recency, contributor bus-factor, CI presence, and open-issue trends — signals a README can't fake. Returns: Active / Slowing / Stale / Abandoned.</p>
+      <button class="dd-run" id="maint-run">Run Maintenance Scan</button>
+    </div>`;
+    document.getElementById('maint-run')?.addEventListener('click', () => startMaintenance(d));
+    return;
+  }
+
+  if (m.status === 'error') {
+    host.innerHTML = `<div class="dd-cta"><h3>Maintenance scan failed</h3><p>${esc(m.error || 'Something went wrong.')}</p><button class="dd-run" id="maint-run">Try again</button></div>`;
+    document.getElementById('maint-run')?.addEventListener('click', () => startMaintenance(d));
+    return;
+  }
+
+  if (m.status !== 'done') {
+    host.innerHTML = `<div class="dd-progress"><span class="dot"></span>Checking maintenance signals…</div>`;
+    return;
+  }
+
+  host.innerHTML = renderMaintenanceResult(m.result || {});
+}
+
+function renderMaintenanceResult(r) {
+  const band = MAINT_BANDS.includes(r.band) ? r.band : 'unknown';
+  const bandLabel = { active: 'Active', slowing: 'Slowing', stale: 'Stale', abandoned: 'Abandoned', unknown: 'Unknown' }[band] || band;
+  const busFactor = BUS_FACTORS.includes(r.bus_factor) ? r.bus_factor : 'unknown';
+  const busLabel = { safe: '✓ Safe bus factor', concentrated: '⚠ Concentrated', solo: '⚠ Solo maintainer', unknown: 'Bus factor unknown' }[busFactor] || busFactor;
+  const days = r.days_since_push != null ? `${r.days_since_push}d since last push` : '';
+
+  const watchItems = (r.watch_list || []).map(w =>
+    `<div class="maint-watch-item"><span class="maint-watch-icon">⚠</span><span>${esc(w)}</span></div>`
+  ).join('');
+
+  return `
+    <div class="maint-header">
+      <span class="maint-band ${band}">${esc(bandLabel)}</span>
+      <span class="maint-bus">${esc(busLabel)}</span>
+      ${days ? `<span class="maint-days">${esc(days)}</span>` : ''}
+    </div>
+    ${r.summary ? `<p class="maint-summary">${esc(r.summary)}</p>` : ''}
+    ${watchItems ? `<div class="maint-watch-title">Watch list</div>${watchItems}` : ''}
+  `;
+}
+
+// ─── License Compatibility — instant deterministic SPDX check ─────────────────
+
+function renderLicenseCompat(d) {
+  const host = document.getElementById('t23');
+  if (!host) return;
+
+  const currentLicense = d.license || 'Unknown';
+  const bucket = bucketFor(currentLicense);
+
+  host.innerHTML = `<div class="dd-progress"><span class="dot"></span>Checking your library…</div>`;
+
+  allLicenses().then((libraryRepos) => {
+    const { currentBucket, concerns, summary, totalChecked } = checkLibraryCompat(currentLicense, libraryRepos);
+
+    const statusIcon = (s) => s === 'conflict' ? '✗' : '⚠';
+
+    const concernRows = concerns.map(c => `
+      <div class="lc-concern-row">
+        <div class="lc-concern-status" style="color:${c.status === 'conflict' ? 'var(--bad-ink)' : 'var(--warn-ink)'}">${statusIcon(c.status)}</div>
+        <div class="lc-concern-body">
+          <div class="lc-concern-repo">${esc(c.repoId)}</div>
+          <div class="lc-concern-lic">${esc(c.license)}</div>
+          <div class="lc-concern-note">${esc(c.note)}</div>
+        </div>
+      </div>`).join('');
+
+    const noIssues = !concerns.length && totalChecked > 0
+      ? `<p class="lc-all-ok">✓ ${esc(currentLicense)} is compatible with all ${totalChecked} library repo${totalChecked === 1 ? '' : 's'} with known licenses.</p>`
+      : '';
+
+    host.innerHTML = `
+      <div class="lc-compat-header">
+        <span class="lc-bucket-chip ${currentBucket}">${esc(currentLicense)}</span>
+        <span style="font-size:13px;color:var(--text-sub)">${esc(bucketLabel(currentBucket))}</span>
+      </div>
+      <p class="lc-compat-summary">${esc(summary)}</p>
+      ${noIssues}
+      ${concernRows}
+      ${totalChecked === 0 ? '<p style="color:var(--text-muted);font-size:12px">No repos with known licenses in your library yet — scan a few repos first.</p>' : ''}
+    `;
+  }).catch(() => {
+    host.innerHTML = `<p style="color:var(--text-muted)">Could not load library licenses.</p>`;
+  });
+}
+
+// ─── Diff Since I Last Looked — zero-token snapshot comparison ───────────────
+
+function renderDiff(d) {
+  const host = document.getElementById('t24');
+  if (!host) return;
+  const diff = d.diff;
+
+  if (!diff) {
+    host.innerHTML = `<div class="diff-first-scan">
+      <p class="diff-first-icon">📸</p>
+      <p class="diff-first-title">Snapshot saved</p>
+      <p class="diff-first-body">Next time you scan this repo, RepoLens will diff fit score, health, stars, and flags against this baseline — so you can see what changed at a glance.</p>
+      <button class="diff-rescan-btn" id="diff-rescan-now">Rescan now →</button>
+    </div>`;
+    document.getElementById('diff-rescan-now')?.addEventListener('click', async () => {
+      if (!lastData) return;
+      try { await chrome.runtime.sendMessage({ type: 'RERUN', sessionKey, platform: lastData.platform, repoId: lastData.repoId }); }
+      catch { /* reload anyway */ }
+      location.reload();
+    });
+    return;
+  }
+
+  const age = diff.days_since_prev != null
+    ? `<span class="diff-age">Compared to your scan ${diff.days_since_prev === 0 ? 'today' : diff.days_since_prev === 1 ? 'yesterday' : `${diff.days_since_prev} days ago`}</span>`
+    : '';
+
+  const badge = (dir, text) =>
+    `<span class="diff-badge ${dir}">${dir === 'up' ? '▲' : dir === 'down' ? '▼' : '='} ${esc(String(text))}</span>`;
+
+  const starRow = (() => {
+    const { before, after, delta, direction } = diff.star_delta;
+    const sign = direction === 'up' ? '+' : '';
+    return `<div class="diff-row">
+      <div class="diff-label">Stars</div>
+      <div class="diff-delta">${before.toLocaleString()} → ${after.toLocaleString()}</div>
+      ${badge(direction, sign + delta.toLocaleString())}
+    </div>`;
+  })();
+
+  const healthRow = (() => {
+    const { before, after, delta, direction } = diff.health_delta;
+    const sign = direction === 'up' ? '+' : '';
+    if (before === 0 && after === 0) return '';
+    return `<div class="diff-row">
+      <div class="diff-label">Health score</div>
+      <div class="diff-delta">${before} → ${after}</div>
+      ${badge(direction, sign + delta)}
+    </div>`;
+  })();
+
+  const fitRow = (() => {
+    const { before, after, changed, direction } = diff.fit_delta;
+    if (!before || !before) return '';
+    const label = { strong: 'Strong fit', solid: 'Solid', care: 'Use with care', risky: 'Risky' };
+    return `<div class="diff-row">
+      <div class="diff-label">Verdict</div>
+      <div class="diff-delta">${esc(label[before] || before)} → ${esc(label[after] || after)}</div>
+      ${changed ? badge(direction, direction === 'up' ? 'Improved' : 'Declined') : badge('same', 'No change')}
+    </div>`;
+  })();
+
+  const versionRow = (() => {
+    if (!diff.version_delta || !diff.version_delta.changed) return '';
+    const { before, after } = diff.version_delta;
+    return `<div class="diff-row">
+      <div class="diff-label">Version</div>
+      <div class="diff-delta">${esc(before || '—')} → ${esc(after || '—')}</div>
+      ${badge('up', 'Bumped')}
+    </div>`;
+  })();
+
+  const newFlagsHtml = diff.new_flags.length
+    ? `<div class="diff-flags">
+        <div class="section-title" style="margin-bottom:10px">New flags since last scan</div>
+        ${diff.new_flags.map(t => `<div class="diff-flag-row"><span class="diff-flag-sign">⚠</span><span style="color:var(--bad-ink);font-size:13px">${esc(t)}</span></div>`).join('')}
+      </div>` : '';
+
+  const removedFlagsHtml = diff.removed_flags.length
+    ? `<div class="diff-flags">
+        <div class="section-title" style="margin-bottom:10px">Flags resolved since last scan</div>
+        ${diff.removed_flags.map(t => `<div class="diff-flag-row"><span class="diff-flag-sign">✓</span><span style="color:var(--ok-ink);font-size:13px">${esc(t)}</span></div>`).join('')}
+      </div>` : '';
+
+  host.innerHTML = `
+    <div class="diff-header">
+      <div class="section-title" style="margin:0">Since I Last Looked</div>
+      ${age}
+    </div>
+    ${starRow}${healthRow}${fitRow}${versionRow}
+    ${newFlagsHtml}${removedFlagsHtml}
+    ${!diff.new_flags.length && !diff.removed_flags.length ? '<p style="font-size:12px;color:var(--text-muted);margin-top:16px">No flag changes between scans.</p>' : ''}
+  `;
+}
+
+// ─── Fits MY Stack? — library-grounded fit verdict ────────────────────────────
+
+function startFitsStack(d) {
+  chrome.runtime.sendMessage({ type: 'FITS_STACK', sessionKey, platform: d.platform, repoId: d.repoId });
+  renderFitsStack({ ...d, fitsStack: { status: 'fetching' } });
+}
+
+function renderFitsStack(d) {
+  const host = document.getElementById('t25');
+  if (!host) return;
+  const fs = d.fitsStack;
+
+  if (!fs) {
+    host.innerHTML = `<div class="dd-cta">
+      <h3>Fits MY Stack?</h3>
+      <p>Checks whether this repo slots in naturally, introduces a paradigm shift, or conflicts with what you already use — grounded in your library's actual tools and patterns.</p>
+      <button class="dd-run" id="fs-run">Run Fits MY Stack?</button>
+    </div>`;
+    document.getElementById('fs-run')?.addEventListener('click', () => startFitsStack(d));
+    return;
+  }
+
+  if (fs.status === 'error') {
+    host.innerHTML = `<div class="dd-cta"><h3>Analysis failed</h3><p>${esc(fs.error || 'Something went wrong.')}</p><button class="dd-run" id="fs-run">Try again</button></div>`;
+    document.getElementById('fs-run')?.addEventListener('click', () => startFitsStack(d));
+    return;
+  }
+
+  if (fs.status !== 'done') {
+    host.innerHTML = `<div class="dd-progress"><span class="dot"></span>Checking your library for context…</div>`;
+    return;
+  }
+
+  host.innerHTML = renderFitsStackResult(fs.result || {});
+}
+
+function renderFitsStackResult(r) {
+  const verdict = FITS_VERDICTS.includes(r.verdict) ? r.verdict : 'new-paradigm';
+  const verdictLabel = { 'slots-in': '✓ Slots in', 'new-paradigm': '⟳ New paradigm', 'conflict': '✗ Conflict' }[verdict] || verdict;
+
+  const integrations = (r.integrations || []).length
+    ? `<div class="fs-section">How it interacts with your stack</div><ul class="fs-list">${r.integrations.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`
+    : '';
+
+  const risks = (r.risks || []).length
+    ? `<div class="fs-section">Risks &amp; friction</div><ul class="fs-list">${r.risks.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`
+    : '';
+
+  const rec = r.recommendation
+    ? `<div class="fs-recommendation">${esc(r.recommendation)}</div>`
+    : '';
+
+  return `
+    <span class="fs-verdict-chip ${verdict}">${esc(verdictLabel)}</span>
+    <p class="fs-summary">${esc(r.summary || '')}</p>
+    ${integrations}
+    ${risks}
+    ${rec}
+  `;
+}
+
 // ─── Versus — head-to-head comparison tab ─────────────────────────────────────
 
 function startVersus(d, competitor) {
@@ -871,6 +1467,120 @@ async function loadVersusChips(d) {
     const input = document.getElementById('vs-input');
     if (input) input.value = c.dataset.repo;
   }));
+}
+
+// ─── Ask This Repo ─────────────────────────────────────────────────────────────
+
+function getAskSuggestions(d) {
+  const sugs = [];
+  // Context-specific first
+  if (d.alternatives?.length) {
+    const alt = d.alternatives[0];
+    const altName = (alt.name || alt).toString().split('/').pop();
+    sugs.push(`How does this compare to ${altName}?`);
+  }
+  if (d.red_flags?.length) sugs.push('What are the main risks of using this?');
+  if (d.health?.score != null && d.health.score < 65) sugs.push('Is the project still actively maintained?');
+  if (d.license && d.license !== 'Unknown') sugs.push(`What restrictions does the ${d.license} license impose?`);
+  if (d.capabilities?.length) sugs.push(`Does it support ${d.capabilities[0]}?`);
+  if (d.language && d.language !== 'Unknown') sugs.push(`Is the code idiomatic ${d.language}?`);
+  // Universal fallbacks
+  sugs.push('What are the main trade-offs?');
+  sugs.push('How hard is it to integrate into an existing project?');
+  sugs.push('Is it production-ready?');
+  sugs.push('What is the learning curve like?');
+  sugs.push('Does it have good documentation?');
+  // Deduplicate and cap
+  return [...new Set(sugs)].slice(0, 6);
+}
+
+async function renderAskRepo(d) {
+  const host = document.getElementById('t26');
+  if (!host) return;
+  const ask = d.askRepo || {};
+  let history = ask.history || [];
+  const pending = ask.pending;
+
+  // Load persisted history when session is fresh (no history yet, no pending)
+  if (!history.length && !pending && d.repoId) {
+    try {
+      const stored = await chrome.storage.local.get(`repolens_ask_${d.repoId}`);
+      history = stored[`repolens_ask_${d.repoId}`] || [];
+    } catch (_) {}
+  }
+
+  const historyHtml = history.map(({ question, answer }) => `
+    <div class="ask-qa">
+      <div class="ask-q">Q: <span>${esc(question)}</span></div>
+      <div class="ask-a">${esc(answer)}</div>
+    </div>`).join('');
+
+  const pendingHtml = pending ? `
+    <div class="ask-qa">
+      <div class="ask-q">Q: <span>${esc(pending.question || '')}</span></div>
+      <div class="ask-a${pending.status === 'thinking' ? ' thinking' : pending.status === 'error' ? ' error' : ''}">
+        ${pending.status === 'thinking' ? 'Thinking…' : pending.status === 'error' ? esc(pending.error || 'Something went wrong') : esc(pending.answer || '')}
+      </div>
+    </div>` : '';
+
+  const asked = new Set(history.map(({ question }) => question));
+  const availableSugs = getAskSuggestions(d).filter((s) => !asked.has(s));
+  const sugsHtml = !pending && availableSugs.length
+    ? `<div class="ask-suggestions">${availableSugs.slice(0, history.length ? 3 : 6).map((s) => `<button class="ask-sug">${esc(s)}</button>`).join('')}</div>`
+    : '';
+
+  const isThinking = pending?.status === 'thinking';
+  const clearBtn = history.length && !pending
+    ? `<button class="ask-clear" id="ask-clear" title="Clear ask history">Clear history</button>`
+    : '';
+
+  host.innerHTML = `<div class="ask-wrap">
+    <p class="ask-intro">Ask a specific question about <b>${esc(d.repoId || 'this repo')}</b>. Answers use the loaded analysis as context. ${clearBtn}</p>
+    <div class="ask-row">
+      <textarea class="ask-input" id="ask-input" rows="1" placeholder="e.g. Does it support GraphQL?"${isThinking ? ' disabled' : ''}></textarea>
+      <button class="ask-send" id="ask-send"${isThinking ? ' disabled' : ''}>Ask</button>
+    </div>
+    ${sugsHtml}
+    ${historyHtml}
+    ${pendingHtml}
+  </div>`;
+
+  const input = host.querySelector('#ask-input');
+  const sendBtn = host.querySelector('#ask-send');
+
+  const doAsk = () => {
+    const q = input?.value.trim();
+    if (!q || sendBtn?.disabled) return;
+    input.value = '';
+    input.disabled = true;
+    sendBtn.disabled = true;
+    chrome.runtime.sendMessage({ type: 'ASK_REPO', sessionKey, question: q });
+  };
+
+  sendBtn?.addEventListener('click', doAsk);
+  input?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doAsk(); }
+  });
+
+  document.getElementById('ask-clear')?.addEventListener('click', async () => {
+    if (!d.repoId) return;
+    await chrome.storage.local.remove(`repolens_ask_${d.repoId}`);
+    const stored = await chrome.storage.session.get(sessionKey);
+    const cur = stored[sessionKey] || {};
+    await chrome.storage.session.set({ [sessionKey]: { ...cur, askRepo: { history: [], pending: null } } });
+  });
+
+  if (!isThinking) {
+    host.querySelectorAll('.ask-sug').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (input) { input.value = btn.textContent; input.focus(); }
+      });
+    });
+    // Scroll last answer into view when a new answer arrives
+    if (pendingHtml && pending?.status !== 'thinking') {
+      host.querySelector('.ask-qa:last-child')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
 }
 
 function renderVersus(d) {
@@ -933,22 +1643,52 @@ function renderVersusResult(vs, d) {
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'session' || !changes[sessionKey]?.newValue) return;
   const nv = changes[sessionKey].newValue;
+  const ov = changes[sessionKey].oldValue || {};
   lastData = nv;
   renderDeepDive(nv);
   renderFrameworkLens(nv, SYSTEMS_CFG);
   renderFrameworkLens(nv, IDEATE_CFG);
   renderFrameworkLens(nv, PRIORITIZE_CFG);
   renderSktpg(nv);
+  renderDocsQuality(nv);
+  renderMaintenance(nv);
+  renderFitsStack(nv);
+  renderAskRepo(nv);
   renderVersus(nv);
   renderSynergies(nv);
   renderCombinator(nv);
+
+  // Tick the Run All Lenses counter when a lens transitions to done.
+  if (runAllTotal > 0) {
+    const wasDone = (x) => x?.status === 'done';
+    const isDone  = (x) => x?.status === 'done';
+    const ticked = [
+      [nv.deepDive,   ov.deepDive],
+      [nv.synergies,  ov.synergies],
+      [nv.sktpg,      ov.sktpg],
+    ].filter(([n, o]) => isDone(n) && !wasDone(o)).length;
+    if (ticked > 0) {
+      runAllDone = Math.min(runAllDone + ticked, runAllTotal);
+      const el = document.getElementById('lens-progress');
+      if (el) el.textContent = runAllDone >= runAllTotal ? '✓' : `${runAllDone}/${runAllTotal}`;
+    }
+  }
 });
 
 function renderHeader(d) {
-  document.querySelector('.repo-name').textContent = d.repoId;
+  const nameEl = document.querySelector('.repo-name');
+  nameEl.textContent = d.repoId;
+  nameEl.href = repoSourceUrl(d.platform, d.repoId);
   document.querySelector('.repo-desc').textContent = d.description;
   document.querySelector('.health-score').textContent = d.health?.score ?? '—';
   document.querySelector('.health-fill').style.width = `${d.health?.score ?? 0}%`;
+  const fitChip = document.getElementById('fit-header-chip');
+  if (fitChip) {
+    const fit = deriveFit(d);
+    fitChip.textContent = fit.label;
+    fitChip.className = `fit-header-chip fit-${fit.level}`;
+    fitChip.style.display = '';
+  }
 
   const pillContainer = document.querySelector('.meta-pills');
   const starLabel = formatStars(d.stars);
@@ -959,6 +1699,61 @@ function renderHeader(d) {
     d.platform
   ].filter(p => p && p !== 'Unknown');
   pillContainer.innerHTML = pills.map(p => `<span class="pill">${esc(p)}</span>`).join('');
+
+  // Update board button label based on current membership
+  listCollections().then((cols) => {
+    const btn = document.getElementById('add-to-board');
+    if (!btn || !d.repoId) return;
+    btn.textContent = cols.some((c) => collectionContains(c, d.repoId)) ? '✓ Board' : '+ Board';
+  }).catch(() => {});
+
+  if (d.repoId) updateDecisionBadge(d.repoId);
+}
+
+function relativeTimestamp(ts) {
+  if (!ts) return '';
+  const days = Math.floor((Date.now() - new Date(ts).getTime()) / 86400000);
+  if (days === 0) return 'today';
+  if (days === 1) return 'yesterday';
+  if (days < 30) return `${days}d ago`;
+  const mo = Math.floor(days / 30);
+  return mo === 1 ? '1 month ago' : `${mo} months ago`;
+}
+
+function applyDecisionBadge(dec) {
+  const badge = document.getElementById('decision-badge');
+  if (!badge) return;
+  if (!dec) { badge.className = 'decision-badge'; return; }
+  const meta = DECISION_META[dec.decision];
+  if (!meta) { badge.className = 'decision-badge'; return; }
+  badge.textContent = meta.label;
+  badge.style.cssText = `color:${meta.color};background:${meta.bg};border-color:${meta.border}`;
+  badge.title = dec.note ? `Decision: ${meta.label} — ${dec.note}` : `Decision: ${meta.label}`;
+  badge.className = 'decision-badge visible';
+}
+
+const DECISION_ICONS = { adopt: '✅', trial: '🔬', hold: '⏸', reject: '🚫' };
+function applyDecisionPreview(dec) {
+  const el = document.getElementById('vd-decision-preview');
+  if (!el) return;
+  if (!dec) { el.innerHTML = ''; return; }
+  const meta = DECISION_META[dec.decision];
+  if (!meta) { el.innerHTML = ''; return; }
+  const icon = DECISION_ICONS[dec.decision] || '';
+  const noteStr = dec.note ? ` — <em>${esc(dec.note)}</em>` : '';
+  const timeStr = relativeTimestamp(dec.timestamp);
+  el.innerHTML = `<div class="vd-banner vd-${esc(dec.decision)}">
+    <span class="vd-bicon">${icon}</span>
+    <span class="vd-blabel">Your decision: <strong>${esc(meta.label)}</strong>${noteStr}</span>
+    ${timeStr ? `<span class="vd-btime">${esc(timeStr)}</span>` : ''}
+  </div>`;
+}
+
+function updateDecisionBadge(repoId) {
+  getDecision(repoId).then(dec => {
+    applyDecisionBadge(dec);
+    applyDecisionPreview(dec);
+  }).catch(() => { applyDecisionBadge(null); applyDecisionPreview(null); });
 }
 
 function verdictDashboard(d) {
@@ -997,15 +1792,42 @@ function verdictDashboard(d) {
   const jump = (id, label) => `<button class="v-jump" data-jump="${id}">${label} <span class="arr">→</span></button>`;
   const jumps = `<div class="v-jumps">${jump(7, "Why it's " + (score >= 70 ? 'healthy' : 'mixed'))}${jump(8, 'What to watch')}${jump(6, 'Alternatives')}${jump(10, 'Deep Dive')}</div>`;
 
+  const diff = d.diff;
+  const diffCallout = (() => {
+    if (!diff) return '';
+    const changes = [];
+    if (diff.fit_delta?.changed) {
+      const arrow = diff.fit_delta.direction === 'up' ? '↑' : '↓';
+      changes.push(`fit shifted ${arrow} (${diff.fit_delta.before} → ${diff.fit_delta.after})`);
+    }
+    if (diff.new_flags?.length) changes.push(`${diff.new_flags.length} new flag${diff.new_flags.length > 1 ? 's' : ''}`);
+    if (Math.abs(diff.health_delta?.delta || 0) >= 5) {
+      const arrow = diff.health_delta.direction === 'up' ? '+' : '';
+      changes.push(`health ${arrow}${diff.health_delta.delta}`);
+    }
+    if (!changes.length) return '';
+    const label = diff.days_since_prev != null
+      ? `Since your last scan (${diff.days_since_prev === 0 ? 'today' : diff.days_since_prev === 1 ? 'yesterday' : `${diff.days_since_prev}d ago`})`
+      : 'Since last scan';
+    return `<div class="v-diff-callout">
+      <span class="v-diff-label">${esc(label)}:</span>
+      <span class="v-diff-items">${changes.map(esc).join(' · ')}</span>
+      <button class="v-jump" data-jump="24" style="margin-left:auto">Full diff <span class="arr">→</span></button>
+    </div>`;
+  })();
+
   return `
-    <div class="v-top"><button class="v-copy" id="v-copy" title="Copy a text summary of this verdict">⧉ Copy</button></div>
+    <div class="v-top"><button class="v-copy" id="v-copy" title="Copy a text summary of this verdict">⧉ Copy</button><button class="v-share" id="v-share" title="Open a shareable verdict card">⤴ Share</button></div>
+    <div id="vd-decision-preview"></div>
     <p class="v-what">${what}</p>
     <div class="v-fit fit-${fit.level}"><span class="v-chip">${esc(fit.label)}</span><span class="v-why">${esc(fit.why)}</span></div>
     ${line}
     <div class="v-facts">${cells}</div>
     ${flags}
     ${entries}
-    ${jumps}`;
+    ${diffCallout}
+    ${jumps}
+    <div class="v-ask-cta"><span>Have a specific question?</span><button class="v-jump" data-jump="26">Ask This Repo <span class="arr">→</span></button></div>`;
 }
 
 function renderTabs(d) {
@@ -1041,9 +1863,36 @@ function renderTabs(d) {
     </ul></div>
   </div>`);
 
-  setTabContent(6, (d.alternatives ?? []).map(a =>
-    `<div class="alt-row"><div class="alt-name">${esc(a.name)}</div><div class="alt-when">${esc(a.when)}</div></div>`
-  ).join(''));
+  // Alternatives: enrich with "in library" badge and quick-scan button.
+  getLibraryIndex().then((libIdx) => {
+    const alts = d.alternatives ?? [];
+    const host = document.getElementById('t6');
+    host.innerHTML = alts.map((a, idx) => {
+      const inLib = libIdx.has(a.name);
+      const detected = detectPlatform(repoSourceUrl('github', a.name));
+      const badge = inLib
+        ? `<span class="alt-in-lib">In library</span>`
+        : (detected ? `<button class="alt-scan-btn" data-idx="${idx}">Scan →</button>` : `<a class="alt-scan-link" href="${esc(repoSourceUrl('github', a.name))}" target="_blank" rel="noopener">↗ View</a>`);
+      return `<div class="alt-row">
+        <div class="alt-name">${esc(a.name)}${badge}</div>
+        <div class="alt-when">${esc(a.when)}</div>
+      </div>`;
+    }).join('');
+
+    host.querySelectorAll('.alt-scan-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const a = alts[Number(btn.dataset.idx)];
+        if (!a) return;
+        const det = detectPlatform(repoSourceUrl('github', a.name));
+        if (!det) return;
+        btn.disabled = true; btn.textContent = 'Opening…';
+        const key = 'repolens_' + crypto.randomUUID();
+        try { await chrome.runtime.sendMessage({ type: 'RERUN', sessionKey: key, ...det }); }
+        catch { /* bg may be asleep — tab will show loading state */ }
+        chrome.tabs.create({ url: chrome.runtime.getURL(`output-tab.html?key=${key}`) });
+      });
+    });
+  });
 
   const bars = ['commit_activity', 'issue_response', 'pr_merge_rate', 'maintainer_count'];
   const labels = ['Commit activity', 'Issue response', 'PR merge rate', 'Maintainers'];
@@ -1083,6 +1932,120 @@ function renderTabs(d) {
       setTimeout(() => { btn.textContent = prev; btn.disabled = false; }, 1500);
     } catch { /* clipboard unavailable — ignore */ }
   });
+  document.getElementById('v-share')?.addEventListener('click', (e) => {
+    const fit = deriveFit(d);
+    const encoded = encodeShareCard({ ...d, fitLevel: fit.level });
+    if (!encoded) return;
+    const shareUrl = chrome.runtime.getURL(`share.html#${encoded}`);
+    chrome.tabs.create({ url: shareUrl });
+  });
+  renderDecisionControl(d);
+}
+
+// ─── Decision Log control (injected into the verdict tab) ────────────────────
+
+async function renderDecisionControl(d) {
+  const host = document.getElementById('t9');
+  if (!host || !d.repoId) return;
+
+  // Remove any previous decision block before re-rendering.
+  host.querySelector('.dl-block')?.remove();
+
+  const existing = await getDecision(d.repoId).catch(() => null);
+  applyDecisionPreview(existing);
+  const block = document.createElement('div');
+  block.className = 'dl-block';
+
+  const choiceButtons = DECISIONS.map(key => {
+    const m = DECISION_META[key];
+    const sel = existing?.decision === key ? ` selected-${key}` : '';
+    return `<button class="dl-btn${sel}" data-dl="${key}">${esc(m.label)}</button>`;
+  }).join('');
+
+  block.innerHTML = `
+    <div class="dl-label">My Decision</div>
+    <div class="dl-choices">${choiceButtons}</div>
+    <textarea class="dl-note" id="dl-note" placeholder="Add a note (optional)…" rows="2">${esc(existing?.note || '')}</textarea>
+    <div class="dl-actions">
+      <button class="dl-save" id="dl-save">Save</button>
+      ${existing ? `<button class="dl-clear" id="dl-clear">Clear</button>` : ''}
+      <span class="dl-saved-msg" id="dl-saved-msg"></span>
+    </div>
+  `;
+  host.appendChild(block);
+
+  let selected = existing?.decision || null;
+
+  block.querySelectorAll('.dl-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.dl;
+      selected = selected === key ? null : key;
+      block.querySelectorAll('.dl-btn').forEach(b => {
+        DECISIONS.forEach(k => b.classList.remove(`selected-${k}`));
+        if (b.dataset.dl === selected) b.classList.add(`selected-${selected}`);
+      });
+    });
+  });
+
+  document.getElementById('dl-save')?.addEventListener('click', async () => {
+    if (!selected) return;
+    const note = document.getElementById('dl-note')?.value || '';
+    try {
+      const ts = new Date().toISOString();
+      await saveDecision({ repoId: d.repoId, decision: selected, note, timestamp: ts });
+      const dec = { repoId: d.repoId, decision: selected, note, timestamp: ts };
+      applyDecisionBadge(dec);
+      applyDecisionPreview(dec);
+      const msg = document.getElementById('dl-saved-msg');
+      if (msg) { msg.textContent = '✓ Saved'; setTimeout(() => { msg.textContent = ''; }, 1800); }
+      // Offer integration steps for Adopt decisions.
+      if (selected === 'adopt' && !block.querySelector('.dl-integrate')) {
+        const intDiv = document.createElement('div');
+        intDiv.className = 'dl-integrate';
+        intDiv.innerHTML = `<button class="dl-integrate-btn" title="Ask AI to generate a quick integration checklist for this repo">✦ Get integration steps</button><div class="dl-integrate-result"></div>`;
+        block.appendChild(intDiv);
+        intDiv.querySelector('.dl-integrate-btn')?.addEventListener('click', async (e) => {
+          const btn = e.currentTarget;
+          const result = intDiv.querySelector('.dl-integrate-result');
+          btn.disabled = true;
+          btn.textContent = 'Generating…';
+          try {
+            const resp = await chrome.runtime.sendMessage({
+              type: 'ASK_CACHED',
+              question: `Give me a concise 4–5 step integration checklist for ${d.repoId}. Include install command, minimal config, and the first meaningful usage. Be specific, not generic.`,
+              analysis: d,
+            });
+            if (result) result.textContent = resp?.ok ? resp.answer : (resp?.error || 'Could not generate steps.');
+          } catch {
+            if (result) result.textContent = 'Could not reach the extension.';
+          } finally {
+            btn.remove();
+          }
+        });
+      }
+      // Ensure Clear button appears after first save.
+      if (!block.querySelector('#dl-clear')) {
+        const clrBtn = document.createElement('button');
+        clrBtn.className = 'dl-clear';
+        clrBtn.id = 'dl-clear';
+        clrBtn.textContent = 'Clear';
+        document.getElementById('dl-actions')?.appendChild(clrBtn);
+        clrBtn.addEventListener('click', handleClear);
+      }
+    } catch { /* best-effort */ }
+  });
+
+  async function handleClear() {
+    await clearDecision(d.repoId).catch(() => {});
+    applyDecisionBadge(null);
+    applyDecisionPreview(null);
+    selected = null;
+    block.querySelectorAll('.dl-btn').forEach(b => DECISIONS.forEach(k => b.classList.remove(`selected-${k}`)));
+    const note = document.getElementById('dl-note');
+    if (note) note.value = '';
+    block.querySelector('#dl-clear')?.remove();
+  }
+  block.querySelector('#dl-clear')?.addEventListener('click', handleClear);
 }
 
 function card(color, label, text) {
@@ -1098,7 +2061,17 @@ function setTabContent(index, html) {
   if (panel) panel.innerHTML = html;
 }
 
-function show(n) {
+const TAB_SLUGS = {
+  9: 'verdict', 0: 'eli5', 1: 'technical', 2: 'use-cases', 3: 'skip-if',
+  4: 'enables', 5: 'pros-cons', 6: 'alternatives', 7: 'health', 8: 'red-flags',
+  15: 'tech-stack', 10: 'deep-dive', 11: 'systems', 12: 'ideate', 13: 'prioritize',
+  14: 'sktpg', 21: 'docs', 22: 'maintenance', 23: 'license', 24: 'diff',
+  25: 'stack-fit', 26: 'ask', 16: 'similar', 17: 'versus', 18: 'synergies',
+  19: 'connections', 20: 'combine',
+};
+const SLUG_TO_TAB = Object.fromEntries(Object.entries(TAB_SLUGS).map(([k, v]) => [v, Number(k)]));
+
+function show(n, { updateHash = true } = {}) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', Number(b.dataset.tab) === n));
   document.querySelectorAll('.tab-content').forEach((c, idx) => c.classList.toggle('active', idx === n));
   // Reflect the active tab on its parent menu button + close any open menus.
@@ -1107,6 +2080,12 @@ function show(n) {
     m.querySelector('.tab-menu-btn')?.classList.toggle('active', owns);
     m.classList.remove('open');
   });
+  if (updateHash && TAB_SLUGS[n]) {
+    history.replaceState(null, '', `#${TAB_SLUGS[n]}`);
+  }
+  if (updateHash && lastData?.repoId) {
+    chrome.storage.local.set({ [`repolens_tab_${lastData.repoId}`]: n }).catch(() => {});
+  }
 }
 
 // Nav clicks: open/close a grouped menu, run-all, or switch tab.
@@ -1226,32 +2205,166 @@ function initGuide() {
 initGuide();
 
 // Run-all: fire every on-demand lens at once (uses each lens's current framework).
+let runAllTotal = 0;
+let runAllDone = 0;
+
+function updateRunAllProgress(done) {
+  runAllDone = Math.min(runAllDone + (done ? 1 : 0), runAllTotal);
+  const el = document.getElementById('lens-progress');
+  if (el && runAllTotal > 0) el.textContent = `${runAllDone}/${runAllTotal}`;
+}
+
 function runAllLenses() {
   document.querySelectorAll('.tab-menu').forEach(m => m.classList.remove('open'));
   if (!lastData) return;
-  startDeepDive(lastData);
+  runAllDone = 0;
+  runAllTotal = sktpgEnabled ? 5 : 4; // deepdive + synergies + systems + ideate + (sktpg?)
+  const el = document.getElementById('lens-progress');
+  if (el) el.textContent = `0/${runAllTotal}`;
+  startDeepDive(lastData, () => updateRunAllProgress(true));
+  startSynergies(lastData, () => updateRunAllProgress(true));
   chrome.runtime.sendMessage({ type: 'SYSTEMS', sessionKey, platform: lastData.platform, repoId: lastData.repoId, frameworks: SYSTEMS_FRAMEWORKS.map(f => f.key) });
   chrome.runtime.sendMessage({ type: 'IDEATE', sessionKey, platform: lastData.platform, repoId: lastData.repoId, frameworks: IDEATE_FRAMEWORKS.map(f => f.key) });
   chrome.runtime.sendMessage({ type: 'PRIORITIZE', sessionKey, platform: lastData.platform, repoId: lastData.repoId, frameworks: HEURISTICS_FRAMEWORKS.map(f => f.key) });
-  if (sktpgEnabled) startSktpg(lastData);
-  startSynergies(lastData);
+  if (sktpgEnabled) startSktpg(lastData, () => updateRunAllProgress(true));
 }
 
 // ─── Export / Copy ────────────────────────────────────────────────────────────
+
+function repoSourceUrl(platform, repoId) {
+  if (platform === 'gitlab') return `https://gitlab.com/${repoId}`;
+  if (platform === 'npm') return `https://www.npmjs.com/package/${repoId}`;
+  if (platform === 'pypi') return `https://pypi.org/project/${repoId}/`;
+  return `https://github.com/${repoId}`;
+}
+
+async function copyWithFlash(btn, text, label = 'Copied ✓') {
+  try {
+    await navigator.clipboard.writeText(text);
+    const prev = btn.textContent;
+    btn.textContent = label;
+    setTimeout(() => { btn.textContent = prev; }, 1500);
+  } catch { /* clipboard blocked */ }
+}
+
+document.getElementById('copy-url')?.addEventListener('click', async () => {
+  if (!lastData) return;
+  const url = repoSourceUrl(lastData.platform, lastData.repoId);
+  await copyWithFlash(document.getElementById('copy-url'), url);
+});
 
 document.getElementById('open-library')?.addEventListener('click', () => {
   chrome.tabs.create({ url: chrome.runtime.getURL('library.html') });
 });
 
+const CURRENT_VERSION = '3.0.0';
+const whatsNewBtn = document.getElementById('whats-new-btn');
+const whatsNewDot = document.getElementById('whats-new-dot');
+chrome.storage.local.get('seenVersion', ({ seenVersion }) => {
+  if (seenVersion !== CURRENT_VERSION && whatsNewDot) whatsNewDot.hidden = false;
+});
+whatsNewBtn?.addEventListener('click', () => {
+  chrome.storage.local.set({ seenVersion: CURRENT_VERSION });
+  if (whatsNewDot) whatsNewDot.hidden = true;
+  chrome.tabs.create({ url: chrome.runtime.getURL('whats-new.html') });
+});
+
+// ─── Add to Board popover ─────────────────────────────────────────────────────
+const safeHex = (v) => (/^#[0-9a-fA-F]{3,8}$/.test(v) ? v : COLLECTION_COLORS[0]);
+let _boardPop = null;
+
+function closeBoardPop() {
+  if (!_boardPop) return;
+  _boardPop.remove();
+  _boardPop = null;
+  document.removeEventListener('click', _onBoardDocClick, true);
+  document.removeEventListener('keydown', _onBoardKey, true);
+}
+function _onBoardDocClick(e) { if (_boardPop && !_boardPop.contains(e.target)) closeBoardPop(); }
+function _onBoardKey(e) { if (e.key === 'Escape') closeBoardPop(); }
+
+async function openBoardPop(repoId, anchor) {
+  closeBoardPop();
+  const btn = document.getElementById('add-to-board');
+  const cols = sortedCollections(await listCollections().catch(() => []));
+  const list = cols.length
+    ? cols.map((c) => `<button class="bp-row" data-id="${esc(c.id)}">` +
+        `<span class="bp-check">${collectionContains(c, repoId) ? '✓' : ''}</span>` +
+        `<span class="coll-dot" style="background:${safeHex(c.color)}"></span>` +
+        `<span class="bp-name">${esc(c.name)}</span></button>`).join('')
+    : `<div class="bp-empty">No boards yet — create one in the Library.</div>`;
+  const pop = document.createElement('div');
+  pop.className = 'boards-pop';
+  pop.innerHTML = list + `<button class="bp-row bp-new" id="bp-open-lib">＋ Manage Boards…</button>`;
+  document.body.appendChild(pop);
+
+  const r = anchor.getBoundingClientRect();
+  const left = Math.min(window.scrollX + r.left, window.scrollX + window.innerWidth - pop.offsetWidth - 12);
+  pop.style.top = `${window.scrollY + r.bottom + 6}px`;
+  pop.style.left = `${Math.max(window.scrollX + 8, left)}px`;
+  _boardPop = pop;
+
+  let localCols = cols;
+  pop.querySelectorAll('.bp-row[data-id]').forEach((b) => {
+    b.addEventListener('click', async () => {
+      const idx = localCols.findIndex((c) => c.id === b.dataset.id);
+      if (idx < 0) return;
+      const updated = toggleRepoInCollection(localCols[idx], repoId, { now: new Date().toISOString() });
+      localCols = localCols.map((c, i) => (i === idx ? updated : c));
+      try { await saveCollection(updated); } catch { /* best-effort */ }
+      b.querySelector('.bp-check').textContent = collectionContains(updated, repoId) ? '✓' : '';
+      if (btn) {
+        const inAny = localCols.some((c) => collectionContains(c, repoId));
+        btn.textContent = inAny ? '✓ Board' : '+ Board';
+      }
+    });
+  });
+  pop.getElementById?.('bp-open-lib')?.addEventListener('click', () => {
+    chrome.tabs.create({ url: chrome.runtime.getURL('library.html') });
+    closeBoardPop();
+  });
+  pop.querySelector('#bp-open-lib')?.addEventListener('click', () => {
+    chrome.tabs.create({ url: chrome.runtime.getURL('library.html') });
+    closeBoardPop();
+  });
+  setTimeout(() => {
+    document.addEventListener('click', _onBoardDocClick, true);
+    document.addEventListener('keydown', _onBoardKey, true);
+  }, 0);
+}
+
+document.getElementById('add-to-board')?.addEventListener('click', async (e) => {
+  if (!lastData?.repoId) return;
+  if (_boardPop) { closeBoardPop(); return; }
+  await openBoardPop(lastData.repoId, e.currentTarget);
+});
+
 const copyMdBtn = document.getElementById('copy-md');
 copyMdBtn?.addEventListener('click', async () => {
   if (!lastData) return;
-  try {
-    await navigator.clipboard.writeText(toMarkdown(lastData));
-    const prev = copyMdBtn.textContent;
-    copyMdBtn.textContent = 'Copied ✓';
-    setTimeout(() => { copyMdBtn.textContent = prev; }, 1500);
-  } catch { copyMdBtn.textContent = 'Copy failed'; }
+  await copyWithFlash(copyMdBtn, toMarkdown(lastData));
+});
+
+const copySlackBtn = document.getElementById('copy-slack');
+copySlackBtn?.addEventListener('click', async () => {
+  if (!lastData) return;
+  const fit = deriveFit(lastData);
+  await copyWithFlash(copySlackBtn, toSlackPost(lastData, fit.level));
+});
+
+document.getElementById('export-scaffold')?.addEventListener('click', async () => {
+  if (!lastData) return;
+  const decision = await getDecision(lastData.repoId).catch(() => null);
+  const md = toScaffold(lastData, decision);
+  const blob = new Blob([md], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${slugify(lastData.repoId)}-scaffold.md`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 });
 
 document.getElementById('export-html')?.addEventListener('click', () => {
@@ -1269,6 +2382,8 @@ document.getElementById('export-html')?.addEventListener('click', () => {
 
 let retryContext = null;
 const retryBtn = document.getElementById('retry-btn');
+const settingsBtn = document.getElementById('settings-btn');
+settingsBtn?.addEventListener('click', () => chrome.runtime.openOptionsPage());
 retryBtn?.addEventListener('click', async () => {
   if (!retryContext) { location.reload(); return; }
   retryBtn.disabled = true;
@@ -1281,12 +2396,80 @@ retryBtn?.addEventListener('click', async () => {
   location.reload();
 });
 
-// Keyboard nav: ← → cycle tabs; 1–9 jump to the first nine. Ignored while typing.
-document.addEventListener('keydown', e => {
+document.getElementById('paste-url-form')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const input = document.getElementById('paste-url-input');
+  const rawUrl = (input?.value || '').trim();
+  const detected = detectPlatform(rawUrl);
+  if (!detected) {
+    input.style.borderColor = 'var(--bad-edge)';
+    setTimeout(() => { input.style.borderColor = ''; }, 1500);
+    return;
+  }
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Scanning…'; }
+  try {
+    await chrome.runtime.sendMessage({ type: 'RERUN', sessionKey, ...detected });
+  } catch { /* reload anyway */ }
+  location.reload();
+});
+
+// Keyboard nav: ← → cycle tabs; 1–9 jump to the first nine; r rescan. Ignored while typing.
+document.addEventListener('keydown', async e => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const t = e.target;
   if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable) return;
   const tabs = [...document.querySelectorAll('.tab-btn')].filter(b => b.style.display !== 'none');
+  if (e.key === 'r' && retryBtn && !retryBtn.disabled && retryContext) {
+    e.preventDefault();
+    retryBtn.click();
+    return;
+  }
+  if (e.key === 'f' && lastData) {
+    e.preventDefault();
+    const freshBtn = document.getElementById('rerun-fresh');
+    if (freshBtn) { freshBtn.click(); return; }
+    try { await chrome.runtime.sendMessage({ type: 'RERUN', sessionKey, platform: lastData.platform, repoId: lastData.repoId }); }
+    catch { /* reload anyway */ }
+    location.reload();
+    return;
+  }
+  if (e.key === 'u' && lastData) {
+    e.preventDefault();
+    document.getElementById('copy-url')?.click();
+    return;
+  }
+  if (e.key === 'm' && lastData) {
+    e.preventDefault();
+    copyMdBtn?.click();
+    return;
+  }
+  if (e.key === 'd' && lastData) {
+    e.preventDefault();
+    show(10);
+    return;
+  }
+  if (e.key === 'a' && lastData) {
+    e.preventDefault();
+    show(26);
+    setTimeout(() => document.getElementById('ask-input')?.focus(), 50);
+    return;
+  }
+  if (e.key === 'b' && lastData) {
+    e.preventDefault();
+    document.getElementById('add-to-board')?.click();
+    return;
+  }
+  if (e.key === 'v' && lastData) { e.preventDefault(); show(9); return; }
+  if (e.key === 'e' && lastData) { e.preventDefault(); show(0); return; }
+  if (e.key === 'h' && lastData) { e.preventDefault(); show(7); return; }
+  if (e.key === 'l') { e.preventDefault(); document.getElementById('open-library')?.click(); return; }
+  if (e.key === 'o' && lastData) {
+    e.preventDefault();
+    const url = repoSourceUrl(lastData.platform, lastData.repoId);
+    if (url) chrome.tabs.create({ url });
+    return;
+  }
   if (!tabs.length) return;
   if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
     const cur = tabs.findIndex(b => b.classList.contains('active'));

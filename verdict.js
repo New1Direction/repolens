@@ -1,5 +1,6 @@
 // Synthesizes a one-glance "verdict" from an existing analysis. Pure + deterministic so the
 // fit chip works on every already-analyzed repo with no AI call. Used by the Verdict landing.
+import { formatStars } from './format.js';
 
 /** The first sentence of a blob (for the one-line "what it is"); '' when empty. */
 export function firstSentence(text) {
@@ -42,17 +43,36 @@ export function deriveFit(d) {
   return { level, label, why: bits.join(' · ') };
 }
 
-/** A plain-text verdict summary for the clipboard — title, what-it-is, fit, bottom line, flags. */
+/** A plain-text verdict summary for the clipboard — title, meta, what-it-is, pros/cons, flags. */
 export function verdictCopyText(d) {
   const fit = deriveFit(d);
   const what = (d && d.description) || firstSentence(d && d.eli5) || '';
+  const score = d?.health?.score;
+  const starStr = formatStars(d?.stars);
+
   const lines = [`${(d && d.repoId) || (d && d.name) || 'Repository'} — ${fit.label}`];
-  if (what) lines.push(what);
+
+  const meta = [
+    score != null ? `Health ${score}/100` : null,
+    starStr ? `${starStr} ★` : null,
+    d?.license && d.license !== 'Unknown' ? d.license : null,
+  ].filter(Boolean).join(' · ');
+  if (meta) lines.push(meta);
+
+  if (what) lines.push('', what);
   if (d && d.bottom_line) lines.push('', d.bottom_line);
-  lines.push('', `Fit: ${fit.label} (${fit.why})`);
+
+  const pros = ((d && d.pros) || []).slice(0, 2);
+  const cons = ((d && d.cons) || []).slice(0, 2);
+  if (pros.length || cons.length) {
+    lines.push('');
+    if (pros.length) lines.push(...pros.map(p => `+ ${p}`));
+    if (cons.length) lines.push(...cons.map(c => `- ${c}`));
+  }
+
   const warns = ((d && d.red_flags) || []).filter(f => f && f.severity !== 'ok').slice(0, 3);
   if (warns.length) {
-    lines.push('', 'Flags:', ...warns.map(f => `- ${f.title}: ${f.text}`));
+    lines.push('', 'Flags:', ...warns.map(f => `⚠ ${f.title}: ${f.text}`));
   }
   return lines.join('\n').trim();
 }

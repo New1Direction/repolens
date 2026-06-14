@@ -10,6 +10,10 @@ export const PARTS = [
   { id: 'synergies', label: 'Synergies' },
   { id: 'combinator', label: 'Combinator' },
   { id: 'retag', label: 'Re-tag library' },
+  { id: 'docs', label: 'Docs Quality' },
+  { id: 'maintenance', label: 'Maintenance' },
+  { id: 'fits', label: 'Fits MY Stack?' },
+  { id: 'stack', label: 'Stack Builder' },
 ];
 
 // provider id → { label, models: [{ value, label, recommended? }] }
