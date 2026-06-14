@@ -39,7 +39,7 @@ export function VerdictDemo() {
             <span className="vd-dot" />
             <span className="vd-dot" />
             <span className="vd-dot" />
-            <span className="vd-cache">⚡ Loaded from cache — no AI call</span>
+            <span className="vd-cache">Cached — no AI call</span>
           </div>
 
           <div className="vd-head">

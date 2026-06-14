@@ -317,8 +317,29 @@
     var(--bg-2);
 }
 .feat-ic {
-  font-size: 26px;
-  line-height: 1;
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  color: var(--accent);
+  background: var(--accent-weak);
+  border: 1px solid var(--accent-line);
+}
+.feat-ic .icon {
+  display: block;
+}
+/* The wide "hero" feature tiles take the warm accent — the complementary pop. */
+.feat-wide .feat-ic {
+  color: var(--warm);
+  background: var(--warm-weak);
+  border-color: var(--warm-line);
+}
+/* Line icons are drawn in by GSAP on scroll (pathLength=1); fully drawn by
+   default so they're visible without JS / under reduced-motion. */
+.icon-stroke {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
 }
 .feat h3 {
   margin: 14px 0 7px;

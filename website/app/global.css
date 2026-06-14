@@ -29,7 +29,7 @@
   --accent-3: #38bdf8;
   --grad: linear-gradient(120deg, #60a5fa 0%, #3b82f6 55%, #22d3ee 120%);
   --grad-soft: linear-gradient(120deg, #3b82f6, #22d3ee);
-  --accent-glow: rgba(59, 130, 246, 0.5);
+  --accent-glow: rgba(59, 130, 246, 0.4);
   --accent-weak: rgba(59, 130, 246, 0.12);
   --accent-line: rgba(59, 130, 246, 0.3);
 

@@ -54,9 +54,7 @@ export function SiteFooter() {
       </div>
 
       <div className="site-footer-base">
-        <span>
-          <span aria-hidden="true">🔭</span> RepoLens — v3.0 · client-side only
-        </span>
+        <span>RepoLens — v3.0 · client-side only</span>
         <span>Bring your own model. Nothing leaves your browser.</span>
       </div>
     </footer>
