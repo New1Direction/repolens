@@ -226,15 +226,15 @@
   <header class="hero">
     <span class="kicker"><span class="pulse"></span> Shipped · Jun 12–13, 2026</span>
     <div class="hero-vee"><span class="vee is-scanning" id="heroVee" aria-hidden="true"></span></div>
-    <h1>Three days.<br><span class="grad">Eight releases.</span></h1>
-    <p class="hero-sub">RepoLens is now a full evaluation workbench — score docs, record your adoption decision, compare repos side-by-side, and export a ready-to-use integration scaffold. Here's everything that landed.</p>
-    <div class="hero-meta">🔭 RepoLens · v1.1.0 → v1.8.0</div>
+    <h1>Three days.<br><span class="grad">Nine releases.</span></h1>
+    <p class="hero-sub">RepoLens is now the smoothest, fastest repo analyzer available — add to boards in one click, ask follow-up questions, see what changed since your last scan, and share results in seconds. Here's everything that landed.</p>
+    <div class="hero-meta">🔭 RepoLens · v1.1.0 → v1.9.0</div>
   </header>
 
   <!-- STATS -->
   <section class="stats reveal">
-    <div class="stat"><div class="n">8</div><div class="l">Releases</div></div>
-    <div class="stat"><div class="n">509</div><div class="l">Tests passing</div></div>
+    <div class="stat"><div class="n">9</div><div class="l">Releases</div></div>
+    <div class="stat"><div class="n">674</div><div class="l">Tests passing</div></div>
     <div class="stat"><div class="n">13</div><div class="l">Themes</div></div>
     <div class="stat"><div class="n">20+</div><div class="l">AI providers</div></div>
     <div class="stat"><div class="n">100%</div><div class="l">Client-side</div></div>
@@ -244,48 +244,48 @@
   <section class="sec">
     <div class="reveal">
       <div class="sec-eyebrow">Just shipped</div>
-      <h2 class="sec-title">v1.8.0 — Decide.</h2>
-      <p class="sec-note">A new scan lens, a decision layer, a compare view, and a scaffold you can drop straight into your repo or notes. RepoLens now takes you all the way from "I found a library" to "here's our integration plan".</p>
+      <h2 class="sec-title">v1.9.0 — Flow.</h2>
+      <p class="sec-note">Every workflow friction point, removed. Add repos to boards without leaving the analysis. Ask follow-up questions. Paste a URL directly when you land on the wrong page. See what changed since your last scan — all without leaving the tab.</p>
     </div>
 
     <div class="latest-card reveal">
       <div class="latest-top">
-        <span class="vtag new">v1.8.0</span>
+        <span class="vtag new">v1.9.0</span>
         <span class="vnew">● NEWEST</span>
-        <span class="vtheme">Decide.</span>
-        <span class="vdate">Jun 13</span>
+        <span class="vtheme">Flow.</span>
+        <span class="vdate">Jun 14</span>
       </div>
 
       <div class="bento bento-2x2">
         <div class="feat">
-          <div class="ic">📋</div>
-          <h3>Docs Quality scan</h3>
-          <p>A new on-demand lens (tab 21) that scores a repo's documentation across six dimensions — README completeness, quickstart, examples, API reference, changelog, and contributing guide — and returns an <b>A–F grade</b> plus <em>yes / partially / no</em> verdicts per dimension.</p>
-          <div class="tagrow"><span class="tag">on-demand</span><span class="tag">file tree + README</span><span class="tag">A–F grade</span><span class="tag">1 AI call</span></div>
+          <div class="ic">📌</div>
+          <h3>Add to Board — from the analysis</h3>
+          <p>A new <b>+ Board</b> button in the export bar opens a collection picker inline — no need to visit the Library. Toggling a board updates membership instantly. Press <kbd>b</kbd> to open it from the keyboard.</p>
+          <div class="tagrow"><span class="tag">output tab</span><span class="tag">no page switch</span><span class="tag">keyboard: b</span></div>
         </div>
         <div class="feat">
-          <div class="ic">🎯</div>
-          <h3>Decision Log</h3>
-          <p>Record your adoption stance on any repo — <b>Adopt, Trial, Hold, or Reject</b> — with an optional note. The decision lives in IndexedDB, appears as a colour-coded badge on every library card, and travels in your backup file.</p>
-          <div class="tagrow"><span class="tag">IDB v3</span><span class="tag">verdict tab UI</span><span class="tag">library badges</span><span class="tag">backup-portable</span></div>
+          <div class="ic">🔍</div>
+          <h3>Ask + diff callout on Verdict</h3>
+          <p>When you re-scan a repo that has changed, the Verdict tab shows an amber callout — <em>fit shifted, N new flags, health ±N</em> — with a direct link to the full diff. Plus an <em>Ask This Repo →</em> shortcut at the bottom of every verdict.</p>
+          <div class="tagrow"><span class="tag">diff-aware</span><span class="tag">since last scan</span><span class="tag">amber banner</span></div>
         </div>
         <div class="feat">
-          <div class="ic">⇄</div>
-          <h3>Compare mode</h3>
-          <p>Hover any library card and hit <b>⇄</b> to add it to a two-repo basket. When the second repo is picked, a panel opens below the grid showing fit, health, stars, category, languages, decision, and a full capability matrix — who has it, who doesn't.</p>
-          <div class="tagrow"><span class="tag">side-by-side</span><span class="tag">capability diff</span><span class="tag">no AI call</span><span class="tag">instant</span></div>
+          <div class="ic">📎</div>
+          <h3>Paste URL to scan</h3>
+          <p>Land on the wrong page? The error screen now shows a URL input. Paste any GitHub, GitLab, npm, or PyPI link and hit <b>Scan</b>. On browsers that allow it, your clipboard is pre-filled if it already contains a repo URL.</p>
+          <div class="tagrow"><span class="tag">clipboard pre-fill</span><span class="tag">error screen</span><span class="tag">no navigation needed</span></div>
         </div>
         <div class="feat">
-          <div class="ic">⬇</div>
-          <h3>Scaffold Export</h3>
-          <p>A new <b>Scaffold</b> button in the output tab downloads a <code>repo-scaffold.md</code> — a CLAUDE.md-ready (or Notion / Obsidian) integration template seeded from the analysis: fit verdict, decision, capabilities, an editable integration checklist, caveats from red flags, and alternatives considered.</p>
-          <div class="tagrow"><span class="tag">CLAUDE.md-ready</span><span class="tag">Notion / Obsidian</span><span class="tag">decision-aware</span><span class="tag">.md download</span></div>
+          <div class="ic">💬</div>
+          <h3>Copy Slack + verdict tab title</h3>
+          <p>A new <b>Copy Slack</b> button generates a compact, emoji-formatted summary (<em>✅ owner/repo · 12.3k★ · TypeScript · health 91/100</em>) perfect for Slack or Discord. The browser tab now shows the fit verdict emoji so you can read the result without switching tabs.</p>
+          <div class="tagrow"><span class="tag">Slack / Discord</span><span class="tag">tab title</span><span class="tag">fit emoji</span></div>
         </div>
       </div>
 
       <div class="changed">
-        <div class="chg"><span class="ci">🧪</span><div><b>509 tests, all green.</b> <span>24 new tests for Docs Quality, 13 for Decision Log, 6 for Scaffold Export — plus 5 updated test assertions to cover the expanded backup envelope.</span></div></div>
-        <div class="chg"><span class="ci">💾</span><div><b>IDB schema bumped to v3.</b> <span>A new <code>decisions</code> store sits alongside repos, nodes, edges, collections — decisions are first-class data, not annotations.</span></div></div>
+        <div class="chg"><span class="ci">🧪</span><div><b>674 tests, all green.</b> <span>Includes new tests for Ask This Repo (10), plus all prior suites continuing to pass.</span></div></div>
+        <div class="chg"><span class="ci">⚡</span><div><b>Stale scan detection.</b> <span>The cache banner now shows when you last scanned, and turns amber if it was ≥7 days ago with a <em>Re-run fresh</em> prompt.</span></div></div>
       </div>
     </div>
   </section>
@@ -295,10 +295,21 @@
     <div class="reveal">
       <div class="sec-eyebrow">The rest of the burst</div>
       <h2 class="sec-title">Everything else, newest first</h2>
-      <p class="sec-note">Seven more releases across three days — from workbench motion to bring-any-model.</p>
+      <p class="sec-note">Eight more releases across three days — from workbench motion to bring-any-model.</p>
     </div>
 
     <div class="timeline">
+      <div class="rel reveal">
+        <div class="rel-head"><span class="rel-v">v1.8.0</span><span class="rel-theme">Decide.</span><span class="rel-date">Jun 13</span></div>
+        <div class="rel-body">A full evaluation workbench — Docs Quality scan, Decision Log, Compare mode, and Scaffold Export.</div>
+        <ul class="rel-list">
+          <li><b>Docs Quality</b> — A–F grade across six README/docs dimensions.</li>
+          <li><b>Decision Log</b> — Adopt / Trial / Hold / Reject with a note, indexed in IDB v3.</li>
+          <li><b>Compare mode</b> — side-by-side capability diff for any two library repos.</li>
+          <li><b>Scaffold Export</b> — CLAUDE.md-ready integration template, .md download.</li>
+        </ul>
+      </div>
+
       <div class="rel reveal">
         <div class="rel-head"><span class="rel-v">v1.7.0</span><span class="rel-theme">Boards, Vee &amp; a motion pass</span><span class="rel-date">Jun 13</span></div>
         <div class="rel-body">Collections ("Boards") to group repos you're weighing, a Vee mascot that reacts to scan state, and a motion pass that makes every interaction feel tactile — all behind <code>prefers-reduced-motion</code>.</div>
