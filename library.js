@@ -72,6 +72,10 @@ let pinned = new Set();
 let notesMap = new Map();
 const noteKey = (repoId) => `repolens_note_${repoId}`;
 
+// Saved filters: named snapshots of {query,sort,capability,collection,decision,lang} state.
+let savedFilters = [];
+const SAVED_FILTERS_KEY = 'repolens_saved_filters';
+
 async function togglePin(repoId) {
   if (pinned.has(repoId)) pinned.delete(repoId);
   else pinned.add(repoId);
@@ -1843,6 +1847,55 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// ─── Auto-decide from Vee ─────────────────────────────────────────────────────
+
+async function applyVeeSuggestions() {
+  const undecided = allRows.filter((r) => r.fit.level !== 'unrated' && !decisionMap.has(r.repoId));
+  if (!undecided.length) { setStatus('All rated repos already have a decision.'); return; }
+  const now = new Date().toISOString();
+  setStatus(`Applying Vee's suggestions to ${undecided.length} repos…`);
+  for (const row of undecided) {
+    const decision = FIT_SUGGESTION[row.fit.level];
+    if (!decision) continue;
+    const rec = { repoId: row.repoId, decision, savedAt: now };
+    await saveDecision(rec);
+    decisionMap.set(row.repoId, rec);
+  }
+  renderDecisionFilter();
+  renderStats();
+  render();
+  setStatus(`Vee auto-decided ${undecided.length} repo${undecided.length === 1 ? '' : 's'}.`);
+}
+
+// ─── Saved filters ────────────────────────────────────────────────────────────
+
+function currentFilterSnapshot() {
+  return { query: state.query, sort: state.sort, capability: state.capability, collection: state.collection, decision: state.decision, lang: state.lang };
+}
+
+async function saveCurrentFilter(name) {
+  savedFilters = savedFilters.filter((f) => f.name !== name);
+  savedFilters.push({ name, snapshot: currentFilterSnapshot() });
+  await chrome.storage.local.set({ [SAVED_FILTERS_KEY]: savedFilters });
+}
+
+async function deleteSavedFilter(name) {
+  savedFilters = savedFilters.filter((f) => f.name !== name);
+  await chrome.storage.local.set({ [SAVED_FILTERS_KEY]: savedFilters });
+}
+
+function applySavedFilter(f) {
+  Object.assign(state, f.snapshot);
+  const sortEl = document.getElementById('sort');
+  if (sortEl) sortEl.value = state.sort || 'fit';
+  const langEl = document.getElementById('lang-filter');
+  if (langEl) langEl.value = state.lang || '';
+  nlFilter = null;
+  renderDecisionFilter();
+  renderNlFilterBanner();
+  render();
+}
+
 // ─── Library palette ─────────────────────────────────────────────────────────
 
 function initLibraryPalette() {
@@ -1894,10 +1947,34 @@ function initLibraryPalette() {
     { name: 'Export Digest (CSV)', description: 'Download library as CSV', action: () => exportDigest('csv') },
     { name: 'Export Backup', description: 'Full library backup', action: () => exportLibrary() },
     { name: 'Import Backup', description: 'Restore from a backup file', action: () => pickImportFile() },
+    { section: 'Saved filters', name: '★ Save current filter…', description: 'Bookmark this filter combo by name', action: async () => {
+      const name = prompt('Name this filter:');
+      if (!name?.trim()) return;
+      await saveCurrentFilter(name.trim());
+      setStatus(`Filter saved: "${name.trim()}"`);
+    } },
     { name: 'Select mode', description: 'Select repos for bulk actions', action: () => setSelectionMode(!selectionMode) },
+    { section: 'Vee', name: '✦ Auto-decide all undecided (Vee)', description: 'Apply Vee\'s fit-based suggestion to every undecided rated repo', action: () => applyVeeSuggestions() },
     { name: 'Open Settings', action: () => chrome.runtime.openOptionsPage() },
   ];
-  initPalette(commands);
+
+  function getCommands() {
+    if (!savedFilters.length) return commands;
+    const filterCmds = savedFilters.map((f) => ({
+      name: `★ ${f.name}`,
+      description: [f.snapshot.decision && `decision: ${f.snapshot.decision}`, f.snapshot.lang && `lang: ${f.snapshot.lang}`, f.snapshot.query && `"${f.snapshot.query}"`].filter(Boolean).join(' · ') || 'saved filter',
+      action: () => applySavedFilter(f),
+    }));
+    const deleteCmds = savedFilters.map((f) => ({
+      name: `Delete saved filter: ${f.name}`,
+      action: async () => { await deleteSavedFilter(f.name); setStatus(`Deleted filter "${f.name}"`); },
+    }));
+    // Insert saved filter commands right before the 'Save current filter…' entry
+    const saveIdx = commands.findIndex((c) => c.name === '★ Save current filter…');
+    return [...commands.slice(0, saveIdx), ...filterCmds, ...deleteCmds, ...commands.slice(saveIdx)];
+  }
+
+  initPalette(getCommands);
   document.getElementById('open-palette')?.addEventListener('click', () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }));
   });
@@ -1911,12 +1988,13 @@ async function init() {
   const [points, cachedList, prefs, savedCollections, savedDecisions] = await Promise.all([
     scrollPoints(),
     listCached().catch(() => []),
-    chrome.storage.local.get(['librarySort', 'mascotEnabled', 'repolens_pinned']).catch(() => ({})),
+    chrome.storage.local.get(['librarySort', 'mascotEnabled', 'repolens_pinned', SAVED_FILTERS_KEY]).catch(() => ({})),
     listCollections().catch(() => []),
     listDecisions().catch(() => []),
   ]);
   decisionMap = new Map(savedDecisions.map((d) => [d.repoId, d]));
   pinned = new Set(Array.isArray(prefs?.repolens_pinned) ? prefs.repolens_pinned : []);
+  savedFilters = Array.isArray(prefs?.[SAVED_FILTERS_KEY]) ? prefs[SAVED_FILTERS_KEY] : [];
 
   // Load user notes keyed by repoId
   try {

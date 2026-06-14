@@ -29,8 +29,13 @@ function _matches(cmd, q) {
   return _fuzzy(q, cmd.name) || (cmd.description && _fuzzy(q, cmd.description));
 }
 
-export function initPalette(commands) {
+/**
+ * @param {Array|(() => Array)} commandsOrFn - Static array or a function called each open to get
+ *   the current command list. Use a function when the list changes (e.g. saved filters).
+ */
+export function initPalette(commandsOrFn) {
   if (document.getElementById('palette-overlay')) return; // already mounted
+  const getCommands = typeof commandsOrFn === 'function' ? commandsOrFn : () => commandsOrFn;
 
   const overlay = document.createElement('div');
   overlay.id = 'palette-overlay';
@@ -52,10 +57,11 @@ export function initPalette(commands) {
   document.body.appendChild(overlay);
 
   let isOpen = false;
-  let filtered = [...commands];
+  let filtered = [];
   let selIdx = 0;
 
   function _renderList(q = '') {
+    const commands = getCommands();
     filtered = q ? commands.filter((c) => _matches(c, q)) : [...commands];
     if (selIdx >= filtered.length) selIdx = 0;
 
