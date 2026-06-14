@@ -3,7 +3,7 @@
 // show), and each card manages its repo: click to reopen the saved analysis, hover for
 // re-scan / source / remove actions.
 
-import { scrollPoints, deleteRepo, exportStores, importStores, clearLibrary, listCollections, saveCollection, deleteCollection, listDecisions } from './store.js';
+import { scrollPoints, deleteRepo, exportStores, importStores, clearLibrary, listCollections, saveCollection, deleteCollection, listDecisions, saveDecision } from './store.js';
 import { rankRepos } from './store/search.js';
 import { DECISION_META } from './decision-log.js';
 import { makeCollection, validateCollectionName, addRepoToCollection, toggleRepoInCollection, collectionContains, sortedCollections, repoCollections, removeRepoFromCollection, nextColor, COLLECTION_COLORS } from './collections.js';
@@ -1460,6 +1460,74 @@ async function autoOrganize() {
   setStatus(`Auto-organized: ${created} new group${created !== 1 ? 's' : ''}, ${updated} repo${updated !== 1 ? 's' : ''} assigned.`);
 }
 
+// ─── Quick-decision popover (d key) ──────────────────────────────────────────
+
+function showQuickDecision(repoId, anchorEl) {
+  document.getElementById('rl-qdec')?.remove();
+  const current = decisionMap.get(repoId)?.decision ?? null;
+  const pop = document.createElement('div');
+  pop.id = 'rl-qdec';
+  pop.setAttribute('role', 'dialog');
+  pop.setAttribute('aria-label', 'Quick decision');
+  const choices = [
+    { key: 'adopt',  label: 'Adopt',  color: '#22c55e' },
+    { key: 'trial',  label: 'Trial',  color: '#3b82f6' },
+    { key: 'hold',   label: 'Hold',   color: '#f59e0b' },
+    { key: 'reject', label: 'Reject', color: '#ef4444' },
+  ];
+  pop.innerHTML = `<p class="qdec-heading">${repoId.replace(/^[^/]+\//, '')}</p>` +
+    choices.map((c) =>
+      `<button class="qdec-btn${current === c.key ? ' qdec-active' : ''}" data-d="${c.key}" style="--qdec-color:${c.color}">${c.label}</button>`
+    ).join('') +
+    (current ? `<button class="qdec-btn qdec-clear" data-d="">Clear</button>` : '');
+
+  async function pick(d) {
+    pop.remove();
+    document.removeEventListener('keydown', onKey, true);
+    document.removeEventListener('mousedown', onOutside, true);
+    if (d) {
+      const rec = { repoId, decision: d, savedAt: new Date().toISOString() };
+      await saveDecision(rec);
+      decisionMap.set(repoId, rec);
+    } else {
+      const { clearDecision } = await import('./store.js');
+      await clearDecision(repoId);
+      decisionMap.delete(repoId);
+    }
+    renderDecisionFilter();
+    render();
+  }
+
+  pop.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-d]');
+    if (!btn) return;
+    pick(btn.dataset.d);
+  });
+
+  function onKey(e) {
+    if (e.key === 'Escape') { pop.remove(); document.removeEventListener('keydown', onKey, true); document.removeEventListener('mousedown', onOutside, true); e.stopPropagation(); }
+    const map = { a: 'adopt', t: 'trial', h: 'hold', r: 'reject', c: '' };
+    if (e.key in map) { e.preventDefault(); e.stopPropagation(); pick(map[e.key]); }
+  }
+  function onOutside(e) {
+    if (!pop.contains(e.target)) { pop.remove(); document.removeEventListener('keydown', onKey, true); document.removeEventListener('mousedown', onOutside, true); }
+  }
+
+  document.addEventListener('keydown', onKey, true);
+  document.addEventListener('mousedown', onOutside, true);
+
+  document.body.appendChild(pop);
+  const rect = anchorEl.getBoundingClientRect();
+  const pw = pop.offsetWidth || 180, ph = pop.offsetHeight || 140;
+  let left = rect.left;
+  let top = rect.bottom + 6;
+  if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
+  if (top + ph > window.innerHeight - 8) top = rect.top - ph - 6;
+  pop.style.left = `${Math.max(8, left)}px`;
+  pop.style.top = `${Math.max(8, top)}px`;
+  pop.querySelector('.qdec-btn')?.focus();
+}
+
 // ─── j/k keyboard card navigation ────────────────────────────────────────────
 
 let jkIdx = -1;
@@ -1519,6 +1587,10 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'p') {
     const pinBtn = activeCard.querySelector('[data-act="pin"]');
     if (pinBtn) pinBtn.click();
+  }
+  if (e.key === 'd') {
+    e.preventDefault();
+    showQuickDecision(repoId, activeCard);
   }
 });
 
