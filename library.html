@@ -211,6 +211,15 @@
   .ls-bar-unrated{ background: var(--border-2); }
   .ls-stale { font: 700 11px/1 var(--mono); padding: 4px 10px; border-radius: 999px; background: color-mix(in srgb, var(--warn) 18%, var(--surface)); color: var(--warn); border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent); cursor: pointer; transition: background .15s; }
   .ls-stale:hover { background: color-mix(in srgb, var(--warn) 28%, var(--surface)); }
+  .ls-dec-row { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; width: 100%; margin-top: 4px; }
+  .ls-dec { border: none; padding: 2px 8px; border-radius: 999px; font: 600 10px/1.5 var(--mono); cursor: pointer; transition: opacity .15s; }
+  .ls-dec:hover { opacity: .8; }
+  .ls-dec.adopt     { background: var(--ok-bg);   color: var(--ok-ink);   border: 1px solid var(--ok-edge); }
+  .ls-dec.trial     { background: rgba(59,130,246,.1); color: #60a5fa; border: 1px solid rgba(59,130,246,.35); }
+  .ls-dec.hold      { background: var(--warn-bg); color: var(--warn-ink); border: 1px solid var(--warn-edge); }
+  .ls-dec.reject    { background: var(--bad-bg);  color: var(--bad-ink);  border: 1px solid var(--bad-edge); }
+  .ls-dec.undecided { background: transparent; color: var(--muted); border: 1px solid var(--border-2); }
+  .ls-dec-sep { color: var(--muted); font-size: 9px; }
 
   /* Backup / import status + confirm panel. */
   .lib-status { font: 500 12.5px var(--sans); color: var(--cyan); margin: -8px 0 16px; }

@@ -653,13 +653,36 @@ function renderStats() {
   const barSegments = FIT_ORDER.filter((lvl) => s.byFit[lvl] > 0)
     .map((lvl) => `<span class="ls-bar-seg ls-bar-${lvl}" style="flex:${s.byFit[lvl]}" title="${s.byFit[lvl]} ${lvl}"></span>`)
     .join('');
+  const decCounts = { adopt: 0, trial: 0, hold: 0, reject: 0 };
+  for (const d of decisionMap.values()) if (decCounts[d.decision] != null) decCounts[d.decision]++;
+  const totalDecided = decCounts.adopt + decCounts.trial + decCounts.hold + decCounts.reject;
+  const undecided = s.total - totalDecided;
+  const decSummary = totalDecided
+    ? `<span class="ls-dec-row">${
+        [
+          decCounts.adopt  ? `<button class="ls-dec adopt"  title="Show Adopt"  data-filter-dec="adopt">${decCounts.adopt} Adopt</button>`  : '',
+          decCounts.trial  ? `<button class="ls-dec trial"  title="Show Trial"  data-filter-dec="trial">${decCounts.trial} Trial</button>`  : '',
+          decCounts.hold   ? `<button class="ls-dec hold"   title="Show Hold"   data-filter-dec="hold">${decCounts.hold} Hold</button>`   : '',
+          decCounts.reject ? `<button class="ls-dec reject" title="Show Reject" data-filter-dec="reject">${decCounts.reject} Reject</button>` : '',
+          undecided > 0    ? `<button class="ls-dec undecided" title="Show Undecided" data-filter-dec="undecided">${undecided} undecided</button>` : '',
+        ].filter(Boolean).join('<span class="ls-dec-sep">·</span>')
+      }</span>`
+    : '';
   host.innerHTML = String(html`
     <span class="ls-total">${s.total} repo${s.total === 1 ? '' : 's'}</span>
     ${barSegments ? `<span class="ls-bar" title="Fit distribution">${barSegments}</span>` : ''}
     <span class="ls-pills">${FIT_ORDER.map((lvl) => pill(lvl, s.byFit[lvl]))}</span>
     ${s.avgHealth != null ? html`<span class="ls-health">avg health ${s.avgHealth}</span>` : ''}
     ${stalePill}
+    ${decSummary}
   `);
+  host.querySelectorAll('[data-filter-dec]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      state.decision = btn.dataset.filterDec;
+      renderDecisionFilter();
+      render();
+    });
+  });
   document.getElementById('refresh-stale')?.addEventListener('click', refreshStale);
 }
 
