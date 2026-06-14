@@ -6,6 +6,7 @@ import './styles/shell.css';
 export default function MarketingLayout({ children }: { children: ReactNode }) {
   return (
     <div className="site-root">
+      <div className="site-grain" aria-hidden="true" />
       <SiteHeader />
       <main className="site-main">{children}</main>
       <SiteFooter />

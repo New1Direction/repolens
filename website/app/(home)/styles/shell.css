@@ -47,6 +47,20 @@
   background-repeat: no-repeat;
 }
 
+/* Film grain — a faint static texture over everything, for atmosphere/depth. */
+.site-grain {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+}
+.dark .site-grain {
+  opacity: 0.06;
+}
+
 .site-root .container {
   width: 100%;
   max-width: var(--site-max);
@@ -56,6 +70,23 @@
 
 .site-main {
   flex: 1 0 auto;
+}
+
+/* Display typeface (Space Grotesk) for headline-scale text only; body stays
+   the system stack. Falls back to --sans if the font hasn't loaded. */
+.site-root .hero-title,
+.site-root .section-title,
+.site-root .final-cta-title,
+.site-root .brand-name,
+.site-root .vd-health-n,
+.site-root .vd-repo,
+.site-root .stat-n,
+.site-root .cl-stat-n,
+.site-root .step-n,
+.site-root .vtheme,
+.site-root .rel-theme,
+.site-root .cl-subhead {
+  font-family: var(--font-display, var(--sans));
 }
 
 /* ── Brand mark ──────────────────────────────────────────────────────── */
@@ -143,13 +174,13 @@
   border-radius: 9px;
 }
 .site-root .btn-primary {
-  background: var(--grad-soft);
-  color: #0a0a16;
-  box-shadow: 0 14px 34px -16px var(--accent-glow);
+  background: linear-gradient(120deg, var(--warm-2), var(--warm));
+  color: var(--warm-ink);
+  box-shadow: 0 14px 34px -16px var(--warm-glow);
 }
 .site-root .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 20px 44px -16px var(--accent-glow);
+  box-shadow: 0 22px 46px -16px var(--warm-glow);
 }
 .site-root .btn-ghost {
   background: color-mix(in srgb, var(--surface) 70%, transparent);
@@ -162,41 +193,74 @@
   color: var(--text-strong);
 }
 
-/* ── Theme toggle ────────────────────────────────────────────────────── */
+/* ── Theme toggle (morphing sun ⇄ moon) ──────────────────────────────── */
 .theme-toggle {
   display: inline-grid;
   place-items: center;
-  background: none;
-  border: none;
-  padding: 4px;
-  cursor: pointer;
-  border-radius: 999px;
-}
-.theme-toggle-track {
-  width: 46px;
-  height: 26px;
-  border-radius: 999px;
-  background: var(--surface-2);
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: var(--surface);
   border: 1px solid var(--border-2);
-  display: flex;
-  align-items: center;
-  padding: 2px;
-}
-.theme-toggle-thumb {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
   color: var(--accent);
-  background: var(--bg);
-  border: 1px solid var(--border-2);
-  transform: translateX(0);
-  transition: transform var(--dur) var(--ease-spring), color var(--dur-fast) var(--ease-out);
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-out), color var(--dur) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
 }
-.theme-toggle-thumb.is-light {
-  transform: translateX(20px);
-  color: var(--warn);
+.theme-toggle:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+.theme-toggle.is-light {
+  color: var(--warm);
+}
+.tt-icon {
+  display: block;
+  overflow: visible;
+}
+.tt-cutout,
+.tt-orb,
+.tt-rays {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* default = dark = moon: the cutout carves a crescent, rays retracted */
+.theme-toggle .tt-cutout {
+  cx: 17;
+  cy: 8;
+}
+.theme-toggle .tt-orb {
+  r: 6;
+}
+.theme-toggle .tt-rays {
+  opacity: 0;
+  transform: scale(0.35) rotate(-45deg);
+}
+
+/* light = sun: cutout slides away, smaller core, rays bloom out */
+.theme-toggle.is-light .tt-cutout {
+  cx: 26;
+  cy: 3;
+}
+.theme-toggle.is-light .tt-orb {
+  r: 5;
+}
+.theme-toggle.is-light .tt-rays {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tt-cutout {
+    transition: cx var(--dur) var(--ease-out), cy var(--dur) var(--ease-out);
+  }
+  .tt-orb {
+    transition: r var(--dur) var(--ease-out);
+  }
+  .tt-rays {
+    transition: opacity var(--dur) var(--ease-out), transform var(--dur-slow) var(--ease-spring);
+  }
 }
 
 /* ── Palette swatches ────────────────────────────────────────────────── */
@@ -426,27 +490,9 @@
   }
 }
 
-/* ── Section entrance ────────────────────────────────────────────────────
-   A gentle, self-completing load animation. Deliberately NOT scroll-linked:
-   scroll timelines leave sections taller than the viewport stuck at opacity 0,
-   and marketing content must always end fully visible. `both` only fills
-   backwards during the short delay; every element finishes opaque on its own.
-   ──────────────────────────────────────────────────────────────────────── */
-@media (prefers-reduced-motion: no-preference) {
-  .site-root .reveal {
-    animation: reveal-in 0.7s var(--ease-out) both;
-  }
-}
-@keyframes reveal-in {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
+/* Section reveals are driven by GSAP ScrollTrigger (see SiteMotion). `.reveal`
+   is just a marker class here — no CSS animation — so content is always visible
+   if JS doesn't load, and GSAP owns the hidden state at runtime only. */
 
 /* ── Vee motion (all gated behind reduced-motion) ────────────────────── */
 @media (prefers-reduced-motion: no-preference) {

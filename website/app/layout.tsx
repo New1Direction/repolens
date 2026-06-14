@@ -1,7 +1,17 @@
 import type { ReactNode } from 'react';
 import type { Metadata } from 'next';
+import { Space_Grotesk } from 'next/font/google';
 import { RootProvider } from 'fumadocs-ui/provider';
 import './global.css';
+
+// Self-hosted at build time (works with output: export). Display face for
+// headings only; body stays the system stack. Exposed as --font-display.
+const display = Space_Grotesk({
+  subsets: ['latin'],
+  weight: ['500', '600', '700'],
+  variable: '--font-display',
+  display: 'swap',
+});
 
 // On GitHub Pages the static export is served under /<repo>/, so the static search
 // index lives at <basePath>/api/search. Empty when served at root (local dev).
@@ -30,11 +40,11 @@ export const metadata: Metadata = {
  * Applies the saved accent palette (data-palette) before first paint so the
  * named palettes don't flash. Light/dark is handled by next-themes' own script.
  */
-const PALETTE_SCRIPT = `(function(){try{var p=localStorage.getItem('repolens-palette');if(p&&p!=='aurora')document.documentElement.setAttribute('data-palette',p);}catch(e){}})();`;
+const PALETTE_SCRIPT = `(function(){try{var p=localStorage.getItem('repolens-palette');if(p&&p!=='inspector')document.documentElement.setAttribute('data-palette',p);}catch(e){}})();`;
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={display.variable} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: PALETTE_SCRIPT }} />
       </head>

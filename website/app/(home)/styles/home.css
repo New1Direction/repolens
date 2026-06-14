@@ -229,7 +229,7 @@
 }
 .vd-tab.is-active {
   color: var(--text-strong);
-  border-bottom-color: var(--accent);
+  border-bottom-color: var(--warm);
 }
 .vd-verdict {
   margin: 16px 20px 0;

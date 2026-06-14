@@ -22,16 +22,25 @@
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
-  /* accent ramp — single source, tuned to read on both paper and midnight.
+  /* Inspector accent ramp — royal blue → cyan, tied to the mascot.
      [data-palette] overrides these; nothing else should redefine them. */
-  --accent: #7c5cff;
-  --accent-2: #3b82f6;
-  --accent-3: #22d3ee;
-  --grad: linear-gradient(120deg, #8b7cff 0%, #3b82f6 60%, #22d3ee 120%);
-  --grad-soft: linear-gradient(120deg, #8b7cff, #3b82f6);
-  --accent-glow: rgba(124, 92, 255, 0.5);
-  --accent-weak: rgba(124, 92, 255, 0.12);
-  --accent-line: rgba(124, 92, 255, 0.28);
+  --accent: #3b82f6;
+  --accent-2: #2563eb;
+  --accent-3: #38bdf8;
+  --grad: linear-gradient(120deg, #60a5fa 0%, #3b82f6 55%, #22d3ee 120%);
+  --grad-soft: linear-gradient(120deg, #3b82f6, #22d3ee);
+  --accent-glow: rgba(59, 130, 246, 0.5);
+  --accent-weak: rgba(59, 130, 246, 0.12);
+  --accent-line: rgba(59, 130, 246, 0.3);
+
+  /* Warm signature — the lens rim. Complementary to the blue; used sparingly
+     (the primary CTA, select highlights, the verdict tab underline). */
+  --warm: #f59e0b;
+  --warm-2: #fb923c;
+  --warm-ink: #2a1605;
+  --warm-glow: rgba(245, 158, 11, 0.5);
+  --warm-weak: rgba(245, 158, 11, 0.14);
+  --warm-line: rgba(245, 158, 11, 0.36);
 
   /* latte — warm paper, light */
   --bg: #f3f1ec;
@@ -63,23 +72,23 @@
   --color-fd-card: #faf8f3;
   --color-fd-card-foreground: #1a1813;
   --color-fd-border: #e2ddd1;
-  --color-fd-primary: #6d4aff;
+  --color-fd-primary: #2563eb;
   --color-fd-primary-foreground: #ffffff;
   --color-fd-secondary: #eee9df;
   --color-fd-secondary-foreground: #34322c;
   --color-fd-accent: #ece7dc;
   --color-fd-accent-foreground: #1a1813;
-  --color-fd-ring: #7c5cff;
+  --color-fd-ring: #3b82f6;
 }
 
 .dark {
-  /* midnight — near-black observatory, dark */
-  --bg: #06060d;
-  --bg-2: #0a0a16;
-  --surface: #11111f;
-  --surface-2: #161628;
-  --border: #21213a;
-  --border-2: #30304f;
+  /* midnight — blue-black observatory, dark */
+  --bg: #0a0e1a;
+  --bg-2: #0c1220;
+  --surface: #111a2e;
+  --surface-2: #16203a;
+  --border: #223149;
+  --border-2: #32486e;
   --text: #eaeefb;
   --text-strong: #ffffff;
   --sub: #9aa6c2;
@@ -94,22 +103,22 @@
   --starfield-opacity: 0.5;
 
   /* fumadocs remap → midnight */
-  --color-fd-background: #06060d;
+  --color-fd-background: #0a0e1a;
   --color-fd-foreground: #eaeefb;
-  --color-fd-muted: #11111f;
+  --color-fd-muted: #111a2e;
   --color-fd-muted-foreground: #9aa6c2;
-  --color-fd-popover: #0a0a16;
+  --color-fd-popover: #0c1220;
   --color-fd-popover-foreground: #eaeefb;
-  --color-fd-card: #0e0e1b;
+  --color-fd-card: #111a2e;
   --color-fd-card-foreground: #eaeefb;
-  --color-fd-border: #21213a;
-  --color-fd-primary: #8b7cff;
-  --color-fd-primary-foreground: #06060d;
-  --color-fd-secondary: #161628;
+  --color-fd-border: #223149;
+  --color-fd-primary: #60a5fa;
+  --color-fd-primary-foreground: #0a0e1a;
+  --color-fd-secondary: #16203a;
   --color-fd-secondary-foreground: #eaeefb;
-  --color-fd-accent: #1a1a30;
+  --color-fd-accent: #18233c;
   --color-fd-accent-foreground: #ffffff;
-  --color-fd-ring: #8b7cff;
+  --color-fd-ring: #3b82f6;
 }
 
 /* ── Accent palettes (showcase the theme engine) — accent ramp only ─────── */

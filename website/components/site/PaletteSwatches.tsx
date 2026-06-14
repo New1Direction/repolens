@@ -6,7 +6,7 @@ type Palette = { id: string; label: string; dot: string };
 
 /** Accent-only palettes layered on top of light/dark via [data-palette]. */
 const PALETTES: Palette[] = [
-  { id: 'aurora', label: 'Aurora', dot: 'linear-gradient(120deg,#8b7cff,#3b82f6,#22d3ee)' },
+  { id: 'inspector', label: 'Inspector', dot: 'linear-gradient(110deg,#3b82f6 55%,#f59e0b 55%)' },
   { id: 'terminal', label: 'Terminal', dot: 'linear-gradient(120deg,#6ee7b7,#10b981)' },
   { id: 'nord', label: 'Nord', dot: 'linear-gradient(120deg,#88c0d0,#5e81ac)' },
   { id: 'claude', label: 'Claude', dot: 'linear-gradient(120deg,#e8a87c,#c15f3c)' },
@@ -16,12 +16,13 @@ const STORAGE_KEY = 'repolens-palette';
 
 function applyPalette(id: string) {
   const root = document.documentElement;
-  if (id === 'aurora') root.removeAttribute('data-palette');
+  // 'inspector' is the default (no attribute) — the :root token set.
+  if (id === 'inspector') root.removeAttribute('data-palette');
   else root.setAttribute('data-palette', id);
 }
 
 export function PaletteSwatches() {
-  const [active, setActive] = useState('aurora');
+  const [active, setActive] = useState('inspector');
 
   // Sync to whatever the anti-FOUC script already applied.
   useEffect(() => {
