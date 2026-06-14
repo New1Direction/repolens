@@ -656,7 +656,7 @@ function renderStats() {
   const pill = (level, n) => (n ? html`<span class="ls-pill ${level}">${n} ${level}</span>` : '');
   const staleCount = allRows.filter((r) => {
     if (!r.savedAt) return false;
-    return (Date.now() - new Date(r.savedAt).getTime()) > 7 * 86_400_000;
+    return (Date.now() - new Date(r.savedAt).getTime()) > 30 * 86_400_000;
   }).length;
   const stalePill = staleCount
     ? html`<button class="ls-stale" id="refresh-stale" title="Queue stale repos for a fresh scan">↻ ${staleCount} stale</button>`
@@ -723,7 +723,7 @@ function renderNlFilterBanner() {
 async function refreshStale() {
   const stale = allRows.filter((r) => {
     if (!r.savedAt) return false;
-    return (Date.now() - new Date(r.savedAt).getTime()) > 7 * 86_400_000;
+    return (Date.now() - new Date(r.savedAt).getTime()) > 30 * 86_400_000;
   });
   if (!stale.length) return;
   const urls = stale.map((r) => sourceUrl(r.platform || '', r.repoId));
@@ -1818,6 +1818,14 @@ function initLibraryPalette() {
     { name: 'List view', description: 'Default card grid', action: () => { if (state.view !== 'list') toggleRadarView(); } },
     { section: 'Pins', name: 'Unpin all', description: 'Remove all pinned repos from the top section', action: async () => { pinned.clear(); await chrome.storage.local.set({ repolens_pinned: [] }); render(); } },
     { section: 'Actions', name: 'Auto-organize by language', description: 'Group repos into language collections', action: () => autoOrganize() },
+    { name: 'Re-scan all stale (30+ days)', description: 'Open Batch Scan pre-filled with repos not scanned in 30 days', action: () => refreshStale() },
+    { name: '⟳ Show: Stale only', description: 'Filter to repos not scanned in 30 days', action: () => {
+      const ids = allRows.filter((r) => r.savedAt && (Date.now() - Date.parse(r.savedAt)) > 30 * 86_400_000).map((r) => r.repoId);
+      nlFilter = ids.length
+        ? { question: 'Stale (not scanned in 30 days)', ids }
+        : { question: 'Stale repos', ids: [], error: 'No stale repos — all scans are under 30 days old' };
+      render();
+    } },
     { name: 'Batch Scan', description: 'Scan multiple repos at once', action: () => chrome.tabs.create({ url: chrome.runtime.getURL('batch.html') }) },
     { name: 'Export visible repos (Markdown)', description: 'Download only the currently filtered repos as Markdown', action: () => exportVisible('md') },
     { name: 'Export Library (Markdown)', description: 'Download library as a readable Markdown report', action: () => exportDigest('md') },
