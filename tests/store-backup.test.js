@@ -10,6 +10,8 @@ import {
   clearLibrary,
   scrollPoints,
   getEgoGraph,
+  saveCollection,
+  listCollections,
 } from '../store.js';
 import { idbClear } from '../store/idb.js';
 
@@ -20,6 +22,7 @@ describe('store backup — exportStores', () => {
     await idbClear('repos');
     await idbClear('nodes');
     await idbClear('edges');
+    await idbClear('collections');
   });
 
   it('gathers rows from all three stores', async () => {
@@ -40,6 +43,7 @@ describe('store backup — importStores', () => {
     await idbClear('repos');
     await idbClear('nodes');
     await idbClear('edges');
+    await idbClear('collections');
   });
 
   it('round-trips: export → clear → import restores the library', async () => {
@@ -53,11 +57,28 @@ describe('store backup — importStores', () => {
     expect(await scrollPoints()).toHaveLength(0);
 
     const written = await importStores(dump, { mode: 'replace' });
-    expect(written).toEqual({ repos: 2, nodes: 1, edges: 1 });
+    expect(written).toEqual({ repos: 2, nodes: 1, edges: 1, collections: 0 });
     const points = await scrollPoints();
     expect(points.map((p) => p.payload.repoId).sort()).toEqual(['a/one', 'b/two']);
     const ego = await getEgoGraph('a/one');
     expect(ego.neighbors).toHaveLength(1); // graph survived the round-trip
+  });
+
+  it('round-trips collections through export → clear → import', async () => {
+    await saveRepo(analysis('a/one'));
+    await saveCollection({ id: 'col1', name: 'My Stack', color: '#818cf8', repoIds: ['a/one'], createdAt: 't0', updatedAt: 't0' });
+
+    const dump = await exportStores();
+    expect(dump.collections).toHaveLength(1);
+
+    await clearLibrary();
+    expect(await listCollections()).toHaveLength(0);
+
+    const written = await importStores(dump, { mode: 'replace' });
+    expect(written.collections).toBe(1);
+    const restored = await listCollections();
+    expect(restored).toHaveLength(1);
+    expect(restored[0]).toMatchObject({ id: 'col1', name: 'My Stack', repoIds: ['a/one'] });
   });
 
   it('merge mode keeps existing rows and overwrites matching ids', async () => {

@@ -7,6 +7,41 @@ This project follows [Semantic Versioning](https://semver.org/) and groups chang
 by theme. Dates are when the release landed on `main` — 1.1.0 through 1.6.0 shipped
 the same day, as a rapid burst of improvements, so they share a date.
 
+## [1.7.0] — 2026-06-13 · _Boards, Vee, and a motion pass_
+
+### Added
+
+- **Collections ("Boards").** Group the repos you're weighing up together — _"Our 2026
+  stack"_, _"Eval: vector DBs"_ — and the Library gains a filter bar (with live counts),
+  per-card membership dots, and an assignment popover to add/remove a repo with one click.
+  Collections travel in your **Library → Export / Import** like everything else. Backed by
+  a new `collections.js` (pure, immutable helpers) and a `collections` IndexedDB store
+  added as an **additive v1→v2 upgrade** — existing repos, graph, and cache are untouched.
+- **"Vee", a lens mascot** _(optional)_. A small telescope/aperture character that reacts
+  to your scans — scanning as it reads, wide open on a **strong** fit, eyes narrowed on a
+  **risky** one, thinking during a Deep Dive, resting on an empty Library. One token-aware
+  inline SVG that re-skins across all 13 themes; purely decorative (`aria-hidden`) and
+  reduced-motion-safe. Turn it off in **Options → Interface** (`mascotEnabled`, on by
+  default; it travels with your settings backup).
+- **A shared motion vocabulary** (`--dur-*` / `--ease-*` tokens in `themes.css`) and a
+  subtle-animation pass across the result tab, Library, and Options: tactile `:active`
+  press states on every button / tab / chip / card, a staged tab reveal, a verdict
+  health-bar fill, a gentler saved-to-library toast, a fading guide modal, and a capped
+  Library grid stagger — all behind `prefers-reduced-motion`.
+
+### Changed
+
+- **Error screens are now actionable.** A failed scan routes its button by what you can
+  actually do: a rejected key / unknown model / nothing-connected shows **Open Settings**;
+  a transient hiccup shows **Retry**.
+- **Loading copy names the provider it's actually using** (e.g. _"Asking Gemini to read
+  this…"_) instead of always saying "Claude".
+
+### Notes
+
+- Still 100% client-side: Collections live in your in-browser IndexedDB and round-trip
+  through the library backup; no server, no accounts, no telemetry.
+
 ## [1.6.0] — 2026-06-13 · _Claude is API-key only_
 
 ### Removed

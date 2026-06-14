@@ -14,6 +14,8 @@ import { pingRunner } from './runner.js';
 import { emptyLens, runOf } from './lens-runs.js';
 import { spine, flow, ranked, matrix2x2, optionMatrix } from './layouts.js';
 import { guideFor } from './lens-guide.js';
+import { categorizeError, errorActions } from './errors.js';
+import { renderMascot, setMascotState, setMascotFromFit } from './mascot.js';
 
 // Apply the saved theme ASAP (before render) to minimise flash.
 initTheme();
@@ -46,13 +48,24 @@ const errorState = document.getElementById('error-state');
 const errorMsg = document.getElementById('error-msg');
 const main = document.getElementById('main-content');
 
+// Mascot ("Vee") — opt-in (default on), decorative, reduced-motion-safe. The
+// module never touches storage, so the on/off gate lives here.
+let mascotOn = false;
+let headerVee = null;
+async function isMascotEnabled() {
+  try { const { mascotEnabled } = await chrome.storage.local.get('mascotEnabled'); return mascotEnabled !== false; }
+  catch { return true; }
+}
+function veeToVerdict() {
+  if (mascotOn && headerVee && lastData) setMascotFromFit(headerVee, deriveFit(lastData).level);
+}
+
 const FETCH_PHRASES = [
   'Pulling the README…',
   'Grabbing the metadata…',
 ];
 
 const THINK_PHRASES = [
-  'Asking Claude to read this…',
   'Mapping the architecture…',
   'Reading between the lines…',
   'Weighing the trade-offs…',
@@ -63,6 +76,11 @@ const THINK_PHRASES = [
   'Building your breakdown…',
   'Almost there…',
 ];
+
+// Lead with the provider actually being used (not a hardcoded "Claude").
+function thinkPhrases(provider) {
+  return [`Asking ${provider || 'the model'} to read this…`, ...THINK_PHRASES];
+}
 
 function setLoadingMsg(msg) {
   const el = document.getElementById('loading-msg');
@@ -104,7 +122,7 @@ async function waitForData() {
         if (data.repoId) setLoadingName(data.repoId);
         if (data.status !== lastStatus) {
           lastStatus = data.status;
-          if (data.status === 'thinking') startCycling(THINK_PHRASES);
+          if (data.status === 'thinking') startCycling(thinkPhrases(data.provider));
           else startCycling(FETCH_PHRASES);
         }
         await sleep(400);
@@ -121,9 +139,13 @@ async function waitForData() {
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 async function init() {
+  mascotOn = await isMascotEnabled();
+  if (mascotOn) renderMascot(document.getElementById('loading-vee'), 'scanning');
+
   if (!sessionKey) {
     loading.style.display = 'none';
     errorMsg.textContent = 'No session key — please re-run the analysis by clicking the extension icon.';
+    if (mascotOn) renderMascot(document.getElementById('error-vee'), 'error');
     errorState.style.display = 'flex';
     return;
   }
@@ -133,12 +155,15 @@ async function init() {
   if (data.error) {
     errorMsg.textContent = data.error;
     // Retry can only re-run when we know which repo to analyse.
-    if (data.platform && data.repoId) {
-      retryContext = { platform: data.platform, repoId: data.repoId };
-      if (retryBtn) retryBtn.style.display = '';
-    } else if (retryBtn) {
-      retryBtn.style.display = 'none';
-    }
+    const canRetry = Boolean(data.platform && data.repoId);
+    if (canRetry) retryContext = { platform: data.platform, repoId: data.repoId };
+    // Route the CTA by what the user can actually do: fixable errors (bad key,
+    // wrong model, nothing connected) get "Open Settings"; the rest get "Retry".
+    const kind = data.errorKind || categorizeError(data.error).kind;
+    const actions = errorActions(kind, canRetry);
+    if (settingsBtn) settingsBtn.style.display = actions.settings ? '' : 'none';
+    if (retryBtn) retryBtn.style.display = actions.retry ? '' : 'none';
+    if (mascotOn) renderMascot(document.getElementById('error-vee'), 'error');
     errorState.style.display = 'flex';
     return;
   }
@@ -147,6 +172,16 @@ async function init() {
   renderPage(data);
   main.style.display = 'block';
   document.title = `RepoLens — ${data.repoId}`;
+
+  // Header logo becomes Vee, reacting to the verdict (one-shot pop/squint on mount).
+  if (mascotOn) {
+    const logoSlot = document.getElementById('logo-vee');
+    if (logoSlot) {
+      logoSlot.style.background = 'none';
+      headerVee = renderMascot(logoSlot, 'idle');
+      setMascotFromFit(headerVee, deriveFit(data).level);
+    }
+  }
 
   watchSaveStatus(data);
   loadLibraryComparison(data);
@@ -552,6 +587,13 @@ function renderDeepDive(d) {
   const host = document.getElementById('t10');
   if (!host) return;
   const dd = d.deepDive;
+
+  // Vee thinks while a deep dive is in flight, then settles back to the verdict.
+  if (headerVee) {
+    const inFlight = dd && dd.status && dd.status !== 'done' && dd.status !== 'error';
+    if (inFlight) setMascotState(headerVee, 'thinking');
+    else veeToVerdict();
+  }
 
   if (!dd || !dd.status) {
     host.innerHTML = `<div class="dd-cta">
@@ -1269,6 +1311,8 @@ document.getElementById('export-html')?.addEventListener('click', () => {
 
 let retryContext = null;
 const retryBtn = document.getElementById('retry-btn');
+const settingsBtn = document.getElementById('settings-btn');
+settingsBtn?.addEventListener('click', () => chrome.runtime.openOptionsPage());
 retryBtn?.addEventListener('click', async () => {
   if (!retryContext) { location.reload(); return; }
   retryBtn.disabled = true;

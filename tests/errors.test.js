@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { categorizeError, rankErrors } from '../errors.js';
+import { categorizeError, rankErrors, errorActions } from '../errors.js';
 
 describe('categorizeError', () => {
   it('classifies auth failures as fixable, not retryable', () => {
@@ -60,5 +60,30 @@ describe('rankErrors', () => {
   });
   it('accepts raw errors as well as {provider,error} items', () => {
     expect(rankErrors([new Error('429 rate limit')]).kind).toBe('rate_limit');
+  });
+});
+
+describe('errorActions', () => {
+  it('offers Settings for fixable kinds (auth/none/not_found/bad_request)', () => {
+    for (const kind of ['auth', 'none', 'not_found', 'bad_request']) {
+      expect(errorActions(kind, false).settings).toBe(true);
+    }
+  });
+  it('does not offer Settings for transient kinds', () => {
+    for (const kind of ['rate_limit', 'server', 'network', 'unknown']) {
+      expect(errorActions(kind, false).settings).toBe(false);
+    }
+  });
+  it('offers Retry when the repo is known, regardless of kind', () => {
+    expect(errorActions('auth', true).retry).toBe(true);
+    expect(errorActions('rate_limit', true).retry).toBe(true);
+  });
+  it('still offers a way forward (Retry) for transient errors even without repo context', () => {
+    expect(errorActions('server', false).retry).toBe(true);
+    expect(errorActions('unknown', false).retry).toBe(true);
+  });
+  it('does not push Retry for a purely fixable error with no repo context', () => {
+    expect(errorActions('auth', false).retry).toBe(false);
+    expect(errorActions('none', false).retry).toBe(false);
   });
 });

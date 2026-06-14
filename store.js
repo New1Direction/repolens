@@ -108,6 +108,31 @@ export async function searchLibrary({ query, topK = 12, excludeRepoId }) {
   }
 }
 
+// ─── collections: user-curated boards of repos ───────────────────────────────
+
+/** Every collection, newest field shape. Best-effort — [] on failure. */
+export async function listCollections() {
+  try {
+    const rows = await idbGetAll('collections');
+    return (rows || []).map((r) => r && r.payload).filter((c) => c && c.id);
+  } catch {
+    return [];
+  }
+}
+
+/** Upsert a collection (keyed by its id). Throws on failure so the UI can surface it. */
+export async function saveCollection(collection) {
+  if (!collection || !collection.id) throw new Error('Collection needs an id');
+  await idbPut('collections', { id: collection.id, payload: collection });
+}
+
+/** Delete a collection by id. Best-effort — never throws. */
+export async function deleteCollection(id) {
+  try {
+    await idbDelete('collections', id);
+  } catch { /* store unavailable */ }
+}
+
 // ─── graph: nodes + edges for the Connections tab ─────────────────────────────
 
 /** Upsert a graph node's payload (idempotent by id). Throws on failure (callers wrap best-effort). */
@@ -145,14 +170,15 @@ export async function getEgoGraph(repoId) {
 
 const validRows = (rows) => (rows || []).filter((r) => r && r.id != null);
 
-/** Gather every row from all three stores for a backup envelope. */
+/** Gather every row from all stores for a backup envelope. */
 export async function exportStores() {
-  const [repos, nodes, edges] = await Promise.all([
+  const [repos, nodes, edges, collections] = await Promise.all([
     idbGetAll('repos'),
     idbGetAll('nodes'),
     idbGetAll('edges'),
+    idbGetAll('collections'),
   ]);
-  return { repos: repos || [], nodes: nodes || [], edges: edges || [] };
+  return { repos: repos || [], nodes: nodes || [], edges: edges || [], collections: collections || [] };
 }
 
 /**
@@ -164,18 +190,19 @@ export async function exportStores() {
  * @param {{ repos?: object[], nodes?: object[], edges?: object[] }} rows
  * @param {{ mode?: 'merge'|'replace' }} [opts]
  */
-export async function importStores({ repos = [], nodes = [], edges = [] } = {}, { mode = 'merge' } = {}) {
+export async function importStores({ repos = [], nodes = [], edges = [], collections = [] } = {}, { mode = 'merge' } = {}) {
   if (mode === 'replace') {
-    await Promise.all([idbClear('repos'), idbClear('nodes'), idbClear('edges')]);
+    await Promise.all([idbClear('repos'), idbClear('nodes'), idbClear('edges'), idbClear('collections')]);
   }
-  const vr = validRows(repos), vn = validRows(nodes), ve = validRows(edges);
+  const vr = validRows(repos), vn = validRows(nodes), ve = validRows(edges), vc = validRows(collections);
   for (const row of vr) await idbPut('repos', row);
   for (const row of vn) await idbPut('nodes', row);
   for (const row of ve) await idbPut('edges', row);
-  return { repos: vr.length, nodes: vn.length, edges: ve.length };
+  for (const row of vc) await idbPut('collections', row);
+  return { repos: vr.length, nodes: vn.length, edges: ve.length, collections: vc.length };
 }
 
-/** Wipe the whole library (all three stores). Backs the "Clear library" action. */
+/** Wipe the whole library (all stores). Backs the "Clear library" action. */
 export async function clearLibrary() {
-  await Promise.all([idbClear('repos'), idbClear('nodes'), idbClear('edges')]);
+  await Promise.all([idbClear('repos'), idbClear('nodes'), idbClear('edges'), idbClear('collections')]);
 }

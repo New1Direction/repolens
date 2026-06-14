@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RepoLens</title>
 <link rel="stylesheet" href="themes.css">
+<link rel="stylesheet" href="mascot.css">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--body-bg); color: var(--text); font-family: var(--font); min-height: 100vh; }
@@ -53,7 +54,7 @@
     cursor: pointer;
     border-bottom: 2px solid transparent;
     white-space: nowrap;
-    transition: all .15s;
+    transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
     border-top: none; border-left: none; border-right: none;
     background: none;
   }
@@ -126,8 +127,7 @@
   .veles-name { font-size: 12px; font-weight: 600; color: var(--accent); min-width: 90px; }
   .veles-diff { font-size: 11px; color: var(--text-muted); line-height: 1.5; }
 
-  .saved-badge { position: fixed; bottom: 24px; right: 24px; background: var(--ok-bg); border: 1px solid var(--ok-edge); border-radius: 8px; padding: 10px 16px; font-size: 11px; color: var(--ok-ink); display: flex; align-items: center; gap: 8px; font-weight: 600; animation: fadeup .4s ease; }
-  @keyframes fadeup { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+  .saved-badge { position: fixed; bottom: 24px; right: 24px; background: var(--ok-bg); border: 1px solid var(--ok-edge); border-radius: 8px; padding: 10px 16px; font-size: 11px; color: var(--ok-ink); display: flex; align-items: center; gap: 8px; font-weight: 600; }
 
   #cache-banner { display: none; align-items: center; gap: 12px; background: var(--surface-alt); border-bottom: 1px solid var(--border); padding: 8px 32px; font-size: 12px; color: var(--text-sub); }
   #cache-banner button { background: var(--accent-deep); color: #fff; border: none; border-radius: 6px; padding: 4px 12px; font-size: 11px; font-weight: 600; cursor: pointer; }
@@ -135,8 +135,8 @@
   .export-btn { background: var(--surface); border: 1px solid var(--border-2); color: var(--text-sub); border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 600; cursor: pointer; transition: color .15s, border-color .15s; }
   .export-btn:hover { color: var(--text); border-color: var(--accent); }
   .theme-switcher { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; justify-content: flex-end; }
-  .swatch { width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--border-2); cursor: pointer; padding: 0; background-clip: padding-box; transition: transform .1s, box-shadow .15s; }
-  .swatch:hover { transform: scale(1.15); }
+  .swatch { width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--border-2); cursor: pointer; padding: 0; background-clip: padding-box; transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur) var(--ease-out); }
+  .swatch:hover { transform: scale(1.05); }
   .swatch.active { border: 2px solid var(--accent); box-shadow: 0 0 6px var(--accent); }
 
   /* Diagrams (dependency-free SVG) */
@@ -511,13 +511,56 @@
     transition-duration: .001ms !important; scroll-behavior: auto !important;
   }
 }
+
+/* ── Subtle motion pass ───────────────────────────────────────────────
+   Press feedback is instant for everyone (a state change, not vestibular
+   motion); the easing that smooths it and every entrance animation are
+   gated to (prefers-reduced-motion: no-preference). The reduce reset above
+   stays the authoritative safety net — these are NOT wrapped a second time. */
+.tab-btn:active, .tab-menu-btn:active,
+.export-btn:active, .dd-run:active, .v-jump:active, .v-copy:active,
+.cb-pin:active, .cb-change:active, .ts-more:active,
+#rerun-fresh:active, #retry-btn:active, #settings-btn:active { transform: scale(0.97); }
+.lens-chip:active, .fw-chip:active, .vs-chip:active { transform: scale(0.96); }
+.entry-card:active, .use-card:active { transform: scale(0.99); }
+.swatch:active { transform: scale(0.95); }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Enumerated props (no more `all`), ease-out hover-in, smooth press. */
+  .tab-btn, .tab-menu-btn { transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out); }
+  .export-btn, .dd-run, .v-jump, .v-copy, .cb-pin, .cb-change, .ts-more, #rerun-fresh, #retry-btn, #settings-btn {
+    transition: color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+  }
+  .lens-chip, .fw-chip, .vs-chip {
+    transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+  }
+  .entry-card, .use-card { transition: border-color var(--dur) var(--ease-out), transform var(--dur-fast) var(--ease-out), box-shadow var(--dur) var(--ease-out); }
+
+  /* Stage the newly focal tab panel instead of an abrupt display swap. */
+  .tab-content.active { animation: tab-in var(--dur-slow) var(--ease-out) both; }
+  @keyframes tab-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  /* The hero progress bars fill in (the one valid ease-out progress case). */
+  .health-fill, .score-fill { transform-origin: left center; animation: bar-fill var(--dur-slow) var(--ease-out) both; }
+  @keyframes bar-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+  /* Saved toast: gentle spring entrance, under the 300ms budget (was 400ms). */
+  .saved-badge { animation: badge-in var(--dur-slow) var(--ease-spring) both; }
+  @keyframes badge-in { from { opacity: 0; transform: translateY(8px) scale(0.96); } to { opacity: 1; transform: none; } }
+
+  /* Guide modal: the dim veil fades and the dialog rises (was an instant jump). */
+  .guide-veil { display: flex; visibility: hidden; opacity: 0; transition: opacity var(--dur-slow) var(--ease-out), visibility 0s linear var(--dur-slow); }
+  .guide-veil.open { visibility: visible; opacity: 1; transition: opacity var(--dur-slow) var(--ease-out); }
+  .guide { transform: translateY(10px) scale(0.985); transition: transform var(--dur-slow) var(--ease-out); }
+  .guide-veil.open .guide { transform: none; }
+}
 </style>
 </head>
 <body>
 
 <!-- Loading state -->
 <div id="loading-state" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;gap:10px">
-  <div style="width:36px;height:36px;background:var(--accent-grad);border-radius:10px;animation:pulse 1.5s ease-in-out infinite;margin-bottom:6px"></div>
+  <div id="loading-vee" style="margin-bottom:6px"><div style="width:36px;height:36px;background:var(--accent-grad);border-radius:10px;animation:pulse 1.5s ease-in-out infinite"></div></div>
   <div id="loading-name" style="font-size:16px;font-weight:800;color:var(--text);letter-spacing:-0.3px;min-height:22px"></div>
   <div id="loading-msg" style="font-size:13px;color:var(--text-faint);transition:opacity .3s">Starting…</div>
   <style>@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}</style>
@@ -525,9 +568,12 @@
 
 <!-- Error state -->
 <div id="error-state" style="display:none;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;gap:12px">
-  <div style="font-size:32px">⚠️</div>
+  <div id="error-vee" style="font-size:32px">⚠️</div>
   <div id="error-msg" style="font-size:14px;color:var(--bad-ink);text-align:center;max-width:400px"></div>
-  <button id="retry-btn" style="display:none;background:var(--accent-deep);color:var(--text-strong);border:none;border-radius:6px;padding:8px 16px;cursor:pointer;font-size:13px">Retry</button>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+    <button id="settings-btn" style="display:none;background:var(--accent-deep);color:var(--text-strong);border:none;border-radius:6px;padding:8px 16px;cursor:pointer;font-size:13px;font-weight:600">Open Settings</button>
+    <button id="retry-btn" style="display:none;background:var(--surface);color:var(--text);border:1px solid var(--border-2);border-radius:6px;padding:8px 16px;cursor:pointer;font-size:13px;font-weight:600">Retry</button>
+  </div>
 </div>
 
 <!-- Main content (hidden until data loads) -->
@@ -538,7 +584,7 @@
   <!-- Header -->
   <div class="header">
     <div class="header-left">
-      <div class="logo">⚛</div>
+      <div class="logo" id="logo-vee">⚛</div>
       <div>
         <div class="repo-name"></div>
         <div class="repo-desc"></div>

@@ -17,6 +17,7 @@ export const SAFE_SETTING_KEYS = [
   'autoSave',
   'aiGapMs',
   'sktpgEnabled',
+  'mascotEnabled',
   'partRouting',
   'anthropicModel',
   'googleModel',

@@ -3,12 +3,14 @@
 // show), and each card manages its repo: click to reopen the saved analysis, hover for
 // re-scan / source / remove actions.
 
-import { scrollPoints, deleteRepo, exportStores, importStores, clearLibrary } from './store.js';
+import { scrollPoints, deleteRepo, exportStores, importStores, clearLibrary, listCollections, saveCollection, deleteCollection } from './store.js';
+import { makeCollection, validateCollectionName, addRepoToCollection, toggleRepoInCollection, collectionContains, sortedCollections, repoCollections, removeRepoFromCollection, nextColor, COLLECTION_COLORS } from './collections.js';
 import { listCached, removeCached, openCachedAnalysis, importCache, clearCache } from './cache.js';
 import { libraryRow, sortRows, filterRows, allCapabilities, relativeTime, sourceUrl, mergeRows, libraryStats } from './library-data.js';
 import { buildBackup, validateBackup, summarizeBackup, backupFilename } from './backup.js';
 import { html, escapeHtml as esc } from './safe-html.js';
 import { initTheme } from './theme.js';
+import { veeSvg } from './mascot.js';
 
 // Honour the user's chosen theme on this standalone page (sets <html data-theme>).
 initTheme();
@@ -24,7 +26,16 @@ const langColor = (n) => LANG_COLORS[n] || '#64748b';
 
 let allRows = [];
 let cacheByRepo = new Map(); // repoId → full cached analysis (instant reopen)
-const state = { query: '', sort: 'fit', capability: '' };
+const state = { query: '', sort: 'fit', capability: '', collection: '' };
+
+// Collections ("Boards") — user-curated groups of repos. Loaded once on init,
+// kept in memory, and persisted per-change. `collection` in state holds the id of
+// the active filter ('' = All).
+let collections = [];
+
+// Colors come from a fixed palette, but a hand-crafted imported backup could carry
+// anything — validate before it reaches an inline `style` (prevents CSS injection).
+const safeColor = (v) => (/^#[0-9a-fA-F]{3,8}$/.test(v) ? v : COLLECTION_COLORS[0]);
 
 // Bulk selection: a toolbar toggle reveals per-card checkboxes; the action bar
 // removes every checked repo in one go. `selected` holds repoIds (kept even when
@@ -40,6 +51,13 @@ function card(r) {
   const tags = r.capabilities.slice(0, 4).map((c) => `<span class="lc-tag">${esc(c)}</span>`).join('');
   const when = relativeTime(r.savedAt);
   const sel = selected.has(r.repoId);
+  const boards = repoCollections(collections, r.repoId);
+  const boardDots = boards.length
+    ? `<span class="lc-boards" title="${esc(boards.map((b) => b.name).join(', '))}">${boards
+        .slice(0, 5)
+        .map((b) => `<span class="lc-board-dot" style="background:${safeColor(b.color)}"></span>`)
+        .join('')}</span>`
+    : '';
   return `<div class="lib-card${sel ? ' is-selected' : ''}" data-repo="${esc(r.repoId)}" title="${r.hasCache ? 'Open the saved analysis (instant, no AI call)' : 'Open the project page'}">
     <div class="lc-top">
       <input type="checkbox" class="lc-check"${sel ? ' checked' : ''} aria-label="Select ${esc(r.name)} for removal" title="Select for bulk removal">
@@ -54,8 +72,9 @@ function card(r) {
       ${dots ? `<span class="lc-langs">${dots}</span>` : ''}
       ${when ? `<span class="lc-when" title="Last scanned ${esc(r.savedAt)}">scanned ${esc(when)}</span>` : ''}
     </div>
-    ${tags ? `<div class="lc-tags">${tags}</div>` : ''}
+    ${tags || boardDots ? `<div class="lc-tags">${tags}${boardDots}</div>` : ''}
     <div class="lc-actions">
+      <button class="lc-act" data-act="boards" title="Add to a collection">▦ Boards</button>
       <button class="lc-act" data-act="rescan" title="Run a fresh scan (AI call)">↻ Re-scan</button>
       <button class="lc-act" data-act="source" title="Open the project page">Source ↗</button>
       <button class="lc-act lc-act-del" data-act="remove" title="Remove from library and local history">✕</button>
@@ -65,7 +84,14 @@ function card(r) {
 
 function render() {
   const grid = document.getElementById('grid');
-  const rows = sortRows(filterRows(allRows, state), state.sort);
+  let rows = sortRows(filterRows(allRows, state), state.sort);
+  // Collection filter is applied here (not in the pure filterRows) so library-data
+  // stays unaware of collections — the membership lives only in this module.
+  if (state.collection) {
+    const active = collections.find((c) => c.id === state.collection);
+    const ids = new Set(active ? active.repoIds : []);
+    rows = rows.filter((r) => ids.has(r.repoId));
+  }
   document.getElementById('count').textContent =
     rows.length === allRows.length ? `${allRows.length} repos` : `${rows.length} of ${allRows.length}`;
   grid.innerHTML = rows.length ? rows.map(card).join('') : '<p style="color:var(--muted);padding:20px 0">No repos match these filters.</p>';
@@ -83,11 +109,12 @@ function render() {
     cb?.addEventListener('change', () => toggleSelect(el.dataset.repo, el, cb.checked));
   });
   grid.querySelectorAll('.lc-act').forEach((btn) => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', (e) => {
       const repoId = btn.closest('.lib-card').dataset.repo;
       if (btn.dataset.act === 'source') openSource(repoId);
       else if (btn.dataset.act === 'rescan') rescan(repoId);
       else if (btn.dataset.act === 'remove') removeRepo(repoId, btn);
+      else if (btn.dataset.act === 'boards') { e.stopPropagation(); openBoardsPopover(repoId, btn); }
     });
   });
   if (selectionMode) updateSelectionBar(); // keep the bar's count / "Select all" label in sync
@@ -131,9 +158,21 @@ async function removeRepo(repoId, btn) {
   await deleteRepo(repoId); // best-effort; never throws
   cacheByRepo.delete(repoId);
   allRows = allRows.filter((row) => row.repoId !== repoId);
+  await pruneRepoFromCollections(repoId); // keep collection membership honest
   renderCaps();
+  renderCollections();
   render();
   renderStats();
+}
+
+// Drop a now-deleted repo from any collection that referenced it (persisted).
+async function pruneRepoFromCollections(repoId) {
+  const touched = collections.filter((c) => collectionContains(c, repoId));
+  if (!touched.length) return;
+  collections = collections.map((c) => removeRepoFromCollection(c, repoId, { now: new Date().toISOString() }));
+  for (const c of touched) {
+    try { await saveCollection(collections.find((x) => x.id === c.id)); } catch { /* best-effort */ }
+  }
 }
 
 // ─── bulk multi-select delete ──────────────────────────────────────────────────
@@ -278,7 +317,7 @@ async function exportLibrary() {
   try {
     setStatus('Preparing backup…');
     const [stores, cached] = await Promise.all([exportStores(), listCached().catch(() => [])]);
-    const backup = buildBackup({ repos: stores.repos, nodes: stores.nodes, edges: stores.edges, cache: cached });
+    const backup = buildBackup({ repos: stores.repos, nodes: stores.nodes, edges: stores.edges, cache: cached, collections: stores.collections });
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -413,6 +452,128 @@ function renderCaps() {
   });
 }
 
+// ─── Collections ("Boards") ──────────────────────────────────────────────────
+
+// Renders the filter bar: All · each collection (name + count) · + New · Delete.
+function renderCollections() {
+  const host = document.getElementById('collections');
+  if (!host) return;
+  const cols = sortedCollections(collections);
+  const chip = (id, label, count, color) =>
+    `<button class="lib-coll${state.collection === id ? ' on' : ''}" data-coll="${esc(id)}">` +
+    `${color ? `<span class="coll-dot" style="background:${safeColor(color)}"></span>` : ''}${esc(label)}` +
+    `<span class="coll-n">${count}</span></button>`;
+  const chips = [
+    chip('', 'All', allRows.length, ''),
+    ...cols.map((c) => chip(c.id, c.name, c.repoIds.length, c.color)),
+    `<button class="lib-coll lib-coll-new" data-coll-new="1" title="Create a collection">＋ New</button>`,
+    state.collection ? `<button class="lib-coll lib-coll-del" data-coll-del="1" title="Delete this collection">Delete collection</button>` : '',
+  ].join('');
+  host.innerHTML = chips;
+
+  host.querySelectorAll('[data-coll]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      state.collection = btn.dataset.coll;
+      renderCollections();
+      render();
+    });
+  });
+  host.querySelector('[data-coll-new]')?.addEventListener('click', () => createCollection());
+  host.querySelector('[data-coll-del]')?.addEventListener('click', (e) => confirmDeleteCollection(e.currentTarget));
+}
+
+// Create a collection (optionally adding a repo to it straight away).
+async function createCollection(addRepoId) {
+  const name = window.prompt('Name this collection');
+  if (name === null) return null; // cancelled
+  const check = validateCollectionName(name, collections);
+  if (!check.ok) { setStatus(check.error, true); return null; }
+  let col = makeCollection(name, { id: crypto.randomUUID(), color: nextColor(collections.length), now: new Date().toISOString() });
+  if (addRepoId) col = addRepoToCollection(col, addRepoId, { now: col.createdAt });
+  collections = [...collections, col];
+  try { await saveCollection(col); setStatus(`Created “${col.name}”`); }
+  catch { setStatus('Could not save the collection.', true); }
+  renderCollections();
+  render();
+  return col;
+}
+
+// Two-step inline confirm (matches the repo-delete pattern — no native confirm()).
+function confirmDeleteCollection(btn) {
+  if (!btn.dataset.armed) {
+    btn.dataset.armed = '1';
+    btn.textContent = 'Delete — sure?';
+    setTimeout(() => { if (btn.isConnected) { btn.dataset.armed = ''; btn.textContent = 'Delete collection'; } }, 2500);
+    return;
+  }
+  const id = state.collection;
+  collections = collections.filter((c) => c.id !== id);
+  deleteCollection(id); // best-effort; never throws
+  state.collection = '';
+  renderCollections();
+  render();
+}
+
+// Per-card assignment popover — toggle the repo's membership in each collection.
+let openPopover = null;
+function closeBoardsPopover() {
+  if (!openPopover) return;
+  openPopover.remove();
+  openPopover = null;
+  document.removeEventListener('click', onPopoverDocClick, true);
+  document.removeEventListener('keydown', onPopoverKey, true);
+}
+function onPopoverDocClick(e) { if (openPopover && !openPopover.contains(e.target)) closeBoardsPopover(); }
+function onPopoverKey(e) { if (e.key === 'Escape') closeBoardsPopover(); }
+
+function openBoardsPopover(repoId, anchor) {
+  closeBoardsPopover();
+  const cols = sortedCollections(collections);
+  const list = cols.length
+    ? cols.map((c) => `<button class="bp-row" data-id="${esc(c.id)}">` +
+        `<span class="bp-check">${collectionContains(c, repoId) ? '✓' : ''}</span>` +
+        `<span class="coll-dot" style="background:${safeColor(c.color)}"></span>` +
+        `<span class="bp-name">${esc(c.name)}</span></button>`).join('')
+    : `<div class="bp-empty">No collections yet.</div>`;
+  const pop = document.createElement('div');
+  pop.className = 'boards-pop';
+  pop.innerHTML = list + `<button class="bp-row bp-new" data-new="1">＋ New collection…</button>`;
+  document.body.appendChild(pop);
+
+  const r = anchor.getBoundingClientRect();
+  const left = Math.min(window.scrollX + r.left, window.scrollX + window.innerWidth - pop.offsetWidth - 12);
+  pop.style.top = `${window.scrollY + r.bottom + 6}px`;
+  pop.style.left = `${Math.max(window.scrollX + 8, left)}px`;
+  openPopover = pop;
+
+  pop.querySelectorAll('.bp-row[data-id]').forEach((b) => {
+    b.addEventListener('click', async () => {
+      await toggleMembership(b.dataset.id, repoId);
+      const col = collections.find((c) => c.id === b.dataset.id);
+      b.querySelector('.bp-check').textContent = col && collectionContains(col, repoId) ? '✓' : '';
+    });
+  });
+  pop.querySelector('[data-new]')?.addEventListener('click', async () => {
+    closeBoardsPopover();
+    await createCollection(repoId);
+  });
+  // Defer so the click that opened the popover doesn't immediately close it.
+  setTimeout(() => {
+    document.addEventListener('click', onPopoverDocClick, true);
+    document.addEventListener('keydown', onPopoverKey, true);
+  }, 0);
+}
+
+async function toggleMembership(collectionId, repoId) {
+  const idx = collections.findIndex((c) => c.id === collectionId);
+  if (idx < 0) return;
+  const updated = toggleRepoInCollection(collections[idx], repoId, { now: new Date().toISOString() });
+  collections = collections.map((c, i) => (i === idx ? updated : c));
+  try { await saveCollection(updated); } catch { setStatus('Could not update the collection.', true); }
+  renderCollections(); // counts changed
+  render();            // card dots + (if filtering this collection) membership
+}
+
 // Renders a static, code-owned empty-state string. STATIC ONLY — never pass
 // user-influenced data here (it is assigned straight to innerHTML).
 function showEmpty(staticHtml) {
@@ -427,12 +588,15 @@ async function init() {
   document.getElementById('settings')?.addEventListener('click', () => chrome.runtime.openOptionsPage());
   wireToolbar(); // before the empty-state return, so Import works on an empty library
 
-  const [points, cachedList, prefs] = await Promise.all([
+  const [points, cachedList, prefs, savedCollections] = await Promise.all([
     scrollPoints(),
     listCached().catch(() => []),
-    chrome.storage.local.get('librarySort').catch(() => ({})),
+    chrome.storage.local.get(['librarySort', 'mascotEnabled']).catch(() => ({})),
+    listCollections().catch(() => []),
   ]);
   if (prefs?.librarySort) state.sort = prefs.librarySort; // restore the last chosen sort
+  const mascotOn = prefs?.mascotEnabled !== false; // default on
+  collections = savedCollections;
   cacheByRepo = new Map(cachedList.filter((c) => c && c.repoId).map((c) => [c.repoId, c]));
 
   // Saved-library rows win (richer capabilities); local cache fills the gaps (repos
@@ -454,12 +618,15 @@ async function init() {
   }
 
   if (!allRows.length) {
+    // veeSvg() is a static, code-owned string — safe for the STATIC-only showEmpty.
+    const vee = mascotOn ? `<div class="vee is-empty" aria-hidden="true" style="margin-bottom:14px">${veeSvg()}</div>` : '';
     showEmpty(
-      `<h2>No repos yet</h2><p>Open any <b>GitHub / GitLab / npm / PyPI</b> page and click the RepoLens icon —<br>every scan lands here automatically.</p>`
+      `${vee}<h2>No repos yet</h2><p>Open any <b>GitHub / GitLab / npm / PyPI</b> page and click the RepoLens icon —<br>every scan lands here automatically.</p>`
     );
     return;
   }
   renderCaps();
+  renderCollections();
   render();
   renderStats();
   let searchTimer = null;

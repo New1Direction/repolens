@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>RepoLens — Library</title>
 <link rel="stylesheet" href="themes.css">
+<link rel="stylesheet" href="mascot.css">
 <style>
   /* The Library maps its local colour vocabulary onto the active theme's tokens
      (themes.css), so it honours the chosen theme like every other surface.
@@ -26,7 +27,8 @@
   .lib-header .count { font: 600 12px/1 var(--mono); color: var(--muted); }
   .lib-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .lib-btn, .lib-settings { background: var(--panel); border: 1px solid var(--border); color: var(--sub);
-    border-radius: 8px; padding: 6px 11px; cursor: pointer; font: 600 12px var(--sans); transition: all .14s; }
+    border-radius: 8px; padding: 6px 11px; cursor: pointer; font: 600 12px var(--sans);
+    transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out); }
   .lib-btn:hover, .lib-settings:hover { border-color: var(--border-2); color: var(--text); }
   .lib-btn-danger:hover { border-color: var(--danger); color: var(--danger); }
   .lib-btn.armed { border-color: var(--danger); color: var(--danger); }
@@ -42,13 +44,45 @@
     color: var(--sub); font: 600 12px var(--sans); cursor: pointer; }
   .lib-caps { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 22px; }
   .lib-cap { font: 600 11px/1 var(--mono); color: var(--sub); background: var(--panel); border: 1px solid var(--border);
-    padding: 6px 10px; border-radius: 999px; cursor: pointer; transition: all .14s; }
+    padding: 6px 10px; border-radius: 999px; cursor: pointer;
+    transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out); }
   .lib-cap:hover { border-color: var(--border-2); color: var(--text); }
   .lib-cap.on { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); border-color: var(--cyan); color: var(--cyan); }
 
+  /* Collections ("Boards") filter bar */
+  .lib-colls { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 18px; }
+  .lib-colls:empty { display: none; }
+  .lib-coll { display: inline-flex; align-items: center; gap: 6px; font: 600 12px var(--sans); color: var(--sub);
+    background: var(--panel); border: 1px solid var(--border); padding: 6px 11px; border-radius: 999px; cursor: pointer;
+    transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out); }
+  .lib-coll:hover { border-color: var(--border-2); color: var(--text); }
+  .lib-coll:active { transform: scale(0.97); }
+  .lib-coll.on { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); border-color: var(--cyan); color: var(--text); }
+  .lib-coll .coll-n { font: 700 10px/1 var(--mono); color: var(--muted); background: var(--panel-2); border-radius: 999px; padding: 2px 6px; }
+  .lib-coll.on .coll-n { color: var(--cyan); }
+  .coll-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .lib-coll-new { color: var(--cyan); border-style: dashed; }
+  .lib-coll-del { margin-left: 4px; color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, var(--border)); }
+
+  /* Per-card board membership dots */
+  .lc-boards { display: inline-flex; gap: 3px; align-items: center; margin-left: auto; }
+  .lc-board-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  /* Boards assignment popover */
+  .boards-pop { position: absolute; z-index: 60; min-width: 200px; max-width: 280px; background: var(--panel);
+    border: 1px solid var(--border-2); border-radius: 10px; padding: 5px; box-shadow: 0 14px 40px -12px rgba(0,0,0,.55); }
+  .bp-row { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; font: 600 12px var(--sans);
+    color: var(--text); background: none; border: none; border-radius: 7px; padding: 8px 9px; cursor: pointer; }
+  .bp-row:hover { background: var(--panel-2); }
+  .bp-row:active { transform: scale(0.985); }
+  .bp-check { width: 14px; flex-shrink: 0; color: var(--cyan); font-weight: 800; }
+  .bp-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bp-empty { padding: 8px 9px; font-size: 12px; color: var(--muted); }
+  .bp-new { color: var(--cyan); border-top: 1px solid var(--border); border-radius: 0 0 7px 7px; margin-top: 2px; }
+
   #grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 14px; }
   .lib-card { background: var(--panel); border: 1px solid var(--border); border-radius: 13px; padding: 15px 16px;
-    cursor: pointer; transition: transform .14s, border-color .14s, box-shadow .14s; display: flex; flex-direction: column; gap: 9px; }
+    cursor: pointer; transition: transform var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out); display: flex; flex-direction: column; gap: 9px; }
   .lib-card:hover { transform: translateY(-2px); border-color: var(--border-2); box-shadow: 0 14px 30px -18px rgba(0,0,0,.4); }
   .lc-top { display: flex; align-items: center; gap: 9px; }
   .lc-name { font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
@@ -72,7 +106,8 @@
   .lc-actions { display: flex; gap: 6px; opacity: 0; transition: opacity .14s; }
   .lib-card:hover .lc-actions, .lib-card:focus-within .lc-actions { opacity: 1; }
   .lc-act { font: 600 10.5px/1 var(--mono); color: var(--sub); background: var(--panel-2);
-    border: 1px solid var(--border); padding: 5px 8px; border-radius: 6px; cursor: pointer; transition: all .12s; }
+    border: 1px solid var(--border); padding: 5px 8px; border-radius: 6px; cursor: pointer;
+    transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out); }
   .lc-act:hover { border-color: var(--border-2); color: var(--text); }
   .lc-act-del { margin-left: auto; }
   .lc-act-del:hover { border-color: var(--bad); color: var(--bad-ink); }
@@ -131,6 +166,30 @@
   .lib-card.is-selected { border-color: var(--cyan); box-shadow: 0 0 0 1px var(--cyan) inset; }
 
   .hidden { display: none; }
+
+  /* ── Subtle motion pass ───────────────────────────────────────────────
+     Press feedback is instant for everyone; entrances/stagger are gated to
+     (prefers-reduced-motion: no-preference). The reduce reset above wins. */
+  .lib-btn:active, .lib-settings:active, .lib-cap:active, .lc-act:active { transform: scale(0.97); }
+  .lib-card:active { transform: translateY(-1px) scale(0.995); }
+  #grid.selecting .lib-card:active { transform: none; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    /* Grid fills in with a short, capped stagger. `backwards` fill keeps the
+       hover lift working after the entrance (avoids `both` pinning transform). */
+    .lib-card { animation: lib-card-in var(--dur-slow) var(--ease-out) backwards; }
+    @keyframes lib-card-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    .lib-card:nth-child(1)  { animation-delay: 0ms; }
+    .lib-card:nth-child(2)  { animation-delay: 30ms; }
+    .lib-card:nth-child(3)  { animation-delay: 60ms; }
+    .lib-card:nth-child(4)  { animation-delay: 90ms; }
+    .lib-card:nth-child(5)  { animation-delay: 120ms; }
+    .lib-card:nth-child(6)  { animation-delay: 150ms; }
+    .lib-card:nth-child(7)  { animation-delay: 180ms; }
+    .lib-card:nth-child(8)  { animation-delay: 210ms; }
+    .lib-card:nth-child(9)  { animation-delay: 240ms; }
+    .lib-card:nth-child(n+10) { animation-delay: 270ms; }
+  }
 </style>
 </head>
 <body>
@@ -169,6 +228,9 @@
       </select>
     </div>
     <div class="lib-caps" id="caps"></div>
+
+    <!-- Collections ("Boards") filter bar — populated by library.js -->
+    <div class="lib-colls" id="collections"></div>
 
     <div id="grid"></div>
     <div class="lib-empty hidden" id="empty"></div>

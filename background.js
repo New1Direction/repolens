@@ -362,8 +362,15 @@ async function runAnalysis(sessionKey, detected) {
     // Fetch metadata + README
     const repoData = await fetchRepoData(detected.platform, detected.repoId);
 
-    // Signal AI is thinking (tab shows cycling copy)
-    await chrome.storage.session.set({ [sessionKey]: { loading: true, status: 'thinking', ...detected } });
+    // Signal AI is thinking (tab shows cycling copy). Name the provider we'll try
+    // first so the loading copy is accurate — it used to hardcode "Claude" no matter
+    // which provider was actually routed.
+    let primaryProvider = '';
+    try {
+      const plan = buildAttemptPlan({ routing: settings.partRouting || {}, part: 'core', keys: settings });
+      if (plan[0]) primaryProvider = providerLabel(plan[0].provider);
+    } catch { /* leave blank — the tab falls back to a generic phrase */ }
+    await chrome.storage.session.set({ [sessionKey]: { loading: true, status: 'thinking', ...detected, provider: primaryProvider } });
 
     // Call AI provider — tried in order: Nous > Gemini > OpenRouter > Grok > Anthropic,
     // then any connected compatible provider.
@@ -413,8 +420,11 @@ async function runAnalysis(sessionKey, detected) {
     }
 
   } catch (err) {
+    // AI failures already carry a humanized message + kind; other failures (fetch,
+    // parse) get classified here so the tab can still route the error CTA.
+    const errorKind = err.kind || categorizeError(err).kind;
     await chrome.storage.session.set({
-      [sessionKey]: { ...detected, loading: false, error: err.message }
+      [sessionKey]: { ...detected, loading: false, error: err.message, errorKind }
     });
   }
 }
@@ -887,9 +897,17 @@ async function callAIInner(keys, prompt, part) {
       failures.push({ provider: label, error: e });
     }
   }
-  if (!failures.length) throw new Error('No AI provider configured — open Settings to connect one.');
-  // Surface the single most actionable failure instead of concatenating all of them.
-  throw new Error(rankErrors(failures).userMessage);
+  if (!failures.length) {
+    const e = new Error('No AI provider configured — open Settings to connect one.');
+    e.kind = 'none';
+    throw e;
+  }
+  // Surface the single most actionable failure instead of concatenating all of them,
+  // and carry its kind so the output tab can route the error CTA (Settings vs Retry).
+  const ranked = rankErrors(failures);
+  const err = new Error(ranked.userMessage);
+  err.kind = ranked.kind;
+  throw err;
 }
 
 // Anthropic Messages API with a standard Console API key (sk-ant-api…) via x-api-key.

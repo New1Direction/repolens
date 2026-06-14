@@ -1,9 +1,12 @@
-// Minimal promise-wrapped IndexedDB helper. One database, three object stores, each keyed by `id`.
+// Minimal promise-wrapped IndexedDB helper. One database, four object stores, each keyed by `id`.
 // This is the only place that touches the raw IndexedDB API — everything else builds on idbPut/idbGet/etc.
 
 const DB_NAME = 'repolens';
-const DB_VERSION = 1;
-const STORES = ['repos', 'nodes', 'edges'];
+// v2 added the 'collections' store. The upgrade is additive — onupgradeneeded
+// creates any store in STORES that doesn't already exist, so existing repos /
+// nodes / edges data survives the version bump untouched.
+const DB_VERSION = 2;
+const STORES = ['repos', 'nodes', 'edges', 'collections'];
 
 let dbPromise = null;
 

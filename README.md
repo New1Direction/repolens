@@ -10,7 +10,7 @@
 ![Zero build](https://img.shields.io/badge/build-none-0e1722)
 ![Vanilla ES modules](https://img.shields.io/badge/vanilla-ES_modules-f7df1e?logo=javascript&logoColor=black)
 ![Tests](https://img.shields.io/badge/tests-420%2B_passing-4ade80)
-![Version](https://img.shields.io/badge/version-1.6.0-7c5cff)
+![Version](https://img.shields.io/badge/version-1.7.0-7c5cff)
 ![Storage](https://img.shields.io/badge/storage-in--browser_IndexedDB-38bdf8)
 
 </div>
@@ -42,6 +42,13 @@ Plus **SKTPG** (a one-tap State / Known-pitfalls / Trajectory / Proof / Growth r
 ## 🆕 What's new
 
 Newest first — the highlights. Full, detailed notes live in the **[changelog](CHANGELOG.md)**.
+
+### v1.7.0 — Boards, Vee & a motion pass
+
+- 🗂️ **Collections ("Boards").** Group the repos you're evaluating together and filter the Library by board — with live counts, per-card membership dots, and a one-click assignment popover. Boards travel in your library export/import.
+- 🔭 **Meet "Vee", an optional lens mascot** that reacts to your scans (scanning, wide-open on a strong fit, eyes-narrowed on a risky one, resting on an empty library). One theme-aware SVG, reduced-motion-safe; turn it off in **Options → Interface**.
+- ✨ **Subtle motion, everywhere it helps** — tactile press states, a staged tab reveal, a verdict health-bar fill, a smoother toast and modal — all respecting reduced-motion.
+- 🧭 **Errors that tell you what to do** — a failed scan now offers **Open Settings** (bad key / wrong model) or **Retry** (transient), and the loading copy names the provider it's actually using.
 
 ### v1.6.0 — Claude is API-key only
 

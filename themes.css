@@ -26,6 +26,17 @@
   --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
   --card-shadow: none;
 
+  /* Motion — single source of truth for duration + easing. Theme-independent,
+     so all 13 themes inherit these from :root. User-initiated motion stays
+     under 300ms; the @media (prefers-reduced-motion: reduce) guards in each
+     surface remain the authoritative off-switch. */
+  --dur-fast: 120ms;   /* micro: presses, chip/tab hover */
+  --dur: 180ms;        /* default UI transition */
+  --dur-slow: 260ms;   /* entrances, panel reveals, bar fills */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);       /* entrances / hover-in */
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);            /* exits */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1); /* settle / gentle overshoot */
+
   /* Semantic status — one hue set shared by every theme. The surface/ink/edge
      variants derive from each theme's own --surface/--text via color-mix, so a
      status colour stays legible on light and dark canvases alike (and any new
