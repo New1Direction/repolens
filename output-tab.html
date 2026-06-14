@@ -333,6 +333,39 @@
   .ts-full { margin-top: 12px; display: none; }
   .ts-full.open { display: block; }
 
+  /* Maintenance */
+  .maint-header { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+  .maint-band { font: 700 13px var(--sans); border-radius: 999px; padding: 5px 14px; }
+  .maint-band.active   { background: var(--ok-bg);   color: var(--ok-ink); }
+  .maint-band.slowing  { background: var(--warn-bg);  color: var(--warn-ink); }
+  .maint-band.stale    { background: color-mix(in srgb, var(--warn-bg) 60%, var(--bad-bg)); color: #b45309; }
+  .maint-band.abandoned{ background: var(--bad-bg);   color: var(--bad-ink); }
+  .maint-band.unknown  { background: var(--surface);  color: var(--text-sub); }
+  .maint-bus  { font: 600 12px var(--sans); border-radius: 999px; padding: 4px 12px; background: var(--surface); border: 1px solid var(--border); color: var(--text-sub); }
+  .maint-days { font: 400 12px var(--mono); color: var(--text-muted); }
+  .maint-summary { font-size: 13px; color: var(--text-sub); line-height: 1.6; margin-bottom: 20px; }
+  .maint-watch-title { font: 600 12px var(--sans); color: var(--text-sub); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 10px; }
+  .maint-watch-item { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; line-height: 1.5; }
+  .maint-watch-item:last-child { border-bottom: none; }
+  .maint-watch-icon { color: var(--warn-ink); flex-shrink: 0; font-size: 14px; margin-top: 1px; }
+
+  /* License Compatibility */
+  .lc-compat-header { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; flex-wrap: wrap; }
+  .lc-bucket-chip { font: 700 13px var(--sans); border-radius: 999px; padding: 5px 14px; }
+  .lc-bucket-chip.permissive    { background: var(--ok-bg);      color: var(--ok-ink); }
+  .lc-bucket-chip.weak-copyleft { background: var(--warn-bg);    color: var(--warn-ink); }
+  .lc-bucket-chip.strong-copyleft{ background: var(--bad-bg);    color: var(--bad-ink); }
+  .lc-bucket-chip.unknown       { background: var(--surface);    color: var(--text-sub); }
+  .lc-compat-summary { font-size: 13px; color: var(--text-sub); line-height: 1.6; margin-bottom: 20px; }
+  .lc-concern-row { display: flex; gap: 10px; align-items: flex-start; padding: 9px 0; border-bottom: 1px solid var(--border); }
+  .lc-concern-row:last-child { border-bottom: none; }
+  .lc-concern-status { flex-shrink: 0; width: 16px; font-size: 13px; margin-top: 1px; }
+  .lc-concern-body { flex: 1; }
+  .lc-concern-repo { font: 600 12px var(--mono); color: var(--text); }
+  .lc-concern-lic  { font-size: 11px; color: var(--text-muted); margin-bottom: 3px; }
+  .lc-concern-note { font-size: 12px; color: var(--text-sub); line-height: 1.5; }
+  .lc-all-ok { color: var(--ok-ink); font-size: 13px; padding: 12px 0; }
+
   /* Versus */
   .vs-input-row { display: flex; gap: 8px; margin: 16px 0 8px; }
   .vs-input { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; color: var(--text); font-size: 13px; outline: none; font-family: ui-monospace, monospace; }
@@ -682,6 +715,8 @@
         <button class="tab-btn" data-tab="13">Prioritize</button>
         <button class="tab-btn" id="tab-sktpg" data-tab="14">SKTPG</button>
         <button class="tab-btn" data-tab="21">Docs Quality</button>
+        <button class="tab-btn" data-tab="22">Maintenance</button>
+        <button class="tab-btn" data-tab="23">License</button>
       </div>
     </div>
     <div class="tab-menu" id="menu-library">
@@ -721,6 +756,8 @@
   <div class="tab-content" id="t19"></div>
   <div class="tab-content" id="t20"></div>
   <div class="tab-content" id="t21"></div>
+  <div class="tab-content" id="t22"></div>
+  <div class="tab-content" id="t23"></div>
 
   <!-- Save status badge (hidden until JS updates it) -->
   <div class="saved-badge" style="display:none"></div>

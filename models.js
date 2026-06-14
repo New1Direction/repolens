@@ -11,6 +11,7 @@ export const PARTS = [
   { id: 'combinator', label: 'Combinator' },
   { id: 'retag', label: 'Re-tag library' },
   { id: 'docs', label: 'Docs Quality' },
+  { id: 'maintenance', label: 'Maintenance' },
 ];
 
 // provider id → { label, models: [{ value, label, recommended? }] }

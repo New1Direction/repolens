@@ -17,6 +17,9 @@ import { guideFor } from './lens-guide.js';
 import { categorizeError, errorActions } from './errors.js';
 import { renderMascot, setMascotState, setMascotFromFit } from './mascot.js';
 import { DOCS_GRADES } from './docs-quality.js';
+import { MAINT_BANDS, BUS_FACTORS } from './maintenance.js';
+import { bucketFor, bucketLabel, checkLibraryCompat } from './license-compat.js';
+import { allLicenses } from './store.js';
 import { DECISIONS, DECISION_META } from './decision-log.js';
 import { saveDecision, getDecision, clearDecision } from './store.js';
 
@@ -195,6 +198,8 @@ async function init() {
   renderFrameworkLens(data, PRIORITIZE_CFG);
   renderSktpg(data);
   renderDocsQuality(data);
+  renderMaintenance(data);
+  renderLicenseCompat(data);
   renderTechStack(data);
   renderSimilar(data);
   renderVersus(data);
@@ -985,6 +990,109 @@ function renderDocsQualityResult(r) {
   `;
 }
 
+// ─── Maintenance & Abandonment — on-demand health scan ───────────────────────
+
+function startMaintenance(d) {
+  chrome.runtime.sendMessage({ type: 'MAINTENANCE', sessionKey, platform: d.platform, repoId: d.repoId });
+  renderMaintenance({ ...d, maintenance: { status: 'fetching' } });
+}
+
+function renderMaintenance(d) {
+  const host = document.getElementById('t22');
+  if (!host) return;
+  const m = d.maintenance;
+
+  if (!m) {
+    host.innerHTML = `<div class="dd-cta">
+      <h3>Maintenance Health</h3>
+      <p>Check commit recency, contributor bus-factor, CI presence, and open-issue trends — signals a README can't fake. Returns: Active / Slowing / Stale / Abandoned.</p>
+      <button class="dd-run" id="maint-run">Run Maintenance Scan</button>
+    </div>`;
+    document.getElementById('maint-run')?.addEventListener('click', () => startMaintenance(d));
+    return;
+  }
+
+  if (m.status === 'error') {
+    host.innerHTML = `<div class="dd-cta"><h3>Maintenance scan failed</h3><p>${esc(m.error || 'Something went wrong.')}</p><button class="dd-run" id="maint-run">Try again</button></div>`;
+    document.getElementById('maint-run')?.addEventListener('click', () => startMaintenance(d));
+    return;
+  }
+
+  if (m.status !== 'done') {
+    host.innerHTML = `<div class="dd-progress"><span class="dot"></span>Checking maintenance signals…</div>`;
+    return;
+  }
+
+  host.innerHTML = renderMaintenanceResult(m.result || {});
+}
+
+function renderMaintenanceResult(r) {
+  const band = MAINT_BANDS.includes(r.band) ? r.band : 'unknown';
+  const bandLabel = { active: 'Active', slowing: 'Slowing', stale: 'Stale', abandoned: 'Abandoned', unknown: 'Unknown' }[band] || band;
+  const busFactor = BUS_FACTORS.includes(r.bus_factor) ? r.bus_factor : 'unknown';
+  const busLabel = { safe: '✓ Safe bus factor', concentrated: '⚠ Concentrated', solo: '⚠ Solo maintainer', unknown: 'Bus factor unknown' }[busFactor] || busFactor;
+  const days = r.days_since_push != null ? `${r.days_since_push}d since last push` : '';
+
+  const watchItems = (r.watch_list || []).map(w =>
+    `<div class="maint-watch-item"><span class="maint-watch-icon">⚠</span><span>${esc(w)}</span></div>`
+  ).join('');
+
+  return `
+    <div class="maint-header">
+      <span class="maint-band ${band}">${esc(bandLabel)}</span>
+      <span class="maint-bus">${esc(busLabel)}</span>
+      ${days ? `<span class="maint-days">${esc(days)}</span>` : ''}
+    </div>
+    ${r.summary ? `<p class="maint-summary">${esc(r.summary)}</p>` : ''}
+    ${watchItems ? `<div class="maint-watch-title">Watch list</div>${watchItems}` : ''}
+  `;
+}
+
+// ─── License Compatibility — instant deterministic SPDX check ─────────────────
+
+function renderLicenseCompat(d) {
+  const host = document.getElementById('t23');
+  if (!host) return;
+
+  const currentLicense = d.license || 'Unknown';
+  const bucket = bucketFor(currentLicense);
+
+  host.innerHTML = `<div class="dd-progress"><span class="dot"></span>Checking your library…</div>`;
+
+  allLicenses().then((libraryRepos) => {
+    const { currentBucket, concerns, summary, totalChecked } = checkLibraryCompat(currentLicense, libraryRepos);
+
+    const statusIcon = (s) => s === 'conflict' ? '✗' : '⚠';
+
+    const concernRows = concerns.map(c => `
+      <div class="lc-concern-row">
+        <div class="lc-concern-status" style="color:${c.status === 'conflict' ? 'var(--bad-ink)' : 'var(--warn-ink)'}">${statusIcon(c.status)}</div>
+        <div class="lc-concern-body">
+          <div class="lc-concern-repo">${esc(c.repoId)}</div>
+          <div class="lc-concern-lic">${esc(c.license)}</div>
+          <div class="lc-concern-note">${esc(c.note)}</div>
+        </div>
+      </div>`).join('');
+
+    const noIssues = !concerns.length && totalChecked > 0
+      ? `<p class="lc-all-ok">✓ ${esc(currentLicense)} is compatible with all ${totalChecked} library repo${totalChecked === 1 ? '' : 's'} with known licenses.</p>`
+      : '';
+
+    host.innerHTML = `
+      <div class="lc-compat-header">
+        <span class="lc-bucket-chip ${currentBucket}">${esc(currentLicense)}</span>
+        <span style="font-size:13px;color:var(--text-sub)">${esc(bucketLabel(currentBucket))}</span>
+      </div>
+      <p class="lc-compat-summary">${esc(summary)}</p>
+      ${noIssues}
+      ${concernRows}
+      ${totalChecked === 0 ? '<p style="color:var(--text-muted);font-size:12px">No repos with known licenses in your library yet — scan a few repos first.</p>' : ''}
+    `;
+  }).catch(() => {
+    host.innerHTML = `<p style="color:var(--text-muted)">Could not load library licenses.</p>`;
+  });
+}
+
 // ─── Versus — head-to-head comparison tab ─────────────────────────────────────
 
 function startVersus(d, competitor) {
@@ -1075,6 +1183,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
   renderFrameworkLens(nv, PRIORITIZE_CFG);
   renderSktpg(nv);
   renderDocsQuality(nv);
+  renderMaintenance(nv);
   renderVersus(nv);
   renderSynergies(nv);
   renderCombinator(nv);

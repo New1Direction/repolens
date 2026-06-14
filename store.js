@@ -88,6 +88,16 @@ export async function scrollLibrary({ limit = 500 } = {}) {
   }
 }
 
+/** All library repos with their license, for client-side license compatibility checks. */
+export async function allLicenses() {
+  try {
+    const payloads = await allPayloads();
+    return payloads.map(p => ({ repoId: p.repoId, license: p.license || 'Unknown' }));
+  } catch {
+    return [];
+  }
+}
+
 /** Up to 3 repos similar to the current one (by language/category overlap), excluding it. */
 export async function findSimilar({ language, category, repoId }) {
   try {

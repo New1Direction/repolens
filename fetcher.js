@@ -96,6 +96,38 @@ function parsePyDep(spec) {
   return { name: m[1], version };
 }
 
+/**
+ * Fetch GitHub-specific maintenance signals: last push, archived flag,
+ * issue/fork counts, and top-5 contributor login + commit share.
+ * Returns null for non-GitHub repos or on failure.
+ */
+export async function fetchMaintenanceSignals(platform, repoId) {
+  if (platform !== 'github') return null;
+  try {
+    const [meta, contribRes] = await Promise.all([
+      fetchJson(`https://api.github.com/repos/${repoId}`),
+      fetch(`https://api.github.com/repos/${repoId}/contributors?per_page=5&anon=0`).catch(() => ({ ok: false })),
+    ]);
+    let topContributors = [];
+    if (contribRes.ok) {
+      const data = await contribRes.json().catch(() => []);
+      if (Array.isArray(data)) {
+        topContributors = data.slice(0, 5).map(c => ({ login: String(c.login || ''), contributions: Number(c.contributions) || 0 }));
+      }
+    }
+    return {
+      pushedAt: meta.pushed_at || null,
+      archived: !!meta.archived,
+      openIssues: meta.open_issues_count || 0,
+      forks: meta.forks_count || 0,
+      watchers: meta.subscribers_count || 0,
+      topContributors,
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function fetchPyPI(repoId) {
   const data = await fetchJson(`https://pypi.org/pypi/${repoId}/json`);
   const info = data.info;

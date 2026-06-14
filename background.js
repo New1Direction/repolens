@@ -53,6 +53,8 @@ import { buildSktpgPrompt, parseSktpg } from './sktpg.js';
 import { buildDocsQualityPrompt, parseDocsQuality } from './docs-quality.js';
 import { buildVersusPrompt, parseVersus } from './versus.js';
 import { buildAskPrompt, parseAskAnswer } from './ask-library.js';
+import { buildMaintenancePrompt, parseMaintenance } from './maintenance.js';
+import { fetchMaintenanceSignals } from './fetcher.js';
 import { buildSynergiesPrompt, parseSynergies } from './synergies.js';
 import { cacheAnalysis, getCached } from './cache.js';
 import { emptyLens, withRun, setActive } from './lens-runs.js';
@@ -191,6 +193,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'TAG_LIBRARY' && msg.sessionKey) {
     sendResponse({ ok: true });
     runTagLibrary(msg.sessionKey);
+    return true;
+  }
+
+  // Maintenance & Abandonment lens — commit recency, bus factor, CI, open issues.
+  if (msg.type === 'MAINTENANCE' && msg.sessionKey && msg.platform && msg.repoId) {
+    sendResponse({ ok: true });
+    runMaintenance(msg.sessionKey, { platform: msg.platform, repoId: msg.repoId });
     return true;
   }
 
@@ -602,6 +611,45 @@ async function runDocsQuality(sessionKey, detected) {
     await setDq({ status: 'done', result });
   } catch (err) {
     await setDq({ status: 'error', error: err.message || 'Docs Quality scan failed' });
+  }
+}
+
+// ─── Maintenance & Abandonment: commit recency + bus factor + CI (on-demand) ──
+async function runMaintenance(sessionKey, detected) {
+  const keys = await chrome.storage.local.get([...PROVIDER_KEYS, 'tone']);
+
+  const setM = async (patch) => {
+    const cur = (await chrome.storage.session.get(sessionKey))[sessionKey] || {};
+    await chrome.storage.session.set({
+      [sessionKey]: { ...cur, maintenance: { ...(cur.maintenance || {}), ...patch } },
+    });
+  };
+
+  try {
+    await setM({ status: 'fetching', error: null, result: null });
+
+    const [signals, source] = await Promise.all([
+      fetchMaintenanceSignals(detected.platform, detected.repoId).catch(() => null),
+      fetchSource(detected.platform, detected.repoId).catch(() => ({ tree: [], files: [], degraded: true })),
+    ]);
+
+    const cur = (await chrome.storage.session.get(sessionKey))[sessionKey] || {};
+    const repoData = {
+      repoId: detected.repoId,
+      description: cur.description || '',
+      stars: cur.stars || 0,
+      language: cur.language || '',
+      license: cur.license || '',
+    };
+
+    await setM({ status: 'running' });
+    const result = parseMaintenance(
+      await callAI(keys, withTone(keys.tone, buildMaintenancePrompt(repoData, signals, source.tree)), 'maintenance'),
+      signals
+    );
+    await setM({ status: 'done', result });
+  } catch (err) {
+    await setM({ status: 'error', error: err.message || 'Maintenance scan failed.' });
   }
 }
 
