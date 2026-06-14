@@ -406,6 +406,14 @@
       <button class="lib-btn" id="sel-all">Select all</button>
       <button class="lib-btn lib-btn-danger" id="sel-del" disabled>Delete selected</button>
       <button class="lib-btn" id="sel-stack" disabled title="Build a wiring diagram from 2–6 selected repos">⚙ Build Stack</button>
+      <select class="lib-btn" id="sel-decide" disabled title="Assign a decision to selected repos">
+        <option value="">Decide…</option>
+        <option value="adopt">Adopt</option>
+        <option value="trial">Trial</option>
+        <option value="hold">Hold</option>
+        <option value="reject">Reject</option>
+        <option value="clear">Clear decision</option>
+      </select>
       <button class="lib-btn" id="sel-done" title="Leave selection mode">Done</button>
     </div>
     <input type="file" id="file-input" accept="application/json,.json" hidden>

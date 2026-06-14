@@ -502,6 +502,11 @@ function updateSelectionBar() {
       ? `Build a wiring diagram from ${n} repos`
       : n < 2 ? 'Select 2–6 repos to build a stack' : 'Select at most 6 repos';
   }
+  const decideEl = document.getElementById('sel-decide');
+  if (decideEl) {
+    decideEl.disabled = !n;
+    decideEl.value = '';
+  }
 }
 
 function selectAllToggle() {
@@ -583,6 +588,29 @@ async function deleteSelected() {
   renderStats();
   renderNlFilterBanner();
   setStatus(`Removed ${ids.length} repo${ids.length === 1 ? '' : 's'}.`);
+}
+
+async function bulkDecide(decision) {
+  const ids = [...selected];
+  if (!ids.length) return;
+  const label = decision ? (DECISION_META[decision]?.label || decision) : 'cleared';
+  setStatus(`Setting decision to ${label} for ${ids.length} repo${ids.length === 1 ? '' : 's'}…`);
+  const now = new Date().toISOString();
+  const { clearDecision } = await import('./store.js');
+  for (const repoId of ids) {
+    if (decision) {
+      const rec = { repoId, decision, savedAt: now };
+      await saveDecision(rec);
+      decisionMap.set(repoId, rec);
+    } else {
+      await clearDecision(repoId);
+      decisionMap.delete(repoId);
+    }
+  }
+  setSelectionMode(false, false);
+  renderDecisionFilter();
+  render();
+  setStatus(`Decision set to ${label} for ${ids.length} repo${ids.length === 1 ? '' : 's'}.`);
 }
 
 // ─── stats bar ────────────────────────────────────────────────────────────────
@@ -791,6 +819,12 @@ function wireToolbar() {
   document.getElementById('sel-all')?.addEventListener('click', selectAllToggle);
   document.getElementById('sel-del')?.addEventListener('click', (e) => deleteSelectedFlow(e.currentTarget));
   document.getElementById('sel-stack')?.addEventListener('click', buildStack);
+  document.getElementById('sel-decide')?.addEventListener('change', async (e) => {
+    const val = e.currentTarget.value;
+    if (!val) return;
+    e.currentTarget.value = '';
+    await bulkDecide(val === 'clear' ? null : val);
+  });
   document.getElementById('sel-done')?.addEventListener('click', () => setSelectionMode(false));
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && selectionMode) setSelectionMode(false);
