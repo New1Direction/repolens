@@ -1,0 +1,55 @@
+---
+title: Evaluate & compare
+description: Score repos against your own rubric, grade their docs, put any N side-by-side, and export a decision matrix.
+---
+
+The verdict is RepoLens' opinion. **Evaluations** are *yours* — a structured way to score, compare, and defend a choice when "it felt right" won't cut it.
+
+## Score against your rubric
+
+Press **e** on a focused card (or click the **▣** badge) to open the evaluation panel: **1–5 stars** per criterion. The card then carries a **▣** badge with the weighted average across the criteria you've scored.
+
+The default rubric is three equally-weighted criteria:
+
+| Criterion | What you're scoring |
+|---|---|
+| **Documentation** | Is it actually explained, or just published? |
+| **Type safety** | How much does the type system catch for you? |
+| **Maintenance** | Active, responsive, and unlikely to rot? |
+
+It's *your* rubric, though — **▣ Edit rubric criteria** in the command palette lets you rename, reweight, or replace them (up to six). Once repos are scored you can **Sort: Eval score** or filter to **▣ Show: Evaluated repos only**.
+
+## Grade the docs, A–F
+
+**Docs Quality** gives a repo's documentation a letter grade across six weighted dimensions:
+
+| Dimension | Weight |
+|---|---|
+| README completeness | 25% |
+| Quickstart / getting started | 20% |
+| Code examples | 20% |
+| API reference | 15% |
+| Changelog | 10% |
+| Contributing guide | 10% |
+
+The weighted total maps to **A** (90+) through **F** (under 40), with a plain yes / partially / no on whether the docs are good enough to onboard against.
+
+## Compare repos side-by-side
+
+Two ways in:
+
+- **Quick 2-up** — hit **⇄** on two cards to drop them into a head-to-head.
+- **N-way matrix** — turn on **Select**, tick **2–10** repos, and press **⊞ Compare**. Each repo becomes a column; the rows line up everything that matters:
+
+  > Fit · Fit delta · Health · Stars · Language · Decision · Eval score · *(each rubric criterion)* · Capabilities · Note
+
+Want a tiebreaker? **✦ Ask AI** runs a head-to-head and returns a winner, the reason, and the trade-offs. Export the whole table to **CSV** or **Markdown** straight from the modal.
+
+## Export a decision matrix
+
+When the call has to leave RepoLens — into a doc, a spreadsheet, Notion, or a PR — the command palette exports your **full visible library** as a structured matrix:
+
+- **⊞ Export Decision Matrix (CSV)** / **(Markdown)** — every column: fit, health, stars, language, decision + date, eval score, each rubric criterion, the eval note, and your personal note.
+- Lighter options sit beside it: **Export visible repos**, **Export Library** (grouped by fit), and **Export Digest (JSON / CSV)** for a minimal machine-readable dump.
+
+Everything you've decided, scored, and noted comes along — so the artifact you hand off carries the *reasoning*, not just the ranking.

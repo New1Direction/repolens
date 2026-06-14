@@ -9,13 +9,19 @@ A scan opens to a **verdict landing** and fans out into focused tabs. You only p
 
 The first thing you see. A fit chip (**strong / solid / care / risky**), a one-line bottom line, a row of measured facts, the top flags worth noting, and "start here" entry points. If you read nothing else, read this.
 
+> The analysis tab is keyboard-driven too: jump to a surface with **V** (Verdict), **E** (ELI5), or **H** (Health); re-scan fresh with **F**; open the source with **O**.
+
 ## Deep Dive
 
 A three-stage walk through the codebase: **atoms** (the core concepts) → **lineage** (how they build on each other) → a **Feynman-style** plain-English explanation. With the [runner](/docs/runner) online, it's grounded in measured facts instead of just the README.
 
+## Ask This Repo
+
+A follow-up the verdict didn't cover? **Ask This Repo** answers questions grounded in the analysis RepoLens already ran — *"does it support streaming?", "how is the test coverage?"* — using the **cached scan as context** rather than re-reading the repo, and it keeps the conversation's history so you can drill in over several turns.
+
 ## Library
 
-Every repo you've analyzed, as a sortable, filterable **triage grid**. Fit chips, health, capabilities, and "scanned N ago" stamps. Search it, filter by capability, sort by best fit (or health, stars, recency, name). A **stats bar** sums up the shape of your library, **bulk-select** clears out several repos at once, and one-click **Export / Import** moves the whole thing between machines. See [Storage](/docs/storage) for the details.
+Every repo you scan lands in a local **Library** — a sortable, filterable grid with fit chips, health, capabilities, and "scanned N ago" stamps. It's more than a list: it's where you [**triage and decide**](/docs/triage), [**evaluate and compare**](/docs/evaluate), and [**discover**](/docs/discover) what to look at next. See [Storage](/docs/storage) for how it's kept and moved between machines.
 
 ## Connections
 

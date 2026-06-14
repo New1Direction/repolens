@@ -8,6 +8,8 @@ Every analysis is persisted **in the browser**, using **IndexedDB**. There's no 
 ## What's stored
 
 - **Repos** — each analysis payload, keyed by a stable hash of the repo id.
+- **Decisions & collections** — your Adopt / Trial / Hold / Reject calls (with notes and dates) and the [collections](/docs/triage#collections) you've grouped repos into.
+- **Evaluations & notes** — your rubric and per-repo [scores](/docs/evaluate#score-against-your-rubric), plus any personal notes.
 - **Graph** — the nodes and edges behind the Connections tab.
 - **Scan history** — a local cache of recent scans, so reopening a repo is instant and costs no AI call.
 
@@ -25,7 +27,7 @@ The **Library** tab is mission control for everything you've scanned:
 
 Because it's *your* data, you can move it between machines:
 
-- **Library → Export** writes your whole library — analyzed repos, the Connections graph, and the scan cache — to one portable JSON file. **Import** restores it (merge or replace). Backups are validated and size-bounded on import, so a bad file fails safe instead of corrupting your library.
+- **Library → Export** writes your whole library — analyzed repos, your decisions and collections, the Connections graph, and the scan cache — to one portable JSON file. **Import** restores it (merge or replace). Backups are validated and size-bounded on import, so a bad file fails safe instead of corrupting your library.
 - **Options → Back up your settings** exports your preferences — theme, voice, model picks, per-part routing. It is **allowlist-driven by design**: your **API keys and tokens are never written to the file** (and are stripped out even if someone hand-edits one in).
 
 ## Importing an old VelesDB library
