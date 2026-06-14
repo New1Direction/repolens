@@ -165,50 +165,79 @@ function render() {
   grid.innerHTML = rows.length
     ? `${pinnedSection}${unpinnedRows.map(card).join('')}`
     : '<p style="color:var(--muted);padding:20px 0">No repos match these filters.</p>';
-  grid.querySelectorAll('.lib-card').forEach((el) => {
-    el.addEventListener('click', (e) => {
-      if (e.target.closest('.lc-act')) return; // action buttons handle themselves
-      if (e.target.closest('.lc-note-preview')) {
-        e.stopPropagation();
-        openNote(el.dataset.repo, el.querySelector('[data-act="note"]'));
-        return;
-      }
-      if (selectionMode) {
-        if (e.target.closest('.lc-check')) return; // the checkbox's own change handles it
-        toggleSelect(el.dataset.repo, el);
-        return;
-      }
-      openRow(el.dataset.repo);
-    });
-    const cb = el.querySelector('.lc-check');
-    cb?.addEventListener('change', () => toggleSelect(el.dataset.repo, el, cb.checked));
-    // Hover preview — show rich flyout for cached repos after a short delay
-    if (cacheByRepo.has(el.dataset.repo)) {
-      let hoverTimer = null;
-      el.addEventListener('mouseenter', () => {
-        hoverTimer = setTimeout(() => showHoverPreview(el.dataset.repo, el), 350);
-      });
-      el.addEventListener('mouseleave', () => {
-        clearTimeout(hoverTimer);
-        scheduleHidePreview();
-      });
-    }
-  });
-  grid.querySelectorAll('.lc-act').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
-      const repoId = btn.closest('.lib-card').dataset.repo;
-      if (btn.dataset.act === 'source') openSource(repoId);
-      else if (btn.dataset.act === 'rescan') rescan(repoId);
-      else if (btn.dataset.act === 'remove') removeRepo(repoId, btn);
-      else if (btn.dataset.act === 'boards') { e.stopPropagation(); openBoardsPopover(repoId, btn); }
-      else if (btn.dataset.act === 'compare') { e.stopPropagation(); toggleCompare(repoId); }
-      else if (btn.dataset.act === 'pin') { e.stopPropagation(); togglePin(repoId); }
-      else if (btn.dataset.act === 'quick-ask') { e.stopPropagation(); openQuickAsk(repoId, btn); }
-      else if (btn.dataset.act === 'note') { e.stopPropagation(); openNote(repoId, btn); }
-      else if (btn.dataset.act === 'copy-md') { e.stopPropagation(); copyCardMd(repoId, btn); }
-    });
-  });
+  wireGridEvents(grid);
   if (selectionMode) updateSelectionBar(); // keep the bar's count / "Select all" label in sync
+}
+
+// ─── Delegated grid event wiring (called once; handles all current and future cards) ───
+
+let _gridWired = false;
+let _hoverCard = null;
+let _hoverTimer = null;
+
+function wireGridEvents(grid) {
+  if (_gridWired) return;
+  _gridWired = true;
+
+  // Single click handler for cards and action buttons
+  grid.addEventListener('click', (e) => {
+    const btn = e.target.closest('.lc-act');
+    if (btn) {
+      e.stopPropagation();
+      const repoId = btn.closest('.lib-card')?.dataset.repo;
+      if (!repoId) return;
+      const act = btn.dataset.act;
+      if (act === 'source') openSource(repoId);
+      else if (act === 'rescan') rescan(repoId);
+      else if (act === 'remove') removeRepo(repoId, btn);
+      else if (act === 'boards') openBoardsPopover(repoId, btn);
+      else if (act === 'compare') toggleCompare(repoId);
+      else if (act === 'pin') togglePin(repoId);
+      else if (act === 'quick-ask') openQuickAsk(repoId, btn);
+      else if (act === 'note') openNote(repoId, btn);
+      else if (act === 'copy-md') copyCardMd(repoId, btn);
+      return;
+    }
+    if (e.target.closest('.lc-note-preview')) {
+      const el = e.target.closest('.lib-card');
+      if (el) openNote(el.dataset.repo, el.querySelector('[data-act="note"]'));
+      return;
+    }
+    const el = e.target.closest('.lib-card');
+    if (!el) return;
+    if (selectionMode) {
+      if (e.target.closest('.lc-check')) return;
+      toggleSelect(el.dataset.repo, el);
+      return;
+    }
+    openRow(el.dataset.repo);
+  });
+
+  // Checkbox change (bubbles, no need for per-card handler)
+  grid.addEventListener('change', (e) => {
+    if (!e.target.classList.contains('lc-check')) return;
+    const el = e.target.closest('.lib-card');
+    if (el) toggleSelect(el.dataset.repo, el, e.target.checked);
+  });
+
+  // Hover preview via mouseover/mouseout (mouseenter/leave don't bubble)
+  grid.addEventListener('mouseover', (e) => {
+    const el = e.target.closest('.lib-card');
+    if (!el || !cacheByRepo.has(el.dataset.repo)) return;
+    if (el === _hoverCard) return;
+    clearTimeout(_hoverTimer);
+    _hoverCard = el;
+    _hoverTimer = setTimeout(() => showHoverPreview(el.dataset.repo, el), 350);
+  });
+
+  grid.addEventListener('mouseout', (e) => {
+    const el = e.target.closest('.lib-card');
+    if (!el) return;
+    if (el.contains(e.relatedTarget)) return; // still inside the card
+    _hoverCard = null;
+    clearTimeout(_hoverTimer);
+    scheduleHidePreview();
+  });
 }
 
 const rowFor = (repoId) => allRows.find((r) => r.repoId === repoId);
