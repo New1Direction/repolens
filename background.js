@@ -543,6 +543,21 @@ async function runBatchScan(batchKey, urls) {
   }
 
   await writeBatch(true);
+
+  try {
+    const done = items.filter((i) => i.status === 'done').length;
+    const errors = items.filter((i) => i.status === 'error').length;
+    const msg = errors
+      ? `${done} saved, ${errors} failed`
+      : `${done} repo${done === 1 ? '' : 's'} saved`;
+    chrome.notifications.create(`rl_batch_${batchKey}`, {
+      type: 'basic',
+      iconUrl: chrome.runtime.getURL('icons/icon128.png'),
+      title: 'RepoLens — Batch scan done',
+      message: msg,
+      silent: true,
+    });
+  } catch { /* notifications are best-effort */ }
 }
 
 // Fetch → AI → parse → store. Used by the initial click and by RERUN (retry).

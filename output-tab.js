@@ -222,6 +222,7 @@ function initOutputPalette(data) {
     { section: 'Actions', name: 'Add to Board', description: 'Save this repo to a collection', action: () => document.getElementById('add-to-board')?.click() },
     { name: 'Open Library', description: 'Browse your saved repos', action: () => chrome.tabs.create({ url: chrome.runtime.getURL('library.html') }) },
     { name: 'Batch Scan', description: 'Scan multiple repos at once', action: () => chrome.tabs.create({ url: chrome.runtime.getURL('batch.html') }) },
+    { name: 'Run Fresh Scan', description: 'Bypass cache and re-analyse this repo', shortcut: 'F', action: () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', bubbles: true })) },
     { name: 'Copy URL', description: 'Copy the repo source URL', shortcut: 'U', action: () => document.getElementById('copy-url')?.click() },
     { name: 'Copy Markdown', description: 'Copy this analysis as MD', shortcut: 'M', action: () => document.getElementById('copy-md')?.click() },
     { name: 'Copy Slack Post', description: 'Copy compact summary for Slack/Discord', action: () => copySlackBtn?.click() },
@@ -1262,10 +1263,17 @@ function renderDiff(d) {
 
   if (!diff) {
     host.innerHTML = `<div class="diff-first-scan">
-      <p style="font-size:22px;margin-bottom:8px">🔍</p>
-      <p>First scan — no previous snapshot to compare.</p>
-      <p style="font-size:12px;margin-top:8px;color:var(--text-muted)">Re-scan this repo later and the diff will appear here automatically.</p>
+      <p class="diff-first-icon">📸</p>
+      <p class="diff-first-title">Snapshot saved</p>
+      <p class="diff-first-body">Next time you scan this repo, RepoLens will diff fit score, health, stars, and flags against this baseline — so you can see what changed at a glance.</p>
+      <button class="diff-rescan-btn" id="diff-rescan-now">Rescan now →</button>
     </div>`;
+    document.getElementById('diff-rescan-now')?.addEventListener('click', async () => {
+      if (!lastData) return;
+      try { await chrome.runtime.sendMessage({ type: 'RERUN', sessionKey, platform: lastData.platform, repoId: lastData.repoId }); }
+      catch { /* reload anyway */ }
+      location.reload();
+    });
     return;
   }
 
@@ -1597,7 +1605,9 @@ chrome.storage.onChanged.addListener((changes, area) => {
 });
 
 function renderHeader(d) {
-  document.querySelector('.repo-name').textContent = d.repoId;
+  const nameEl = document.querySelector('.repo-name');
+  nameEl.textContent = d.repoId;
+  nameEl.href = repoSourceUrl(d.platform, d.repoId);
   document.querySelector('.repo-desc').textContent = d.description;
   document.querySelector('.health-score').textContent = d.health?.score ?? '—';
   document.querySelector('.health-fill').style.width = `${d.health?.score ?? 0}%`;
@@ -2230,7 +2240,7 @@ document.getElementById('paste-url-form')?.addEventListener('submit', async (e) 
 });
 
 // Keyboard nav: ← → cycle tabs; 1–9 jump to the first nine; r rescan. Ignored while typing.
-document.addEventListener('keydown', e => {
+document.addEventListener('keydown', async e => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const t = e.target;
   if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable) return;
@@ -2238,6 +2248,15 @@ document.addEventListener('keydown', e => {
   if (e.key === 'r' && retryBtn && !retryBtn.disabled && retryContext) {
     e.preventDefault();
     retryBtn.click();
+    return;
+  }
+  if (e.key === 'f' && lastData) {
+    e.preventDefault();
+    const freshBtn = document.getElementById('rerun-fresh');
+    if (freshBtn) { freshBtn.click(); return; }
+    try { await chrome.runtime.sendMessage({ type: 'RERUN', sessionKey, platform: lastData.platform, repoId: lastData.repoId }); }
+    catch { /* reload anyway */ }
+    location.reload();
     return;
   }
   if (e.key === 'u' && lastData) {

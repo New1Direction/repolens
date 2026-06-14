@@ -80,6 +80,7 @@ function card(r) {
     ${r.blurb ? `<div class="lc-blurb">${esc(r.blurb)}</div>` : ''}
     <div class="lc-meta">
       ${r.health ? `<span class="lc-health">♥ ${r.health}</span>` : ''}
+      ${r.stars >= 1 ? `<span class="lc-stars">${r.stars >= 1000 ? (r.stars / 1000).toFixed(1) + 'k' : r.stars}★</span>` : ''}
       ${r.category ? `<span class="lc-cat">${esc(r.category)}</span>` : ''}
       ${dots ? `<span class="lc-langs">${dots}</span>` : ''}
       ${when ? `<span class="lc-when" title="Last scanned ${esc(r.savedAt)}">scanned ${esc(when)}</span>` : ''}
