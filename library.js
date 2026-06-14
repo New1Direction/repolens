@@ -115,6 +115,7 @@ function card(r) {
       <button class="lc-act${notesMap.has(r.repoId) ? ' lc-act-note-on' : ''}" data-act="note" title="${notesMap.has(r.repoId) ? 'Edit note' : 'Add a personal note'}">✎</button>
       <button class="lc-act" data-act="boards" title="Add to a collection">▦ Boards</button>
       <button class="lc-act" data-act="rescan" title="Run a fresh scan (AI call)">↻ Re-scan</button>
+      ${cacheByRepo.has(r.repoId) ? `<button class="lc-act" data-act="copy-md" title="Copy analysis summary as Markdown">📋</button>` : ''}
       <button class="lc-act" data-act="source" title="Open the project page">Source ↗</button>
       <button class="lc-act lc-act-del" data-act="remove" title="Remove from library and local history">✕</button>
     </div>
@@ -193,6 +194,7 @@ function render() {
       else if (btn.dataset.act === 'pin') { e.stopPropagation(); togglePin(repoId); }
       else if (btn.dataset.act === 'quick-ask') { e.stopPropagation(); openQuickAsk(repoId, btn); }
       else if (btn.dataset.act === 'note') { e.stopPropagation(); openNote(repoId, btn); }
+      else if (btn.dataset.act === 'copy-md') { e.stopPropagation(); copyCardMd(repoId, btn); }
     });
   });
   if (selectionMode) updateSelectionBar(); // keep the bar's count / "Select all" label in sync
@@ -231,6 +233,35 @@ function openQuickAsk(repoId, btn) {
 
   input?.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.stopPropagation(); doAsk(); } });
   // Clear the event after first use by removing and re-adding the panel hidden on next render
+}
+
+async function copyCardMd(repoId, btn) {
+  const row = rowFor(repoId);
+  const full = cacheByRepo.get(repoId);
+  const dec = decisionMap.get(repoId);
+  const note = notesMap.get(repoId);
+  const lines = [
+    `## [${repoId}](https://github.com/${repoId})`,
+    '',
+    row?.blurb || full?.description || full?.eli5?.slice(0, 120) || '',
+    '',
+    [
+      full?.health?.score ? `**Health:** ${full.health.score}/100` : '',
+      row?.stars >= 1 ? `**Stars:** ${row.stars >= 1000 ? (row.stars / 1000).toFixed(1) + 'k' : row.stars}` : '',
+      row?.fit?.label ? `**Fit:** ${row.fit.label}` : '',
+      dec ? `**Decision:** ${DECISION_META[dec.decision]?.label || dec.decision}` : '',
+    ].filter(Boolean).join(' · '),
+    full?.pros?.length ? `\n**Pros:** ${full.pros.slice(0, 3).join('; ')}` : '',
+    full?.cons?.length ? `**Cons:** ${full.cons.slice(0, 2).join('; ')}` : '',
+    note ? `\n> ${note}` : '',
+    '',
+    `_via RepoLens_`,
+  ].filter((l) => l !== undefined).join('\n').trim();
+  try {
+    await navigator.clipboard.writeText(lines);
+    const orig = btn?.textContent;
+    if (btn) { btn.textContent = '✓'; setTimeout(() => { btn.textContent = orig; }, 1200); }
+  } catch { /* clipboard denied — silent */ }
 }
 
 function openNote(repoId, btn) {
