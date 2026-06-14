@@ -66,16 +66,26 @@ import { buildAskRepoPrompt, parseAskRepoAnswer } from './ask-repo.js';
 
 // Notify when a scan completes — clicking the notification focuses the result tab.
 chrome.notifications.onClicked.addListener(async (notifId) => {
-  if (!notifId.startsWith('rl_scan_')) return;
-  const tabUrl = notifId.slice('rl_scan_'.length);
-  const [existing] = await chrome.tabs.query({ url: tabUrl });
-  if (existing) {
-    await chrome.tabs.update(existing.id, { active: true });
-    await chrome.windows.update(existing.windowId, { focused: true });
-  } else {
-    chrome.tabs.create({ url: tabUrl });
-  }
   chrome.notifications.clear(notifId);
+  if (notifId.startsWith('rl_scan_')) {
+    const tabUrl = notifId.slice('rl_scan_'.length);
+    const [existing] = await chrome.tabs.query({ url: tabUrl });
+    if (existing) {
+      await chrome.tabs.update(existing.id, { active: true });
+      await chrome.windows.update(existing.windowId, { focused: true });
+    } else {
+      chrome.tabs.create({ url: tabUrl });
+    }
+  } else if (notifId.startsWith('rl_batch_')) {
+    const libUrl = chrome.runtime.getURL('library.html');
+    const [existing] = await chrome.tabs.query({ url: libUrl });
+    if (existing) {
+      await chrome.tabs.update(existing.id, { active: true });
+      await chrome.windows.update(existing.windowId, { focused: true });
+    } else {
+      chrome.tabs.create({ url: libUrl });
+    }
+  }
 });
 
 // Best-effort semantic-graph write: upsert both endpoint nodes, then a deterministic

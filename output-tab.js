@@ -303,9 +303,16 @@ async function init() {
   document.title = `${fitEmoji} ${data.repoId} — RepoLens`;
   initOutputPalette(data);
 
-  // Restore tab from URL hash if present (e.g. #diff, #ask, #versus)
+  // Restore tab: URL hash takes priority (explicit intent), then per-repo memory.
   const hashTab = SLUG_TO_TAB[location.hash.slice(1)];
-  if (hashTab != null) show(hashTab, { updateHash: false });
+  if (hashTab != null) {
+    show(hashTab, { updateHash: false });
+  } else if (data.repoId) {
+    chrome.storage.local.get(`repolens_tab_${data.repoId}`).then((res) => {
+      const stored = res[`repolens_tab_${data.repoId}`];
+      if (stored != null && stored !== 9) show(stored, { updateHash: true });
+    }).catch(() => {});
+  }
 
   // Header logo becomes Vee, reacting to the verdict (one-shot pop/squint on mount).
   if (mascotOn) {
@@ -1927,6 +1934,9 @@ function show(n, { updateHash = true } = {}) {
   });
   if (updateHash && TAB_SLUGS[n]) {
     history.replaceState(null, '', `#${TAB_SLUGS[n]}`);
+  }
+  if (updateHash && lastData?.repoId) {
+    chrome.storage.local.set({ [`repolens_tab_${lastData.repoId}`]: n }).catch(() => {});
   }
 }
 
