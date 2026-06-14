@@ -710,8 +710,13 @@ function renderStats() {
         ].filter(Boolean).join('<span class="ls-dec-sep">·</span>')
       }</span>`
     : '';
+  const triagePct = s.total ? Math.round((totalDecided / s.total) * 100) : 0;
+  const triagePill = s.total > 0
+    ? `<span class="ls-triage-pct" title="${totalDecided} of ${s.total} repos triaged">${triagePct}% triaged</span>`
+    : '';
   host.innerHTML = String(html`
     <span class="ls-total">${s.total} repo${s.total === 1 ? '' : 's'}</span>
+    ${triagePill}
     ${barSegments ? `<span class="ls-bar" title="Fit distribution">${barSegments}</span>` : ''}
     <span class="ls-pills">${FIT_ORDER.map((lvl) => pill(lvl, s.byFit[lvl]))}</span>
     ${s.avgHealth != null ? html`<span class="ls-health">avg health ${s.avgHealth}</span>` : ''}
@@ -1849,6 +1854,13 @@ function initLibraryPalette() {
     { name: 'Show: Rejected only', action: () => { state.decision = 'reject'; renderDecisionFilter(); render(); } },
     { name: 'Show: Undecided only', action: () => { state.decision = 'undecided'; renderDecisionFilter(); render(); } },
     { name: '✦ Quick wins — strong/solid fit, no decision', description: 'Surface your easiest triage calls first', action: () => { showQuickWins(); } },
+    { name: '⚠ Needs attention — risky/care, no decision', description: 'Repos with poor fit that still need a Hold or Reject decision', action: () => {
+      const ids = allRows.filter((r) => (r.fit.level === 'risky' || r.fit.level === 'care') && !decisionMap.has(r.repoId)).map((r) => r.repoId);
+      nlFilter = ids.length
+        ? { question: `Needs attention (${ids.length} risky/care, undecided)`, ids }
+        : { question: 'Needs attention', ids: [], error: 'All risky/care repos already have a decision — great triage!' };
+      render();
+    } },
     { name: '↕ Show: Fit changed since last scan', description: 'Repos whose fit verdict improved or regressed after a re-scan', action: () => {
       const ids = allRows.filter((r) => r.fitDelta).map((r) => r.repoId);
       nlFilter = ids.length
