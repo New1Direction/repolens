@@ -88,6 +88,11 @@
   .coll-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
   .lib-coll-new { color: var(--cyan); border-style: dashed; }
   .lib-coll-del { margin-left: 4px; color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, var(--border)); }
+  .coll-inline-wrap { display: inline-flex; align-items: center; }
+  .coll-inline-input { font: 600 12px var(--sans); color: var(--text); background: var(--surface);
+    border: 1px solid var(--accent); border-radius: 999px; padding: 6px 12px; outline: none;
+    width: 160px; transition: border-color .15s; }
+  .coll-inline-input::placeholder { color: var(--muted); }
 
   /* Per-card board membership dots */
   .lc-boards { display: inline-flex; gap: 3px; align-items: center; margin-left: auto; }

@@ -728,14 +728,39 @@ function renderCollections() {
       render();
     });
   });
-  host.querySelector('[data-coll-new]')?.addEventListener('click', () => createCollection());
+  host.querySelector('[data-coll-new]')?.addEventListener('click', () => showCollectionInput(host));
   host.querySelector('[data-coll-del]')?.addEventListener('click', (e) => confirmDeleteCollection(e.currentTarget));
 }
 
+function showCollectionInput(host, addRepoId) {
+  const existing = host.querySelector('.coll-inline-input');
+  if (existing) { existing.focus(); return; }
+  const wrap = document.createElement('div');
+  wrap.className = 'coll-inline-wrap';
+  wrap.innerHTML = `<input class="coll-inline-input" placeholder="Collection name…" maxlength="40" type="text">`;
+  host.appendChild(wrap);
+  const input = wrap.querySelector('input');
+  input.focus();
+  const finish = async () => {
+    const name = input.value.trim();
+    wrap.remove();
+    if (!name) return;
+    await createCollection(addRepoId, name);
+  };
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); finish(); }
+    if (e.key === 'Escape') { e.preventDefault(); wrap.remove(); }
+  });
+  input.addEventListener('blur', () => { setTimeout(() => wrap.isConnected && wrap.remove(), 150); });
+}
+
 // Create a collection (optionally adding a repo to it straight away).
-async function createCollection(addRepoId) {
-  const name = window.prompt('Name this collection');
-  if (name === null) return null; // cancelled
+async function createCollection(addRepoId, name) {
+  if (name === undefined) {
+    // Legacy path — only reached if called directly without inline input
+    name = window.prompt('Name this collection');
+  }
+  if (!name) return null;
   const check = validateCollectionName(name, collections);
   if (!check.ok) { setStatus(check.error, true); return null; }
   let col = makeCollection(name, { id: crypto.randomUUID(), color: nextColor(collections.length), now: new Date().toISOString() });
@@ -803,9 +828,11 @@ function openBoardsPopover(repoId, anchor) {
       b.querySelector('.bp-check').textContent = col && collectionContains(col, repoId) ? '✓' : '';
     });
   });
-  pop.querySelector('[data-new]')?.addEventListener('click', async () => {
+  pop.querySelector('[data-new]')?.addEventListener('click', () => {
     closeBoardsPopover();
-    await createCollection(repoId);
+    const host = document.getElementById('collections');
+    if (host) showCollectionInput(host, repoId);
+    else createCollection(repoId);
   });
   // Defer so the click that opened the popover doesn't immediately close it.
   setTimeout(() => {
