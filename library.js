@@ -15,6 +15,7 @@ import { html, escapeHtml as esc } from './safe-html.js';
 import { initTheme } from './theme.js';
 import { veeSvg } from './mascot.js';
 import { initPalette } from './palette.js';
+import { loadRubric, saveRubric, saveEval, clearEval, listEvals, computeScore, DEFAULT_RUBRIC } from './evaluations.js';
 
 // Honour the user's chosen theme on this standalone page (sets <html data-theme>).
 initTheme();
@@ -76,6 +77,10 @@ const noteKey = (repoId) => `repolens_note_${repoId}`;
 let savedFilters = [];
 const SAVED_FILTERS_KEY = 'repolens_saved_filters';
 
+// Evaluations Workbench: rubric criteria + per-repo scores.
+let rubric = [...DEFAULT_RUBRIC];
+let evalMap = new Map(); // repoId → { scores:{critId→1-5}, note, savedAt }
+
 async function togglePin(repoId) {
   if (pinned.has(repoId)) pinned.delete(repoId);
   else pinned.add(repoId);
@@ -116,6 +121,11 @@ function card(r) {
   const platformBadge = r.platform && r.platform !== 'github'
     ? `<span class="lc-platform" title="${esc(r.platform)}">${r.platform === 'npm' ? 'npm' : r.platform === 'pypi' ? 'PyPI' : r.platform === 'gitlab' ? 'GL' : esc(r.platform)}</span>`
     : '';
+  const evalEntry = evalMap.get(r.repoId);
+  const evalScore = evalEntry ? computeScore(evalEntry, rubric) : null;
+  const evalBadge = evalScore !== null
+    ? `<button class="lc-eval-badge" data-act="eval" title="Evaluation: ${evalScore.toFixed(1)}/5 — click to edit">▣ ${evalScore.toFixed(1)}</button>`
+    : `<button class="lc-eval-badge lc-eval-empty" data-act="eval" title="Add evaluation scores">▣</button>`;
   return `<div class="lib-card${sel ? ' is-selected' : ''}${isPinned ? ' is-pinned' : ''}" data-repo="${esc(r.repoId)}" title="${r.hasCache ? 'Open the saved analysis (instant, no AI call)' : 'Open the project page'}">
     <div class="lc-top">
       <input type="checkbox" class="lc-check"${sel ? ' checked' : ''} aria-label="Select ${esc(r.name)} for removal" title="Select for bulk removal">
@@ -125,6 +135,7 @@ function card(r) {
       <span class="lc-chip fit-${r.fit.level}"${r.fit.why ? ` title="${esc(r.fit.why)}"` : ''}>${esc(r.fit.label)}</span>
       ${deltaBadge}
       ${decBadge}
+      ${evalBadge}
       ${isPinned ? `<span class="lc-pin-badge" title="Pinned">📌</span>` : ''}
     </div>
     ${r.blurb ? `<div class="lc-blurb">${hilite(r.blurb, hq)}</div>` : ''}
@@ -183,12 +194,18 @@ function render() {
       if (ad && !bd) return -1;
       if (!ad && bd) return 1;
       if (ad && bd) {
-        // improved (to < from in FIT_ORDER) sorts above regressed
         const aImp = FIT_ORDER.indexOf(ad.to) < FIT_ORDER.indexOf(ad.from);
         const bImp = FIT_ORDER.indexOf(bd.to) < FIT_ORDER.indexOf(bd.from);
         if (aImp !== bImp) return aImp ? -1 : 1;
       }
       return a.name.localeCompare(b.name);
+    });
+  }
+  if (state.sort === 'eval') {
+    rows = [...rows].sort((a, b) => {
+      const sa = computeScore(evalMap.get(a.repoId) ?? null, rubric) ?? -1;
+      const sb = computeScore(evalMap.get(b.repoId) ?? null, rubric) ?? -1;
+      return sb - sa || a.name.localeCompare(b.name);
     });
   }
   // Collection filter is applied here (not in the pure filterRows) so library-data
@@ -276,6 +293,7 @@ function wireGridEvents(grid) {
       else if (act === 'quick-ask') openQuickAsk(repoId, btn);
       else if (act === 'note') openNote(repoId, btn);
       else if (act === 'copy-md') copyCardMd(repoId, btn);
+      else if (act === 'eval') showEvalPanel(repoId, btn);
       return;
     }
     if (e.target.closest('.lc-note-preview')) {
@@ -1578,6 +1596,13 @@ function getVisibleRows() {
       return a.name.localeCompare(b.name);
     });
   }
+  if (state.sort === 'eval') {
+    rows = [...rows].sort((a, b) => {
+      const sa = computeScore(evalMap.get(a.repoId) ?? null, rubric) ?? -1;
+      const sb = computeScore(evalMap.get(b.repoId) ?? null, rubric) ?? -1;
+      return sb - sa || a.name.localeCompare(b.name);
+    });
+  }
   if (state.collection) {
     const active = collections.find((c) => c.id === state.collection);
     const ids = new Set(active ? active.repoIds : []);
@@ -1845,7 +1870,123 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
     rescan(repoId);
   }
+  if (e.key === 'e') {
+    e.preventDefault();
+    const evalBtn = activeCard.querySelector('[data-act="eval"]');
+    showEvalPanel(repoId, evalBtn || activeCard);
+  }
 });
+
+// ─── Evaluations Workbench ────────────────────────────────────────────────────
+
+function showEvalPanel(repoId, anchorEl) {
+  document.getElementById('rl-eval-panel')?.remove();
+  const entry = evalMap.get(repoId) ?? { scores: {}, note: '' };
+  const row = allRows.find((r) => r.repoId === repoId);
+  const name = row?.name || repoId;
+
+  const pop = document.createElement('div');
+  pop.id = 'rl-eval-panel';
+  pop.setAttribute('role', 'dialog');
+  pop.setAttribute('aria-label', `Evaluate ${name}`);
+
+  const criteriaHtml = rubric.map((crit) => {
+    const score = entry.scores[crit.id] ?? 0;
+    const stars = [1, 2, 3, 4, 5].map((v) =>
+      `<button class="ep-star${v <= score ? ' active' : ''}" data-crit="${esc(crit.id)}" data-val="${v}" aria-label="${v}/5">${v <= score ? '★' : '☆'}</button>`
+    ).join('');
+    return `<div class="ep-row"><span class="ep-crit">${esc(crit.name)}</span><span class="ep-stars">${stars}</span></div>`;
+  }).join('');
+
+  const scoreAvg = computeScore(entry, rubric);
+
+  pop.innerHTML = `
+    <div class="ep-header">
+      <span class="ep-title">▣ Evaluate</span>
+      <span class="ep-name">${esc(name)}</span>
+      ${scoreAvg !== null ? `<span class="ep-avg">${scoreAvg.toFixed(1)}/5</span>` : ''}
+    </div>
+    <div class="ep-criteria">${criteriaHtml}</div>
+    <textarea class="ep-note" placeholder="Note (optional)…" rows="2">${esc(entry.note || '')}</textarea>
+    <div class="ep-footer">
+      <button class="ep-save">Save</button>
+      ${evalMap.has(repoId) ? `<button class="ep-clear">Clear</button>` : ''}
+    </div>`;
+
+  document.body.appendChild(pop);
+
+  // Position near anchor
+  if (anchorEl) {
+    const rect = anchorEl.getBoundingClientRect();
+    const W = 280;
+    let left = rect.left;
+    if (left + W > window.innerWidth - 8) left = window.innerWidth - W - 8;
+    pop.style.left = `${Math.max(8, left)}px`;
+    pop.style.top = `${Math.min(rect.bottom + 6, window.innerHeight - 280)}px`;
+  }
+
+  // Star clicks — update entry scores live
+  pop.addEventListener('click', (e) => {
+    const star = e.target.closest('.ep-star');
+    if (star) {
+      const crit = star.dataset.crit;
+      const val = Number(star.dataset.val);
+      entry.scores[crit] = entry.scores[crit] === val ? 0 : val;
+      // Re-render stars for this criterion
+      pop.querySelectorAll(`.ep-star[data-crit="${crit}"]`).forEach((s) => {
+        const sv = Number(s.dataset.val);
+        const on = sv <= (entry.scores[crit] || 0);
+        s.classList.toggle('active', on);
+        s.textContent = on ? '★' : '☆';
+      });
+      // Update avg display
+      const newAvg = computeScore(entry, rubric);
+      const avgEl = pop.querySelector('.ep-avg');
+      if (avgEl) avgEl.textContent = newAvg !== null ? `${newAvg.toFixed(1)}/5` : '';
+      else if (newAvg !== null) {
+        pop.querySelector('.ep-header').insertAdjacentHTML('beforeend', `<span class="ep-avg">${newAvg.toFixed(1)}/5</span>`);
+      }
+    }
+  });
+
+  pop.querySelector('.ep-save')?.addEventListener('click', async () => {
+    entry.note = pop.querySelector('.ep-note')?.value || '';
+    await saveEval(repoId, entry);
+    evalMap.set(repoId, { ...entry, savedAt: new Date().toISOString() });
+    pop.remove();
+    render();
+  });
+
+  pop.querySelector('.ep-clear')?.addEventListener('click', async () => {
+    await clearEval(repoId);
+    evalMap.delete(repoId);
+    pop.remove();
+    render();
+  });
+
+  // Dismiss on outside click
+  const dismiss = (e) => { if (!pop.contains(e.target) && e.target !== anchorEl) { pop.remove(); document.removeEventListener('mousedown', dismiss); } };
+  setTimeout(() => document.addEventListener('mousedown', dismiss), 50);
+
+  // Esc key
+  pop.addEventListener('keydown', (e) => { if (e.key === 'Escape') { pop.remove(); document.removeEventListener('mousedown', dismiss); } });
+}
+
+async function editRubric() {
+  const current = rubric.map((c) => c.name).join('\n');
+  const input = prompt(`Rubric criteria (one per line, max 6):\n\n${current}`);
+  if (input === null) return;
+  const names = input.split('\n').map((s) => s.trim()).filter(Boolean).slice(0, 6);
+  if (!names.length) return;
+  // Preserve existing ids by name match; new names get generated ids.
+  const newRubric = names.map((name) => {
+    const existing = rubric.find((c) => c.name === name);
+    return existing ?? { id: name.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 20), name, weight: 1 };
+  });
+  rubric = newRubric;
+  await saveRubric(rubric);
+  setStatus('Rubric updated.');
+}
 
 // ─── Auto-decide from Vee ─────────────────────────────────────────────────────
 
@@ -1928,6 +2069,21 @@ function initLibraryPalette() {
     { name: 'Sort: Name', action: () => { state.sort = 'name'; document.getElementById('sort').value = 'name'; chrome.storage.local.set({ librarySort: 'name' }); render(); } },
     { name: 'Sort: Recently decided', action: () => { state.sort = 'decided'; document.getElementById('sort').value = 'decided'; chrome.storage.local.set({ librarySort: 'decided' }); render(); } },
     { name: 'Sort: Fit changed', description: 'Repos with fit delta (improved or regressed) at the top', action: () => { state.sort = 'delta'; document.getElementById('sort').value = 'delta'; chrome.storage.local.set({ librarySort: 'delta' }); render(); } },
+    { name: 'Sort: Eval score', description: 'Repos with highest evaluation score at the top', action: () => { state.sort = 'eval'; document.getElementById('sort').value = 'eval'; chrome.storage.local.set({ librarySort: 'eval' }); render(); } },
+    { section: 'Evaluations', name: '▣ Evaluate focused repo', description: 'Open the scoring panel for the focused card (or press e)', action: () => {
+      const cards = getVisibleCards();
+      if (jkIdx < 0 || !cards[jkIdx]) { setStatus('Focus a card first (j/k) then press e, or use the ▣ button on a card.'); return; }
+      const repoId = cards[jkIdx].dataset.repo;
+      showEvalPanel(repoId, cards[jkIdx].querySelector('[data-act="eval"]') || cards[jkIdx]);
+    } },
+    { name: '▣ Edit rubric criteria', description: 'Change the scoring criteria used by the Evaluations Workbench', action: () => editRubric() },
+    { name: '▣ Show: Evaluated repos only', description: 'Filter to repos with at least one eval score', action: () => {
+      const ids = allRows.filter((r) => evalMap.has(r.repoId)).map((r) => r.repoId);
+      nlFilter = ids.length
+        ? { question: `Evaluated (${ids.length} repos)`, ids }
+        : { question: 'Evaluated repos', ids: [], error: 'No evaluations yet — press e on a focused card to score a repo' };
+      render();
+    } },
     { section: 'View', name: 'Tech Radar', description: 'Organize repos by Adopt/Trial/Hold/Reject decision', action: () => { if (state.view !== 'radar') toggleRadarView(); } },
     { name: 'List view', description: 'Default card grid', action: () => { if (state.view !== 'list') toggleRadarView(); } },
     { section: 'Pins', name: 'Unpin all', description: 'Remove all pinned repos from the top section', action: async () => { pinned.clear(); await chrome.storage.local.set({ repolens_pinned: [] }); render(); } },
@@ -1995,6 +2151,9 @@ async function init() {
   decisionMap = new Map(savedDecisions.map((d) => [d.repoId, d]));
   pinned = new Set(Array.isArray(prefs?.repolens_pinned) ? prefs.repolens_pinned : []);
   savedFilters = Array.isArray(prefs?.[SAVED_FILTERS_KEY]) ? prefs[SAVED_FILTERS_KEY] : [];
+
+  // Load evaluations workbench data in parallel with the rest of init.
+  [rubric, evalMap] = await Promise.all([loadRubric(), listEvals()]);
 
   // Load user notes keyed by repoId
   try {
