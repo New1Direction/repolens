@@ -67,6 +67,7 @@ function card(r) {
     .join('');
   const tags = r.capabilities.slice(0, 4).map((c) => `<span class="lc-tag">${esc(c)}</span>`).join('');
   const when = relativeTime(r.savedAt);
+  const isToday = r.savedAt && (Date.now() - Date.parse(r.savedAt)) < 86_400_000;
   const sel = selected.has(r.repoId);
   const boards = repoCollections(collections, r.repoId);
   const boardDots = boards.length
@@ -95,7 +96,7 @@ function card(r) {
       ${r.stars >= 1 ? `<span class="lc-stars">${r.stars >= 1000 ? (r.stars / 1000).toFixed(1) + 'k' : r.stars}★</span>` : ''}
       ${r.category ? `<span class="lc-cat">${esc(r.category)}</span>` : ''}
       ${dots ? `<span class="lc-langs">${dots}</span>` : ''}
-      ${when ? `<span class="lc-when" title="Last scanned ${esc(r.savedAt)}">scanned ${esc(when)}</span>` : ''}
+      ${isToday ? `<span class="lc-today" title="Scanned ${esc(when)}">Today</span>` : when ? `<span class="lc-when" title="Last scanned ${esc(r.savedAt)}">scanned ${esc(when)}</span>` : ''}
     </div>
     ${tags || boardDots ? `<div class="lc-tags">${tags}${boardDots}</div>` : ''}
     <div class="lc-actions">
