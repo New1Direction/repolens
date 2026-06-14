@@ -54,6 +54,10 @@ const compareSet = new Set();
 // Pinned repos: always float to the top of the grid regardless of sort.
 let pinned = new Set();
 
+// User notes: freeform text annotations keyed by repoId, persisted to local storage.
+let notesMap = new Map();
+const noteKey = (repoId) => `repolens_note_${repoId}`;
+
 async function togglePin(repoId) {
   if (pinned.has(repoId)) pinned.delete(repoId);
   else pinned.add(repoId);
@@ -92,6 +96,7 @@ function card(r) {
       ${isPinned ? `<span class="lc-pin-badge" title="Pinned">📌</span>` : ''}
     </div>
     ${r.blurb ? `<div class="lc-blurb">${esc(r.blurb)}</div>` : ''}
+    ${notesMap.has(r.repoId) ? `<div class="lc-note-preview" data-act="note">${esc(notesMap.get(r.repoId).slice(0, 80))}${notesMap.get(r.repoId).length > 80 ? '…' : ''}</div>` : ''}
     <div class="lc-meta">
       ${r.health ? `<span class="lc-health">♥ ${r.health}</span>` : ''}
       ${r.stars >= 1 ? `<span class="lc-stars">${r.stars >= 1000 ? (r.stars / 1000).toFixed(1) + 'k' : r.stars}★</span>` : ''}
@@ -104,6 +109,7 @@ function card(r) {
       <button class="lc-act${isPinned ? ' lc-act-pin-on' : ''}" data-act="pin" title="${isPinned ? 'Unpin' : 'Pin to top'}">📌</button>
       ${cacheByRepo.has(r.repoId) ? `<button class="lc-act" data-act="quick-ask" title="Ask a quick question about this repo">? Ask</button>` : ''}
       <button class="lc-act${compareSet.has(r.repoId) ? ' lc-act-cmp-on' : ''}" data-act="compare" title="${compareSet.has(r.repoId) ? 'Remove from compare' : 'Add to compare (pick 2)'}">⇄</button>
+      <button class="lc-act${notesMap.has(r.repoId) ? ' lc-act-note-on' : ''}" data-act="note" title="${notesMap.has(r.repoId) ? 'Edit note' : 'Add a personal note'}">✎</button>
       <button class="lc-act" data-act="boards" title="Add to a collection">▦ Boards</button>
       <button class="lc-act" data-act="rescan" title="Run a fresh scan (AI call)">↻ Re-scan</button>
       <button class="lc-act" data-act="source" title="Open the project page">Source ↗</button>
@@ -112,6 +118,13 @@ function card(r) {
     <div class="lc-quick-ask hidden" id="lc-qa-${esc(r.repoId).replace(/[^a-z0-9]/gi, '-')}">
       <input class="lc-qa-input" placeholder="Ask a question…" type="text">
       <div class="lc-qa-answer hidden"></div>
+    </div>
+    <div class="lc-note-panel hidden" id="lc-np-${esc(r.repoId).replace(/[^a-z0-9]/gi, '-')}">
+      <textarea class="lc-note-input" placeholder="Add a personal note…" rows="3"></textarea>
+      <div class="lc-note-footer">
+        <span class="lc-note-hint">Ctrl+Enter to save · Esc to close</span>
+        <button class="lc-note-save">Save</button>
+      </div>
     </div>
   </div>`;
 }
@@ -144,6 +157,11 @@ function render() {
   grid.querySelectorAll('.lib-card').forEach((el) => {
     el.addEventListener('click', (e) => {
       if (e.target.closest('.lc-act')) return; // action buttons handle themselves
+      if (e.target.closest('.lc-note-preview')) {
+        e.stopPropagation();
+        openNote(el.dataset.repo, el.querySelector('[data-act="note"]'));
+        return;
+      }
       if (selectionMode) {
         if (e.target.closest('.lc-check')) return; // the checkbox's own change handles it
         toggleSelect(el.dataset.repo, el);
@@ -164,6 +182,7 @@ function render() {
       else if (btn.dataset.act === 'compare') { e.stopPropagation(); toggleCompare(repoId); }
       else if (btn.dataset.act === 'pin') { e.stopPropagation(); togglePin(repoId); }
       else if (btn.dataset.act === 'quick-ask') { e.stopPropagation(); openQuickAsk(repoId, btn); }
+      else if (btn.dataset.act === 'note') { e.stopPropagation(); openNote(repoId, btn); }
     });
   });
   if (selectionMode) updateSelectionBar(); // keep the bar's count / "Select all" label in sync
@@ -202,6 +221,39 @@ function openQuickAsk(repoId, btn) {
 
   input?.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.stopPropagation(); doAsk(); } });
   // Clear the event after first use by removing and re-adding the panel hidden on next render
+}
+
+function openNote(repoId, btn) {
+  const safeId = repoId.replace(/[^a-z0-9]/gi, '-');
+  const panel = document.getElementById(`lc-np-${safeId}`);
+  if (!panel) return;
+  const isOpen = !panel.classList.contains('hidden');
+  if (isOpen) { panel.classList.add('hidden'); return; }
+  panel.classList.remove('hidden');
+  const textarea = panel.querySelector('.lc-note-input');
+  if (textarea) {
+    textarea.value = notesMap.get(repoId) || '';
+    textarea.focus();
+    textarea.selectionStart = textarea.selectionEnd = textarea.value.length;
+  }
+
+  const saveNote = async () => {
+    const text = (textarea?.value || '').trim();
+    if (text) notesMap.set(repoId, text);
+    else notesMap.delete(repoId);
+    try {
+      if (text) await chrome.storage.local.set({ [noteKey(repoId)]: text });
+      else await chrome.storage.local.remove(noteKey(repoId));
+    } catch { /* best-effort */ }
+    panel.classList.add('hidden');
+    render();
+  };
+
+  textarea?.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { panel.classList.add('hidden'); return; }
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); saveNote(); }
+  });
+  panel.querySelector('.lc-note-save')?.addEventListener('click', saveNote);
 }
 
 function openRow(repoId) {
@@ -1239,6 +1291,16 @@ async function init() {
   ]);
   decisionMap = new Map(savedDecisions.map((d) => [d.repoId, d]));
   pinned = new Set(Array.isArray(prefs?.repolens_pinned) ? prefs.repolens_pinned : []);
+
+  // Load user notes keyed by repoId
+  try {
+    const allLocal = await chrome.storage.local.get(null);
+    for (const [k, v] of Object.entries(allLocal)) {
+      if (k.startsWith('repolens_note_') && typeof v === 'string' && v.trim()) {
+        notesMap.set(k.slice('repolens_note_'.length), v.trim());
+      }
+    }
+  } catch { /* best-effort */ }
   if (prefs?.librarySort) state.sort = prefs.librarySort; // restore the last chosen sort
   const mascotOn = prefs?.mascotEnabled !== false; // default on
   collections = savedCollections;

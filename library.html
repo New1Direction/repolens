@@ -150,6 +150,21 @@
   .lc-qa-answer { font: 13px/1.55 var(--sans); color: var(--sub); padding: 8px 10px;
     background: var(--panel-2); border-radius: 7px; }
 
+  .lc-note-preview { font: italic 12px/1.45 var(--sans); color: var(--muted); margin-top: 4px;
+    padding: 4px 8px; border-left: 2px solid var(--border); cursor: pointer; }
+  .lc-note-preview:hover { color: var(--sub); border-left-color: var(--accent); }
+  .lc-act-note-on { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+  .lc-note-panel { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+  .lc-note-input { background: var(--surface); border: 1px solid var(--border); border-radius: 7px;
+    padding: 7px 10px; color: var(--text); font: 13px/1.5 var(--sans); outline: none; width: 100%;
+    resize: vertical; min-height: 60px; }
+  .lc-note-input:focus { border-color: var(--accent); }
+  .lc-note-footer { display: flex; align-items: center; gap: 10px; }
+  .lc-note-hint { font: 11px var(--mono); color: var(--muted); flex: 1; }
+  .lc-note-save { background: var(--accent); color: #fff; border: none; border-radius: 6px;
+    padding: 5px 12px; font: 600 12px var(--sans); cursor: pointer; }
+  .lc-note-save:hover { opacity: .88; }
+
   .lib-empty { text-align: center; padding: 80px 20px; color: var(--sub); }
   .lib-empty h2 { font-size: 17px; color: var(--text); margin: 0 0 8px; }
   .lib-empty code { font: 600 12px var(--mono); background: var(--panel); border: 1px solid var(--border); padding: 2px 7px; border-radius: 5px; color: var(--cyan); }
