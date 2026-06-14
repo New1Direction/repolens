@@ -123,6 +123,38 @@ const SESSION_KEY_PREFIX = 'repolens_';
 // First run: open Settings so the user can connect a provider and see Getting Started.
 chrome.runtime.onInstalled.addListener(({ reason }) => {
   if (reason === 'install') chrome.runtime.openOptionsPage();
+  // Register "Scan with RepoLens" on link right-clicks — recreated on every install/update.
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: 'repolens-scan-link',
+      title: 'Scan with RepoLens',
+      contexts: ['link'],
+    });
+  });
+});
+
+// Scan a link right-clicked anywhere — detect platform from the href, open output tab.
+chrome.contextMenus.onClicked.addListener(async (info) => {
+  if (info.menuItemId !== 'repolens-scan-link') return;
+  const url = info.linkUrl || '';
+  const detected = detectPlatform(url);
+  if (!detected) {
+    const sessionKey = SESSION_KEY_PREFIX + crypto.randomUUID();
+    await chrome.storage.session.set({ [sessionKey]: { loading: false, error: `Not a supported repo URL: ${url}` } });
+    chrome.tabs.create({ url: chrome.runtime.getURL(`output-tab.html?key=${sessionKey}`) });
+    return;
+  }
+  const gateKeys = await chrome.storage.local.get(['anthropicKey', 'googleKey', 'openrouterKey', 'xaiKey', 'nousKey', ...compatStorageKeys()]);
+  const hasKey = gateKeys.anthropicKey || gateKeys.googleKey || gateKeys.openrouterKey || gateKeys.xaiKey || gateKeys.nousKey || compatStorageKeys().some(k => gateKeys[k]);
+  const sessionKey = SESSION_KEY_PREFIX + crypto.randomUUID();
+  if (!hasKey) {
+    await chrome.storage.session.set({ [sessionKey]: { loading: false, error: 'No AI provider configured — open Settings to add a key.', errorKind: 'none' } });
+    chrome.tabs.create({ url: chrome.runtime.getURL(`output-tab.html?key=${sessionKey}`) });
+    return;
+  }
+  await chrome.storage.session.set({ [sessionKey]: { loading: true, status: 'fetching', ...detected } });
+  chrome.tabs.create({ url: chrome.runtime.getURL(`output-tab.html?key=${sessionKey}`) });
+  runAnalysis(sessionKey, detected);
 });
 
 // ─── Listen for content script + output-tab signals ──────────────────────────
