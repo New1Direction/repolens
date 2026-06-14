@@ -50,6 +50,16 @@ const selected = new Set();
 // Compare basket: holds up to 2 repoIds; when full, the compare panel is shown.
 const compareSet = new Set();
 
+// Pinned repos: always float to the top of the grid regardless of sort.
+let pinned = new Set();
+
+async function togglePin(repoId) {
+  if (pinned.has(repoId)) pinned.delete(repoId);
+  else pinned.add(repoId);
+  await chrome.storage.local.set({ repolens_pinned: [...pinned] });
+  render();
+}
+
 function card(r) {
   const owner = r.repoId.includes('/') ? r.repoId.slice(0, r.repoId.indexOf('/')) : '';
   const dots = r.languages
@@ -69,13 +79,15 @@ function card(r) {
   const decBadge = dec
     ? `<span class="lc-decision" data-d="${esc(dec.decision)}" title="Your decision: ${esc(dec.decision)}">${esc(DECISION_META[dec.decision]?.label || dec.decision)}</span>`
     : '';
-  return `<div class="lib-card${sel ? ' is-selected' : ''}" data-repo="${esc(r.repoId)}" title="${r.hasCache ? 'Open the saved analysis (instant, no AI call)' : 'Open the project page'}">
+  const isPinned = pinned.has(r.repoId);
+  return `<div class="lib-card${sel ? ' is-selected' : ''}${isPinned ? ' is-pinned' : ''}" data-repo="${esc(r.repoId)}" title="${r.hasCache ? 'Open the saved analysis (instant, no AI call)' : 'Open the project page'}">
     <div class="lc-top">
       <input type="checkbox" class="lc-check"${sel ? ' checked' : ''} aria-label="Select ${esc(r.name)} for removal" title="Select for bulk removal">
       <span class="lc-name">${esc(r.name)}</span>
       ${owner ? `<span class="lc-owner">${esc(owner)}</span>` : ''}
       <span class="lc-chip fit-${r.fit.level}">${esc(r.fit.label)}</span>
       ${decBadge}
+      ${isPinned ? `<span class="lc-pin-badge" title="Pinned">📌</span>` : ''}
     </div>
     ${r.blurb ? `<div class="lc-blurb">${esc(r.blurb)}</div>` : ''}
     <div class="lc-meta">
@@ -87,6 +99,7 @@ function card(r) {
     </div>
     ${tags || boardDots ? `<div class="lc-tags">${tags}${boardDots}</div>` : ''}
     <div class="lc-actions">
+      <button class="lc-act${isPinned ? ' lc-act-pin-on' : ''}" data-act="pin" title="${isPinned ? 'Unpin' : 'Pin to top'}">📌</button>
       <button class="lc-act${compareSet.has(r.repoId) ? ' lc-act-cmp-on' : ''}" data-act="compare" title="${compareSet.has(r.repoId) ? 'Remove from compare' : 'Add to compare (pick 2)'}">⇄</button>
       <button class="lc-act" data-act="boards" title="Add to a collection">▦ Boards</button>
       <button class="lc-act" data-act="rescan" title="Run a fresh scan (AI call)">↻ Re-scan</button>
@@ -113,7 +126,14 @@ function render() {
   }
   document.getElementById('count').textContent =
     rows.length === allRows.length ? `${allRows.length} repos` : `${rows.length} of ${allRows.length}`;
-  grid.innerHTML = rows.length ? rows.map(card).join('') : '<p style="color:var(--muted);padding:20px 0">No repos match these filters.</p>';
+  const pinnedRows = rows.filter((r) => pinned.has(r.repoId));
+  const unpinnedRows = rows.filter((r) => !pinned.has(r.repoId));
+  const pinnedSection = pinnedRows.length
+    ? `<div class="lib-section-label">📌 Pinned</div>${pinnedRows.map(card).join('')}<div class="lib-section-label lib-section-rest">All repos</div>`
+    : '';
+  grid.innerHTML = rows.length
+    ? `${pinnedSection}${unpinnedRows.map(card).join('')}`
+    : '<p style="color:var(--muted);padding:20px 0">No repos match these filters.</p>';
   grid.querySelectorAll('.lib-card').forEach((el) => {
     el.addEventListener('click', (e) => {
       if (e.target.closest('.lc-act')) return; // action buttons handle themselves
@@ -135,6 +155,7 @@ function render() {
       else if (btn.dataset.act === 'remove') removeRepo(repoId, btn);
       else if (btn.dataset.act === 'boards') { e.stopPropagation(); openBoardsPopover(repoId, btn); }
       else if (btn.dataset.act === 'compare') { e.stopPropagation(); toggleCompare(repoId); }
+      else if (btn.dataset.act === 'pin') { e.stopPropagation(); togglePin(repoId); }
     });
   });
   if (selectionMode) updateSelectionBar(); // keep the bar's count / "Select all" label in sync
@@ -1090,11 +1111,12 @@ async function init() {
   const [points, cachedList, prefs, savedCollections, savedDecisions] = await Promise.all([
     scrollPoints(),
     listCached().catch(() => []),
-    chrome.storage.local.get(['librarySort', 'mascotEnabled']).catch(() => ({})),
+    chrome.storage.local.get(['librarySort', 'mascotEnabled', 'repolens_pinned']).catch(() => ({})),
     listCollections().catch(() => []),
     listDecisions().catch(() => []),
   ]);
   decisionMap = new Map(savedDecisions.map((d) => [d.repoId, d]));
+  pinned = new Set(Array.isArray(prefs?.repolens_pinned) ? prefs.repolens_pinned : []);
   if (prefs?.librarySort) state.sort = prefs.librarySort; // restore the last chosen sort
   const mascotOn = prefs?.mascotEnabled !== false; // default on
   collections = savedCollections;
