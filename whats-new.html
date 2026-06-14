@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RepoLens — 3 days, 20 releases</title>
+<title>RepoLens — v2.5.0 Knowledge</title>
 <style>
   :root {
     --bg: #06060d;
@@ -226,15 +226,15 @@
   <header class="hero">
     <span class="kicker"><span class="pulse"></span> Shipped · Jun 12–14, 2026</span>
     <div class="hero-vee"><span class="vee is-scanning" id="heroVee" aria-hidden="true"></span></div>
-    <h1>Three days.<br><span class="grad">Twenty releases.</span></h1>
-    <p class="hero-sub">RepoLens remembers — persistent Ask history across sessions, multi-turn Q&amp;A with real conversation context, library pinning, URL-to-analyze from search, and a fit distribution bar at a glance.</p>
-    <div class="hero-meta">🔭 RepoLens · v1.1.0 → v2.4.0</div>
+    <h1>Four days.<br><span class="grad">Twenty-five releases.</span></h1>
+    <p class="hero-sub">RepoLens knows more about your library than ever — AI-powered compare verdicts, personal notes, full-text search across summaries, and a one-click Markdown export for team sharing.</p>
+    <div class="hero-meta">🔭 RepoLens · v1.1.0 → v2.5.0</div>
   </header>
 
   <!-- STATS -->
   <section class="stats reveal">
-    <div class="stat"><div class="n">20</div><div class="l">Releases</div></div>
-    <div class="stat"><div class="n">676</div><div class="l">Tests passing</div></div>
+    <div class="stat"><div class="n">25</div><div class="l">Releases</div></div>
+    <div class="stat"><div class="n">696</div><div class="l">Tests passing</div></div>
     <div class="stat"><div class="n">13</div><div class="l">Themes</div></div>
     <div class="stat"><div class="n">20+</div><div class="l">AI providers</div></div>
     <div class="stat"><div class="n">100%</div><div class="l">Client-side</div></div>
@@ -244,50 +244,49 @@
   <section class="sec">
     <div class="reveal">
       <div class="sec-eyebrow">Just shipped</div>
-      <h2 class="sec-title">v2.4.0 — Memory.</h2>
-      <p class="sec-note">RepoLens now remembers. Ask history persists across browser sessions so you never re-ask the same question. The AI sees your prior conversation for smarter follow-ups. Pin your most-used repos to the top of the library. And paste any URL into library search to open it for analysis immediately.</p>
+      <h2 class="sec-title">v2.5.0 — Knowledge.</h2>
+      <p class="sec-note">Your library is now a knowledge base. Ask AI to compare any two repos head-to-head and get a verdict. Leave personal notes on any card. Search through full analysis summaries, not just names. Export your entire library as a readable Markdown report.</p>
     </div>
 
     <div class="latest-card reveal">
       <div class="latest-top">
-        <span class="vtag new">v2.4.0</span>
+        <span class="vtag new">v2.5.0</span>
         <span class="vnew">● NEWEST</span>
-        <span class="vtheme">Memory.</span>
+        <span class="vtheme">Knowledge.</span>
         <span class="vdate">Jun 14</span>
       </div>
 
       <div class="bento bento-2x2">
         <div class="feat">
-          <div class="ic">💬</div>
-          <h3>Persistent Ask history</h3>
-          <p>Questions and answers in the Ask tab are saved to local storage. Return to any repo and your entire Q&amp;A history is right there — no need to re-ask. A <em>Clear history</em> link resets it. Up to 10 pairs per repo.</p>
-          <div class="tagrow"><span class="tag">ask</span><span class="tag">persistent</span><span class="tag">memory</span></div>
+          <div class="ic">⇄</div>
+          <h3>AI Compare verdict</h3>
+          <p>Select 2 repos in the compare panel and click <em>✦ Ask AI</em>. RepoLens sends both repos' full analyses to the AI and returns a structured verdict: winner, reason, 2–3 sentence overview, "pick A if…" / "pick B if…" guidance, and key tradeoffs.</p>
+          <div class="tagrow"><span class="tag">compare</span><span class="tag">AI verdict</span><span class="tag">decision</span></div>
         </div>
         <div class="feat">
-          <div class="ic">🧵</div>
-          <h3>Multi-turn conversation</h3>
-          <p>Follow-up questions now get contextually aware answers. The AI sees the last 4 Q&amp;A pairs as a <em>Prior conversation</em> section in the prompt — so "what about testing?" makes sense after you already asked about TypeScript support.</p>
-          <div class="tagrow"><span class="tag">multi-turn</span><span class="tag">context</span><span class="tag">smarter</span></div>
+          <div class="ic">✎</div>
+          <h3>Personal notes</h3>
+          <p>Click ✎ on any library card to open an inline text editor. Write freeform context — "using in ProjectX", "replace when Y is stable", "blocked on auth". Notes persist to local storage, appear as a preview under the blurb, and survive restarts.</p>
+          <div class="tagrow"><span class="tag">notes</span><span class="tag">annotations</span><span class="tag">library</span></div>
         </div>
         <div class="feat">
-          <div class="ic">📌</div>
-          <h3>Library pinning</h3>
-          <p>Pin any repo to the top of the library with the 📌 button in the card actions. Pinned repos float above the sorted grid regardless of sort order or active filters. Palette command <em>Unpin all</em> clears in one shot.</p>
-          <div class="tagrow"><span class="tag">library</span><span class="tag">pin</span><span class="tag">quick access</span></div>
+          <div class="ic">🔍</div>
+          <h3>Full-text search</h3>
+          <p>Library search now matches against the full cached analysis — eli5 summaries, use cases, and technical descriptions — not just the short blurb. Searching "reduces boilerplate" or "handles async effects" finds repos whose analysis mentions them even if the name doesn't.</p>
+          <div class="tagrow"><span class="tag">search</span><span class="tag">full-text</span><span class="tag">semantic</span></div>
         </div>
         <div class="feat">
-          <div class="ic">🔗</div>
-          <h3>URL-to-analyze from search</h3>
-          <p>Paste any GitHub, GitLab, npm, or PyPI URL into the library search box and press Enter — RepoLens opens the page in a new tab to trigger analysis immediately, without navigating there first.</p>
-          <div class="tagrow"><span class="tag">library</span><span class="tag">search</span><span class="tag">shortcut</span></div>
+          <div class="ic">📄</div>
+          <h3>Markdown library export</h3>
+          <p>One new palette command — <em>Export Library (Markdown)</em> — generates a .md file grouping all repos by fit level. Each entry shows the GitHub link, health, stars, language, description, decision badge, and your personal note. Drop it into any team wiki or PR.</p>
+          <div class="tagrow"><span class="tag">export</span><span class="tag">markdown</span><span class="tag">sharing</span></div>
         </div>
       </div>
 
       <div class="changed">
-        <div class="chg"><span class="ci">💡</span><div><b>Follow-up suggestions stay visible.</b> <span>After each answer, 3 fresh suggestion chips appear (excluding already-asked questions) to keep exploration going.</span></div></div>
-        <div class="chg"><span class="ci">📊</span><div><b>Fit distribution bar in library stats.</b> <span>A compact color-coded bar shows your library's Strong/Solid/Care/Risky split at a glance.</span></div></div>
-        <div class="chg"><span class="ci">🗓</span><div><b>Today badge on recently-scanned cards.</b> <span>Cards scanned within 24h show an accented "Today" badge instead of a relative timestamp.</span></div></div>
-        <div class="chg"><span class="ci">🧪</span><div><b>676 tests, all green.</b> <span>All suites passing across 59 test files.</span></div></div>
+        <div class="chg"><span class="ci">💬</span><div><b>Inline collection creation.</b> <span>Creating a new collection no longer interrupts you with a browser prompt. An in-page input appears in the collections bar — press Enter to confirm, Escape to cancel.</span></div></div>
+        <div class="chg"><span class="ci">🤖</span><div><b>Quick Ask on library cards.</b> <span>Ask a question about any cached repo directly from the library card. No tab switch required. The answer appears inline below the card.</span></div></div>
+        <div class="chg"><span class="ci">🧪</span><div><b>696 tests, all green.</b> <span>All suites passing across 60 test files.</span></div></div>
       </div>
     </div>
   </section>
@@ -301,6 +300,10 @@
     </div>
 
     <div class="timeline">
+      <div class="rel reveal">
+        <div class="rel-head"><span class="rel-v">v2.4.0</span><span class="rel-theme">Memory.</span><span class="rel-date">Jun 14</span></div>
+        <div class="rel-body">Persistent Ask history across browser sessions — all Q&amp;A saved to local storage per repo. Multi-turn conversations with full prior context. Library pinning to float your most-used repos. URL-paste in search to analyze without navigating to GitHub. Fit distribution bar in library stats. Today badge on same-day scans.</div>
+      </div>
       <div class="rel reveal">
         <div class="rel-head"><span class="rel-v">v2.3.0</span><span class="rel-theme">Decide.</span><span class="rel-date">Jun 14</span></div>
         <div class="rel-body">Tech Radar organizes your library by Adopt/Trial/Hold/Reject. Decision badge in the output-tab header and at the top of the Verdict tab. Five new keyboard shortcuts (<kbd>v</kbd> <kbd>e</kbd> <kbd>h</kbd> <kbd>l</kbd> <kbd>o</kbd>). Fit chip in header. Richer verdict copy text. Export radar as Markdown.</div>
@@ -422,7 +425,7 @@
       <span class="pill">Manifest V3</span>
     </div>
     <div>🔭 <b>RepoLens</b> — built for people who read code before they trust it.<br>
-    Full detail in the <a href="CHANGELOG.md">changelog</a>. Now at v2.4.0.</div>
+    Full detail in the <a href="CHANGELOG.md">changelog</a>. Now at v2.5.0.</div>
   </footer>
 
 </div>
