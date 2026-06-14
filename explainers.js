@@ -12,6 +12,7 @@ export const SCAN_EXPLAINERS = {
   17: { title: 'Versus',      bestFor: 'A head-to-head comparison against a specific other repo.', skipIf: 'You have no concrete alternative in mind to compare.', cost: '1 AI call' },
   19: { title: 'Connections', bestFor: 'Walking the semantic map your scans build — alternatives, synergies, versus links, and pinned ideas, one hop at a time.', skipIf: 'Your library is nearly empty — the map needs a few scans first.', cost: 'Instant · local graph' },
   20: { title: 'Combine',     bestFor: 'Fusing this repo with complementary library repos into concrete new project ideas, scored on novelty and feasibility.', skipIf: 'You haven\'t analyzed the ingredients yet — it builds on your library.', cost: 'Several AI calls — one per combo' },
+  21: { title: 'Docs Quality', bestFor: 'Answering "can I use this without reading the source?" — scores README completeness, quickstart, code examples, API reference, changelog, and contributing guide.', skipIf: 'The docs are clearly excellent or clearly absent — most useful in the grey zone where you\'re unsure.', cost: '1 AI call · README + file tree' },
 };
 
 export function explainerFor(tabId) {

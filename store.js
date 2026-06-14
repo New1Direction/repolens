@@ -133,6 +133,41 @@ export async function deleteCollection(id) {
   } catch { /* store unavailable */ }
 }
 
+// ─── decisions: per-repo adoption decisions (Decision Log) ───────────────────
+
+/** Persist an adoption decision for a repo, keyed by repoId. Throws on failure. */
+export async function saveDecision(decision) {
+  if (!decision || !decision.repoId) throw new Error('Decision needs a repoId');
+  await idbPut('decisions', { id: decision.repoId, payload: decision });
+}
+
+/** Get the current decision for a repo. Returns null if none recorded. */
+export async function getDecision(repoId) {
+  try {
+    const row = await idbGet('decisions', repoId);
+    return (row && row.payload) || null;
+  } catch {
+    return null;
+  }
+}
+
+/** Remove the recorded decision for a repo. Best-effort — never throws. */
+export async function clearDecision(repoId) {
+  try {
+    await idbDelete('decisions', repoId);
+  } catch { /* store unavailable */ }
+}
+
+/** All decisions. Best-effort — [] on failure. */
+export async function listDecisions() {
+  try {
+    const rows = await idbGetAll('decisions');
+    return (rows || []).map((r) => r && r.payload).filter((d) => d && d.repoId);
+  } catch {
+    return [];
+  }
+}
+
 // ─── graph: nodes + edges for the Connections tab ─────────────────────────────
 
 /** Upsert a graph node's payload (idempotent by id). Throws on failure (callers wrap best-effort). */
@@ -172,13 +207,14 @@ const validRows = (rows) => (rows || []).filter((r) => r && r.id != null);
 
 /** Gather every row from all stores for a backup envelope. */
 export async function exportStores() {
-  const [repos, nodes, edges, collections] = await Promise.all([
+  const [repos, nodes, edges, collections, decisions] = await Promise.all([
     idbGetAll('repos'),
     idbGetAll('nodes'),
     idbGetAll('edges'),
     idbGetAll('collections'),
+    idbGetAll('decisions'),
   ]);
-  return { repos: repos || [], nodes: nodes || [], edges: edges || [], collections: collections || [] };
+  return { repos: repos || [], nodes: nodes || [], edges: edges || [], collections: collections || [], decisions: decisions || [] };
 }
 
 /**
@@ -190,19 +226,20 @@ export async function exportStores() {
  * @param {{ repos?: object[], nodes?: object[], edges?: object[] }} rows
  * @param {{ mode?: 'merge'|'replace' }} [opts]
  */
-export async function importStores({ repos = [], nodes = [], edges = [], collections = [] } = {}, { mode = 'merge' } = {}) {
+export async function importStores({ repos = [], nodes = [], edges = [], collections = [], decisions = [] } = {}, { mode = 'merge' } = {}) {
   if (mode === 'replace') {
-    await Promise.all([idbClear('repos'), idbClear('nodes'), idbClear('edges'), idbClear('collections')]);
+    await Promise.all([idbClear('repos'), idbClear('nodes'), idbClear('edges'), idbClear('collections'), idbClear('decisions')]);
   }
-  const vr = validRows(repos), vn = validRows(nodes), ve = validRows(edges), vc = validRows(collections);
+  const vr = validRows(repos), vn = validRows(nodes), ve = validRows(edges), vc = validRows(collections), vd = validRows(decisions);
   for (const row of vr) await idbPut('repos', row);
   for (const row of vn) await idbPut('nodes', row);
   for (const row of ve) await idbPut('edges', row);
   for (const row of vc) await idbPut('collections', row);
-  return { repos: vr.length, nodes: vn.length, edges: ve.length, collections: vc.length };
+  for (const row of vd) await idbPut('decisions', row);
+  return { repos: vr.length, nodes: vn.length, edges: ve.length, collections: vc.length, decisions: vd.length };
 }
 
 /** Wipe the whole library (all stores). Backs the "Clear library" action. */
 export async function clearLibrary() {
-  await Promise.all([idbClear('repos'), idbClear('nodes'), idbClear('edges'), idbClear('collections')]);
+  await Promise.all([idbClear('repos'), idbClear('nodes'), idbClear('edges'), idbClear('collections'), idbClear('decisions')]);
 }

@@ -6,7 +6,7 @@ import { THEMES, initTheme, saveTheme } from './theme.js';
 import { SYSTEMS_FRAMEWORKS } from './systems.js';
 import { IDEATE_FRAMEWORKS } from './ideate.js';
 import { HEURISTICS_FRAMEWORKS } from './heuristics.js';
-import { toMarkdown, toHtml, slugify } from './exporter.js';
+import { toMarkdown, toHtml, toScaffold, slugify } from './exporter.js';
 import { lineageSvg, loopSvg } from './diagram.js';
 import { explainerFor, SCAN_EXPLAINERS } from './explainers.js';
 import { deriveFit, firstSentence, verdictCopyText } from './verdict.js';
@@ -16,6 +16,9 @@ import { spine, flow, ranked, matrix2x2, optionMatrix } from './layouts.js';
 import { guideFor } from './lens-guide.js';
 import { categorizeError, errorActions } from './errors.js';
 import { renderMascot, setMascotState, setMascotFromFit } from './mascot.js';
+import { DOCS_GRADES } from './docs-quality.js';
+import { DECISIONS, DECISION_META } from './decision-log.js';
+import { saveDecision, getDecision, clearDecision } from './store.js';
 
 // Apply the saved theme ASAP (before render) to minimise flash.
 initTheme();
@@ -191,6 +194,7 @@ async function init() {
   renderFrameworkLens(data, IDEATE_CFG);
   renderFrameworkLens(data, PRIORITIZE_CFG);
   renderSktpg(data);
+  renderDocsQuality(data);
   renderTechStack(data);
   renderSimilar(data);
   renderVersus(data);
@@ -892,6 +896,95 @@ function renderSktpgResult(r) {
   `;
 }
 
+// ─── Docs Quality — on-demand documentation score ────────────────────────────
+
+function startDocsQuality(d) {
+  chrome.runtime.sendMessage({ type: 'DOCS_QUALITY', sessionKey, platform: d.platform, repoId: d.repoId });
+  renderDocsQuality({ ...d, docsQuality: { status: 'fetching' } });
+}
+
+function renderDocsQuality(d) {
+  const host = document.getElementById('t21');
+  if (!host) return;
+  const dq = d.docsQuality;
+
+  if (!dq) {
+    host.innerHTML = `<div class="dd-cta">
+      <h3>Docs Quality</h3>
+      <p>Score this repo's documentation: README completeness, quickstart, code examples, API reference, changelog, and contributing guide. Answers: "can I use this without reading the source?"</p>
+      <button class="dd-run" id="dq-run">Run Docs Quality</button>
+    </div>`;
+    document.getElementById('dq-run')?.addEventListener('click', () => startDocsQuality(d));
+    return;
+  }
+
+  if (dq.status === 'error') {
+    host.innerHTML = `<div class="dd-cta"><h3>Docs Quality failed</h3><p>${esc(dq.error || 'Something went wrong.')}</p><button class="dd-run" id="dq-run">Try again</button></div>`;
+    document.getElementById('dq-run')?.addEventListener('click', () => startDocsQuality(d));
+    return;
+  }
+
+  if (dq.status !== 'done') {
+    host.innerHTML = `<div class="dd-progress"><span class="dot"></span>Scoring the documentation…</div>`;
+    return;
+  }
+
+  host.innerHTML = renderDocsQualityResult(dq.result || {});
+}
+
+function renderDocsQualityResult(r) {
+  const grade = DOCS_GRADES.includes(r.grade) ? r.grade : 'F';
+  const score = Math.max(0, Math.min(100, Math.round(r.score || 0)));
+  const verdict = r.overall_verdict || 'no';
+  const verdictLabel = { yes: '✓ Usable without source', partially: '~ Partially self-documenting', no: '✗ Requires reading the source' }[verdict] || verdict;
+
+  const barColor = (s) => {
+    if (s >= 75) return 'var(--ok)';
+    if (s >= 50) return 'var(--warn)';
+    return 'var(--bad)';
+  };
+
+  const sections = (r.sections || []).map(s => `
+    <div class="dq-section-row">
+      <div class="dq-section-name">${esc(s.name)}</div>
+      <div class="dq-bar-track"><div class="dq-bar-fill" style="width:${s.score}%;background:${barColor(s.score)}"></div></div>
+      <div class="dq-section-score">${s.score}</div>
+    </div>
+    ${s.verdict ? `<div class="dq-section-verdict">${esc(s.verdict)}</div>` : ''}
+  `).join('');
+
+  const strengths = (r.strengths || []).length
+    ? `<ul>${r.strengths.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`
+    : '<p style="color:var(--text-muted);font-size:12px">—</p>';
+
+  const gaps = (r.gaps || []).length
+    ? `<ul>${r.gaps.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`
+    : '<p style="color:var(--text-muted);font-size:12px">—</p>';
+
+  return `
+    <div class="dq-header">
+      <div class="dq-grade ${grade}">${esc(grade)}</div>
+      <div class="dq-meta">
+        <div class="dq-score-line">${score} / 100</div>
+        <span class="dq-verdict-chip ${verdict}">${esc(verdictLabel)}</span>
+      </div>
+    </div>
+    ${r.summary ? `<p class="dq-summary">${esc(r.summary)}</p>` : ''}
+    <div class="dd-section-title first">Section breakdown</div>
+    ${sections}
+    <div class="dq-lists">
+      <div class="dq-list-card">
+        <div class="dq-list-title strengths">Strengths</div>
+        ${strengths}
+      </div>
+      <div class="dq-list-card">
+        <div class="dq-list-title gaps">Gaps</div>
+        ${gaps}
+      </div>
+    </div>
+  `;
+}
+
 // ─── Versus — head-to-head comparison tab ─────────────────────────────────────
 
 function startVersus(d, competitor) {
@@ -981,6 +1074,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
   renderFrameworkLens(nv, IDEATE_CFG);
   renderFrameworkLens(nv, PRIORITIZE_CFG);
   renderSktpg(nv);
+  renderDocsQuality(nv);
   renderVersus(nv);
   renderSynergies(nv);
   renderCombinator(nv);
@@ -1125,6 +1219,81 @@ function renderTabs(d) {
       setTimeout(() => { btn.textContent = prev; btn.disabled = false; }, 1500);
     } catch { /* clipboard unavailable — ignore */ }
   });
+  renderDecisionControl(d);
+}
+
+// ─── Decision Log control (injected into the verdict tab) ────────────────────
+
+async function renderDecisionControl(d) {
+  const host = document.getElementById('t9');
+  if (!host || !d.repoId) return;
+
+  // Remove any previous decision block before re-rendering.
+  host.querySelector('.dl-block')?.remove();
+
+  const existing = await getDecision(d.repoId).catch(() => null);
+  const block = document.createElement('div');
+  block.className = 'dl-block';
+
+  const choiceButtons = DECISIONS.map(key => {
+    const m = DECISION_META[key];
+    const sel = existing?.decision === key ? ` selected-${key}` : '';
+    return `<button class="dl-btn${sel}" data-dl="${key}">${esc(m.label)}</button>`;
+  }).join('');
+
+  block.innerHTML = `
+    <div class="dl-label">My Decision</div>
+    <div class="dl-choices">${choiceButtons}</div>
+    <textarea class="dl-note" id="dl-note" placeholder="Add a note (optional)…" rows="2">${esc(existing?.note || '')}</textarea>
+    <div class="dl-actions">
+      <button class="dl-save" id="dl-save">Save</button>
+      ${existing ? `<button class="dl-clear" id="dl-clear">Clear</button>` : ''}
+      <span class="dl-saved-msg" id="dl-saved-msg"></span>
+    </div>
+  `;
+  host.appendChild(block);
+
+  let selected = existing?.decision || null;
+
+  block.querySelectorAll('.dl-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.dl;
+      selected = selected === key ? null : key;
+      block.querySelectorAll('.dl-btn').forEach(b => {
+        DECISIONS.forEach(k => b.classList.remove(`selected-${k}`));
+        if (b.dataset.dl === selected) b.classList.add(`selected-${selected}`);
+      });
+    });
+  });
+
+  document.getElementById('dl-save')?.addEventListener('click', async () => {
+    if (!selected) return;
+    const note = document.getElementById('dl-note')?.value || '';
+    try {
+      await saveDecision({ repoId: d.repoId, decision: selected, note, timestamp: new Date().toISOString() });
+      const msg = document.getElementById('dl-saved-msg');
+      if (msg) { msg.textContent = '✓ Saved'; setTimeout(() => { msg.textContent = ''; }, 1800); }
+      // Ensure Clear button appears after first save.
+      if (!block.querySelector('#dl-clear')) {
+        const clrBtn = document.createElement('button');
+        clrBtn.className = 'dl-clear';
+        clrBtn.id = 'dl-clear';
+        clrBtn.textContent = 'Clear';
+        document.getElementById('dl-actions')?.appendChild(clrBtn);
+        clrBtn.addEventListener('click', handleClear);
+      }
+    } catch { /* best-effort */ }
+  });
+
+  async function handleClear() {
+    await clearDecision(d.repoId).catch(() => {});
+    selected = null;
+    block.querySelectorAll('.dl-btn').forEach(b => DECISIONS.forEach(k => b.classList.remove(`selected-${k}`)));
+    const note = document.getElementById('dl-note');
+    if (note) note.value = '';
+    block.querySelector('#dl-clear')?.remove();
+  }
+  block.querySelector('#dl-clear')?.addEventListener('click', handleClear);
 }
 
 function card(color, label, text) {
@@ -1294,6 +1463,21 @@ copyMdBtn?.addEventListener('click', async () => {
     copyMdBtn.textContent = 'Copied ✓';
     setTimeout(() => { copyMdBtn.textContent = prev; }, 1500);
   } catch { copyMdBtn.textContent = 'Copy failed'; }
+});
+
+document.getElementById('export-scaffold')?.addEventListener('click', async () => {
+  if (!lastData) return;
+  const decision = await getDecision(lastData.repoId).catch(() => null);
+  const md = toScaffold(lastData, decision);
+  const blob = new Blob([md], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${slugify(lastData.repoId)}-scaffold.md`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 });
 
 document.getElementById('export-html')?.addEventListener('click', () => {

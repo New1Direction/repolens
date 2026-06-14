@@ -2,11 +2,11 @@
 // This is the only place that touches the raw IndexedDB API — everything else builds on idbPut/idbGet/etc.
 
 const DB_NAME = 'repolens';
-// v2 added the 'collections' store. The upgrade is additive — onupgradeneeded
-// creates any store in STORES that doesn't already exist, so existing repos /
-// nodes / edges data survives the version bump untouched.
-const DB_VERSION = 2;
-const STORES = ['repos', 'nodes', 'edges', 'collections'];
+// v2 added the 'collections' store. v3 added the 'decisions' store. Each upgrade
+// is additive — onupgradeneeded creates any store in STORES that doesn't already
+// exist, so existing data survives every version bump untouched.
+const DB_VERSION = 3;
+const STORES = ['repos', 'nodes', 'edges', 'collections', 'decisions'];
 
 let dbPromise = null;
 

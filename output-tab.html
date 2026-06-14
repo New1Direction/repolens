@@ -266,6 +266,57 @@
   .sk-row .main { color: var(--text); font-weight: 600; }
   .sk-row .sub { width: 100%; color: var(--text-sub); font-size: 12px; line-height: 1.5; margin-top: 2px; }
 
+  /* Decision Log */
+  .dl-block { margin-top: 28px; border-top: 1px solid var(--border); padding-top: 20px; }
+  .dl-label { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-faint); margin-bottom: 12px; }
+  .dl-choices { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .dl-btn { padding: 6px 16px; border-radius: 999px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid var(--border-2); background: var(--surface); color: var(--text-sub); transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out); }
+  .dl-btn:hover { background: var(--bg); }
+  .dl-btn:active { transform: scale(0.96); }
+  .dl-btn.selected-adopt  { color: var(--ok-ink);   background: var(--ok-bg);   border-color: var(--ok-edge); }
+  .dl-btn.selected-trial  { color: #60a5fa;          background: rgba(59,130,246,.1); border-color: rgba(59,130,246,.35); }
+  .dl-btn.selected-hold   { color: var(--warn-ink);  background: var(--warn-bg); border-color: var(--warn-edge); }
+  .dl-btn.selected-reject { color: var(--bad-ink);   background: var(--bad-bg);  border-color: var(--bad-edge); }
+  .dl-note { width: 100%; max-width: 520px; padding: 8px 12px; font: 13px/1.5 var(--font); background: var(--surface); border: 1px solid var(--border-2); border-radius: 8px; color: var(--text); resize: vertical; min-height: 56px; margin-bottom: 10px; }
+  .dl-note:focus { outline: none; border-color: var(--accent); }
+  .dl-actions { display: flex; gap: 8px; align-items: center; }
+  .dl-save { padding: 6px 16px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; background: var(--accent); color: #fff; border: none; }
+  .dl-save:hover { opacity: 0.9; }
+  .dl-clear { padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; background: none; color: var(--text-muted); border: 1px solid var(--border-2); }
+  .dl-clear:hover { color: var(--bad-ink); border-color: var(--bad-edge); }
+  .dl-saved-msg { font-size: 11px; color: var(--ok-ink); margin-left: 4px; }
+
+  /* Docs Quality */
+  .dq-header { display: flex; align-items: center; gap: 20px; margin-bottom: 24px; }
+  .dq-grade { font-size: 52px; font-weight: 900; line-height: 1; }
+  .dq-grade.A { color: var(--ok-ink); }
+  .dq-grade.B { color: #34d399; }
+  .dq-grade.C { color: var(--warn-ink); }
+  .dq-grade.D { color: #f97316; }
+  .dq-grade.F { color: var(--bad-ink); }
+  .dq-meta { display: flex; flex-direction: column; gap: 6px; }
+  .dq-score-line { font-size: 22px; font-weight: 800; color: var(--text-strong); }
+  .dq-verdict-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; border-radius: 999px; padding: 3px 10px; }
+  .dq-verdict-chip.yes { color: var(--ok-ink); background: var(--ok-bg); border: 1px solid var(--ok-edge); }
+  .dq-verdict-chip.partially { color: var(--warn-ink); background: var(--warn-bg); border: 1px solid var(--warn-edge); }
+  .dq-verdict-chip.no { color: var(--bad-ink); background: var(--bad-bg); border: 1px solid var(--bad-edge); }
+  .dq-summary { font-size: 13px; color: var(--text-sub); line-height: 1.5; margin-bottom: 20px; }
+  .dq-section-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); }
+  .dq-section-row:last-child { border-bottom: none; }
+  .dq-section-name { font-size: 12px; font-weight: 600; color: var(--text); min-width: 120px; }
+  .dq-bar-track { flex: 1; height: 6px; background: var(--border); border-radius: 6px; overflow: hidden; }
+  .dq-bar-fill { height: 100%; border-radius: 6px; transition: width var(--dur-slow) var(--ease-out); }
+  .dq-section-score { font-size: 11px; font-weight: 700; color: var(--text-sub); min-width: 30px; text-align: right; }
+  .dq-section-verdict { font-size: 11px; color: var(--text-muted); line-height: 1.4; margin-left: 130px; margin-bottom: 4px; padding-bottom: 4px; }
+  .dq-lists { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; }
+  .dq-list-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+  .dq-list-title { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px; }
+  .dq-list-title.strengths { color: var(--ok-ink); }
+  .dq-list-title.gaps { color: var(--bad-ink); }
+  .dq-list-card ul { list-style: none; }
+  .dq-list-card li { font-size: 12px; color: var(--text-sub); line-height: 1.5; padding: 3px 0; border-bottom: 1px solid var(--border); }
+  .dq-list-card li:last-child { border-bottom: none; }
+
   /* Tech Stack */
   .comp-bar { display: flex; height: 14px; border-radius: 7px; overflow: hidden; margin-bottom: 8px; }
   .comp-seg { height: 100%; }
@@ -595,6 +646,7 @@
       <div class="export-bar">
         <button class="export-btn" id="open-library" title="Browse every repo you've analyzed">📚 Library</button>
         <button class="export-btn" id="copy-md" title="Copy this analysis as Markdown">Copy MD</button>
+        <button class="export-btn" id="export-scaffold" title="Download a CLAUDE.md / Notion integration scaffold">Scaffold</button>
         <button class="export-btn" id="export-html" title="Download a self-contained HTML report">Export</button>
         <button class="export-btn" id="open-guide" title="What can RepoLens do? (press ?)">?<span class="guide-dot" id="guide-dot" hidden></span></button>
       </div>
@@ -629,6 +681,7 @@
         <button class="tab-btn" data-tab="12">Ideate</button>
         <button class="tab-btn" data-tab="13">Prioritize</button>
         <button class="tab-btn" id="tab-sktpg" data-tab="14">SKTPG</button>
+        <button class="tab-btn" data-tab="21">Docs Quality</button>
       </div>
     </div>
     <div class="tab-menu" id="menu-library">
@@ -667,6 +720,7 @@
   <div class="tab-content" id="t18"></div>
   <div class="tab-content" id="t19"></div>
   <div class="tab-content" id="t20"></div>
+  <div class="tab-content" id="t21"></div>
 
   <!-- Save status badge (hidden until JS updates it) -->
   <div class="saved-badge" style="display:none"></div>

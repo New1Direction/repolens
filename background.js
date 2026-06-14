@@ -50,6 +50,7 @@ import { buildIdeatePrompt, parseIdeate, isIdeateFramework } from './ideate.js';
 import { buildHeuristicsPrompt, parseHeuristics, isHeuristicFramework } from './heuristics.js';
 import { withTone } from './tone.js';
 import { buildSktpgPrompt, parseSktpg } from './sktpg.js';
+import { buildDocsQualityPrompt, parseDocsQuality } from './docs-quality.js';
 import { buildVersusPrompt, parseVersus } from './versus.js';
 import { buildSynergiesPrompt, parseSynergies } from './synergies.js';
 import { cacheAnalysis, getCached } from './cache.js';
@@ -157,6 +158,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'VERSUS' && msg.sessionKey && msg.platform && msg.repoId && msg.competitor) {
     sendResponse({ ok: true });
     runVersus(msg.sessionKey, { platform: msg.platform, repoId: msg.repoId }, msg.competitor);
+    return true;
+  }
+
+  // Docs Quality from the output tab — on-demand README + file-tree scan.
+  if (msg.type === 'DOCS_QUALITY' && msg.sessionKey && msg.platform && msg.repoId) {
+    sendResponse({ ok: true });
+    runDocsQuality(msg.sessionKey, { platform: msg.platform, repoId: msg.repoId });
     return true;
   }
 
@@ -542,6 +550,41 @@ async function runSktpg(sessionKey, detected) {
     await setSk({ status: 'done', result });
   } catch (err) {
     await setSk({ status: 'error', error: err.message || 'SKTPG failed' });
+  }
+}
+
+// ─── Docs Quality: README + file-tree documentation score (on-demand) ────────
+async function runDocsQuality(sessionKey, detected) {
+  const keys = await chrome.storage.local.get([...PROVIDER_KEYS, 'tone']);
+
+  const setDq = async (patch) => {
+    const cur = (await chrome.storage.session.get(sessionKey))[sessionKey] || {};
+    await chrome.storage.session.set({
+      [sessionKey]: { ...cur, docsQuality: { ...(cur.docsQuality || {}), ...patch } },
+    });
+  };
+
+  try {
+    const cur = (await chrome.storage.session.get(sessionKey))[sessionKey] || {};
+    const repoData = {
+      repoId: detected.repoId,
+      platform: detected.platform,
+      description: cur.description || '',
+      language: cur.language || '',
+      readme: cur.readme || '',
+    };
+
+    await setDq({ status: 'fetching', error: null, result: null });
+    const source = await fetchSource(detected.platform, detected.repoId);
+
+    await setDq({ status: 'running' });
+    const result = parseDocsQuality(
+      await callAI(keys, withTone(keys.tone, buildDocsQualityPrompt(repoData, source)), 'docs')
+    );
+
+    await setDq({ status: 'done', result });
+  } catch (err) {
+    await setDq({ status: 'error', error: err.message || 'Docs Quality scan failed' });
   }
 }
 

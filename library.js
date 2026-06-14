@@ -3,7 +3,8 @@
 // show), and each card manages its repo: click to reopen the saved analysis, hover for
 // re-scan / source / remove actions.
 
-import { scrollPoints, deleteRepo, exportStores, importStores, clearLibrary, listCollections, saveCollection, deleteCollection } from './store.js';
+import { scrollPoints, deleteRepo, exportStores, importStores, clearLibrary, listCollections, saveCollection, deleteCollection, listDecisions } from './store.js';
+import { DECISION_META } from './decision-log.js';
 import { makeCollection, validateCollectionName, addRepoToCollection, toggleRepoInCollection, collectionContains, sortedCollections, repoCollections, removeRepoFromCollection, nextColor, COLLECTION_COLORS } from './collections.js';
 import { listCached, removeCached, openCachedAnalysis, importCache, clearCache } from './cache.js';
 import { libraryRow, sortRows, filterRows, allCapabilities, relativeTime, sourceUrl, mergeRows, libraryStats } from './library-data.js';
@@ -26,6 +27,7 @@ const langColor = (n) => LANG_COLORS[n] || '#64748b';
 
 let allRows = [];
 let cacheByRepo = new Map(); // repoId → full cached analysis (instant reopen)
+let decisionMap = new Map(); // repoId → decision payload
 const state = { query: '', sort: 'fit', capability: '', collection: '' };
 
 // Collections ("Boards") — user-curated groups of repos. Loaded once on init,
@@ -43,6 +45,9 @@ const safeColor = (v) => (/^#[0-9a-fA-F]{3,8}$/.test(v) ? v : COLLECTION_COLORS[
 let selectionMode = false;
 const selected = new Set();
 
+// Compare basket: holds up to 2 repoIds; when full, the compare panel is shown.
+const compareSet = new Set();
+
 function card(r) {
   const owner = r.repoId.includes('/') ? r.repoId.slice(0, r.repoId.indexOf('/')) : '';
   const dots = r.languages
@@ -58,12 +63,17 @@ function card(r) {
         .map((b) => `<span class="lc-board-dot" style="background:${safeColor(b.color)}"></span>`)
         .join('')}</span>`
     : '';
+  const dec = decisionMap.get(r.repoId);
+  const decBadge = dec
+    ? `<span class="lc-decision" data-d="${esc(dec.decision)}" title="Your decision: ${esc(dec.decision)}">${esc(DECISION_META[dec.decision]?.label || dec.decision)}</span>`
+    : '';
   return `<div class="lib-card${sel ? ' is-selected' : ''}" data-repo="${esc(r.repoId)}" title="${r.hasCache ? 'Open the saved analysis (instant, no AI call)' : 'Open the project page'}">
     <div class="lc-top">
       <input type="checkbox" class="lc-check"${sel ? ' checked' : ''} aria-label="Select ${esc(r.name)} for removal" title="Select for bulk removal">
       <span class="lc-name">${esc(r.name)}</span>
       ${owner ? `<span class="lc-owner">${esc(owner)}</span>` : ''}
       <span class="lc-chip fit-${r.fit.level}">${esc(r.fit.label)}</span>
+      ${decBadge}
     </div>
     ${r.blurb ? `<div class="lc-blurb">${esc(r.blurb)}</div>` : ''}
     <div class="lc-meta">
@@ -74,6 +84,7 @@ function card(r) {
     </div>
     ${tags || boardDots ? `<div class="lc-tags">${tags}${boardDots}</div>` : ''}
     <div class="lc-actions">
+      <button class="lc-act${compareSet.has(r.repoId) ? ' lc-act-cmp-on' : ''}" data-act="compare" title="${compareSet.has(r.repoId) ? 'Remove from compare' : 'Add to compare (pick 2)'}">⇄</button>
       <button class="lc-act" data-act="boards" title="Add to a collection">▦ Boards</button>
       <button class="lc-act" data-act="rescan" title="Run a fresh scan (AI call)">↻ Re-scan</button>
       <button class="lc-act" data-act="source" title="Open the project page">Source ↗</button>
@@ -115,6 +126,7 @@ function render() {
       else if (btn.dataset.act === 'rescan') rescan(repoId);
       else if (btn.dataset.act === 'remove') removeRepo(repoId, btn);
       else if (btn.dataset.act === 'boards') { e.stopPropagation(); openBoardsPopover(repoId, btn); }
+      else if (btn.dataset.act === 'compare') { e.stopPropagation(); toggleCompare(repoId); }
     });
   });
   if (selectionMode) updateSelectionBar(); // keep the bar's count / "Select all" label in sync
@@ -431,6 +443,12 @@ function wireToolbar() {
   document.getElementById('file-input')?.addEventListener('change', onFileChosen);
   document.getElementById('clear')?.addEventListener('click', (e) => clearLibraryFlow(e.currentTarget));
   document.getElementById('select')?.addEventListener('click', () => setSelectionMode(!selectionMode));
+  document.getElementById('compare-btn')?.addEventListener('click', () => {
+    compareSet.clear();
+    updateCompareToolbar();
+    renderComparePanel();
+    render();
+  });
   document.getElementById('sel-all')?.addEventListener('click', selectAllToggle);
   document.getElementById('sel-del')?.addEventListener('click', (e) => deleteSelectedFlow(e.currentTarget));
   document.getElementById('sel-done')?.addEventListener('click', () => setSelectionMode(false));
@@ -574,6 +592,109 @@ async function toggleMembership(collectionId, repoId) {
   render();            // card dots + (if filtering this collection) membership
 }
 
+// ─── Compare mode ─────────────────────────────────────────────────────────────
+
+function toggleCompare(repoId) {
+  if (compareSet.has(repoId)) {
+    compareSet.delete(repoId);
+  } else if (compareSet.size < 2) {
+    compareSet.add(repoId);
+  } else {
+    // Swap out the first entry when the basket is full.
+    const [first] = compareSet;
+    compareSet.delete(first);
+    compareSet.add(repoId);
+  }
+  updateCompareToolbar();
+  renderComparePanel();
+  render();
+}
+
+function updateCompareToolbar() {
+  const btn = document.getElementById('compare-btn');
+  if (!btn) return;
+  const n = compareSet.size;
+  btn.classList.toggle('hidden', n === 0);
+  btn.classList.toggle('on', n === 2);
+  btn.textContent = n === 2 ? '⇄ Comparing 2 ✕' : `⇄ ${n}/2 ✕`;
+}
+
+const fmtStars = (n) => (n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n));
+
+function comparePanelHtml(a, b) {
+  const decA = decisionMap.get(a.repoId);
+  const decB = decisionMap.get(b.repoId);
+  const capSet = new Set([...a.capabilities, ...b.capabilities]);
+  const caps = [...capSet].sort().slice(0, 20);
+  const maxHealth = Math.max(a.health, b.health, 1);
+  const maxStars = Math.max(a.stars, b.stars, 1);
+
+  const fitChip = (r) => `<span class="lc-chip fit-${r.fit.level}" style="margin:0">${esc(r.fit.label)}</span>`;
+  const decChip = (dec) => dec
+    ? `<span class="lc-decision" data-d="${esc(dec.decision)}">${esc(DECISION_META[dec.decision]?.label || dec.decision)}</span>`
+    : '<span class="cmp-none">—</span>';
+  const bar = (v, max) => `<div class="cmp-bar-track"><div class="cmp-bar-fill" style="width:${Math.round((v / max) * 100)}%"></div></div>`;
+  const langPips = (r) => r.languages.map((l) => `<span class="lc-dot" style="background:${langColor(l.name)}" title="${esc(l.name)}"></span>`).join('');
+  const cell = (v, fallback = '<span class="cmp-none">—</span>') => v || fallback;
+
+  const rows = [
+    ['Fit',       fitChip(a),                                         fitChip(b)],
+    ['Health',    a.health ? `${a.health}% ${bar(a.health, maxHealth)}` : '', b.health ? `${b.health}% ${bar(b.health, maxHealth)}` : ''],
+    ['Stars',     a.stars  ? `${fmtStars(a.stars)} ${bar(a.stars, maxStars)}`  : '', b.stars  ? `${fmtStars(b.stars)} ${bar(b.stars, maxStars)}`  : ''],
+    ['Category',  a.category ? esc(a.category) : '',                 b.category ? esc(b.category) : ''],
+    ['Languages', langPips(a) || '',                                  langPips(b) || ''],
+    ['Decision',  decChip(decA),                                      decChip(decB)],
+  ];
+
+  const metaRows = rows.map(([label, va, vb]) =>
+    `<div class="cmp-row">
+      <div class="cmp-label">${label}</div>
+      <div class="cmp-cell lc-langs">${cell(va)}</div>
+      <div class="cmp-cell lc-langs">${cell(vb)}</div>
+    </div>`
+  ).join('');
+
+  const capRows = caps.length
+    ? `<div class="cmp-row cmp-caps-header"><div class="cmp-label">Capabilities</div><div class="cmp-cell"></div><div class="cmp-cell"></div></div>` +
+      caps.map((cap) =>
+        `<div class="cmp-row cmp-cap-row">
+          <div class="cmp-label cmp-cap-name">${esc(cap)}</div>
+          <div class="cmp-cell ${a.capabilities.includes(cap) ? 'cmp-yes' : 'cmp-no'}">${a.capabilities.includes(cap) ? '✓' : '✗'}</div>
+          <div class="cmp-cell ${b.capabilities.includes(cap) ? 'cmp-yes' : 'cmp-no'}">${b.capabilities.includes(cap) ? '✓' : '✗'}</div>
+        </div>`
+      ).join('')
+    : '';
+
+  return `
+    <div class="cmp-header">
+      <span class="cmp-title">Compare</span>
+      <div class="cmp-col-heads">
+        <div class="cmp-col-head"><span class="cmp-repo-name">${esc(a.name)}</span><span class="cmp-repo-id">${esc(a.repoId)}</span></div>
+        <div class="cmp-col-head"><span class="cmp-repo-name">${esc(b.name)}</span><span class="cmp-repo-id">${esc(b.repoId)}</span></div>
+      </div>
+      <button class="lib-btn" id="cmp-close" title="Close compare panel">✕</button>
+    </div>
+    <div class="cmp-body">${metaRows}${capRows}</div>`;
+}
+
+function renderComparePanel() {
+  const host = document.getElementById('compare-panel');
+  if (!host) return;
+  if (compareSet.size !== 2) { host.classList.add('hidden'); host.innerHTML = ''; return; }
+  const [idA, idB] = [...compareSet];
+  const a = allRows.find((r) => r.repoId === idA);
+  const b = allRows.find((r) => r.repoId === idB);
+  if (!a || !b) { host.classList.add('hidden'); return; }
+  host.classList.remove('hidden');
+  host.innerHTML = comparePanelHtml(a, b);
+  host.querySelector('#cmp-close')?.addEventListener('click', () => {
+    compareSet.clear();
+    updateCompareToolbar();
+    renderComparePanel();
+    render();
+  });
+}
+
 // Renders a static, code-owned empty-state string. STATIC ONLY — never pass
 // user-influenced data here (it is assigned straight to innerHTML).
 function showEmpty(staticHtml) {
@@ -588,12 +709,14 @@ async function init() {
   document.getElementById('settings')?.addEventListener('click', () => chrome.runtime.openOptionsPage());
   wireToolbar(); // before the empty-state return, so Import works on an empty library
 
-  const [points, cachedList, prefs, savedCollections] = await Promise.all([
+  const [points, cachedList, prefs, savedCollections, savedDecisions] = await Promise.all([
     scrollPoints(),
     listCached().catch(() => []),
     chrome.storage.local.get(['librarySort', 'mascotEnabled']).catch(() => ({})),
     listCollections().catch(() => []),
+    listDecisions().catch(() => []),
   ]);
+  decisionMap = new Map(savedDecisions.map((d) => [d.repoId, d]));
   if (prefs?.librarySort) state.sort = prefs.librarySort; // restore the last chosen sort
   const mascotOn = prefs?.mascotEnabled !== false; // default on
   collections = savedCollections;
