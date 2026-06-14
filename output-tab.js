@@ -2229,6 +2229,11 @@ document.addEventListener('keydown', e => {
     setTimeout(() => document.getElementById('ask-input')?.focus(), 50);
     return;
   }
+  if (e.key === 'b' && lastData) {
+    e.preventDefault();
+    document.getElementById('add-to-board')?.click();
+    return;
+  }
   if (!tabs.length) return;
   if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
     const cur = tabs.findIndex(b => b.classList.contains('active'));
