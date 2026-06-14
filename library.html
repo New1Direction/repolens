@@ -148,7 +148,8 @@
   .lc-dot { width: 9px; height: 9px; border-radius: 50%; }
   .lc-tags { display: flex; gap: 5px; flex-wrap: wrap; }
   .lc-tag { font: 600 9.5px/1 var(--mono); letter-spacing: .04em; color: var(--sub); background: var(--panel-2);
-    border: 1px solid var(--border); padding: 3px 6px; border-radius: 5px; }
+    border: 1px solid var(--border); padding: 3px 6px; border-radius: 5px; cursor: pointer; transition: background 120ms, color 120ms; }
+  .lc-tag:hover { background: var(--border); color: var(--text); }
 
   /* Per-card management actions — invisible until the card is hovered/focused. */
   .lc-actions { display: flex; gap: 6px; opacity: 0; transition: opacity .14s; }

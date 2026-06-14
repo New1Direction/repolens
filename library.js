@@ -73,7 +73,7 @@ function card(r) {
   const dots = r.languages
     .map((l) => `<span class="lc-dot" style="background:${langColor(l.name)}" title="${esc(l.name)}"></span>`)
     .join('');
-  const tags = r.capabilities.slice(0, 4).map((c) => `<span class="lc-tag">${esc(c)}</span>`).join('');
+  const tags = r.capabilities.slice(0, 4).map((c) => `<span class="lc-tag" data-cap="${esc(c)}" title="Filter by ${esc(c)}">${esc(c)}</span>`).join('');
   const when = relativeTime(r.savedAt);
   const isToday = r.savedAt && (Date.now() - Date.parse(r.savedAt)) < 86_400_000;
   const sel = selected.has(r.repoId);
@@ -181,6 +181,17 @@ function wireGridEvents(grid) {
 
   // Single click handler for cards and action buttons
   grid.addEventListener('click', (e) => {
+    // Capability tag click → filter by that capability
+    const tag = e.target.closest('.lc-tag[data-cap]');
+    if (tag) {
+      e.stopPropagation();
+      const cap = tag.dataset.cap;
+      state.capability = state.capability === cap ? '' : cap;
+      document.querySelectorAll('.lib-cap').forEach((b) => b.classList.toggle('on', b.dataset.cap === state.capability));
+      render();
+      return;
+    }
+
     const btn = e.target.closest('.lc-act');
     if (btn) {
       e.stopPropagation();
