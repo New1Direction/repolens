@@ -368,15 +368,29 @@ function showHoverPreview(repoId, cardEl) {
   const panel = document.getElementById('lc-hover-card');
   if (!panel) return;
 
-  const eli5 = full.eli5 ? `<p class="lchc-eli5">${full.eli5.slice(0, 200)}</p>` : '';
+  const row = rowFor(repoId);
+  const dec = decisionMap.get(repoId);
+  const note = notesMap.get(repoId);
+  const eli5 = full.eli5 ? `<p class="lchc-eli5">${esc(full.eli5.slice(0, 200))}</p>` : '';
   const pros = Array.isArray(full.pros) && full.pros.length
-    ? `<p class="lchc-section">Strengths</p><ul class="lchc-list lchc-pros">${full.pros.slice(0, 3).map((p) => `<li>${p}</li>`).join('')}</ul>`
+    ? `<p class="lchc-section">Strengths</p><ul class="lchc-list lchc-pros">${full.pros.slice(0, 3).map((p) => `<li>${esc(p)}</li>`).join('')}</ul>`
     : '';
   const cons = Array.isArray(full.cons) && full.cons.length
-    ? `<p class="lchc-section">Weaknesses</p><ul class="lchc-list lchc-cons">${full.cons.slice(0, 2).map((c) => `<li>${c}</li>`).join('')}</ul>`
+    ? `<p class="lchc-section">Weaknesses</p><ul class="lchc-list lchc-cons">${full.cons.slice(0, 2).map((c) => `<li>${esc(c)}</li>`).join('')}</ul>`
     : '';
+  const decHtml = dec
+    ? `<p class="lchc-dec"><span class="lc-decision" data-d="${esc(dec.decision)}">${esc(DECISION_META[dec.decision]?.label || dec.decision)}</span>${dec.savedAt ? ` <span class="lchc-when">${esc(relativeTime(dec.savedAt))}</span>` : ''}</p>`
+    : '';
+  const deltaHtml = row?.fitDelta
+    ? (() => {
+        const FIT_ORDER = ['strong', 'solid', 'care', 'risky'];
+        const imp = FIT_ORDER.indexOf(row.fitDelta.to) < FIT_ORDER.indexOf(row.fitDelta.from);
+        return `<p class="lchc-delta ${imp ? 'up' : 'down'}">${imp ? '↑' : '↓'} fit: ${esc(row.fitDelta.from)} → ${esc(row.fitDelta.to)}</p>`;
+      })()
+    : '';
+  const noteHtml = note ? `<p class="lchc-note">"${esc(note.slice(0, 100))}${note.length > 100 ? '…' : ''}"</p>` : '';
 
-  panel.innerHTML = eli5 + pros + cons;
+  panel.innerHTML = decHtml + deltaHtml + noteHtml + eli5 + pros + cons;
 
   // Position: right of card if room, else left
   const rect = cardEl.getBoundingClientRect();
