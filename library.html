@@ -259,6 +259,19 @@
     .lib-card:nth-child(n+10) { animation-delay: 270ms; }
   }
   .lib-card.jk-active { outline: 2px solid var(--cyan); outline-offset: 2px; }
+
+  /* Tech Radar view */
+  .radar-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+  .radar-col { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 12px; min-height: 80px; }
+  .radar-col-head { display: flex; align-items: center; gap: 7px; font: 700 11px/1 var(--mono); padding-bottom: 8px; border-bottom: 2px solid; margin-bottom: 8px; text-transform: uppercase; letter-spacing: .06em; }
+  .radar-col-n { margin-left: auto; opacity: .55; font-size: 10px; }
+  .radar-chips { display: flex; flex-direction: column; gap: 5px; }
+  .radar-chip { display: block; padding: 5px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--sub); font: 500 11px/1.3 var(--mono); cursor: pointer; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: background 150ms; }
+  .radar-chip:hover { background: var(--border); color: var(--text); }
+  .radar-empty-col { font-size: 12px; color: var(--muted); padding: 6px 0; display: block; }
+  .radar-empty-msg { color: var(--muted); font-size: 13px; padding: 32px 0 16px; text-align: center; line-height: 1.6; }
+  #lib-btn-radar.on { color: var(--text); background: var(--surface); border-color: var(--border-2); }
+  @media (max-width: 640px) { .radar-grid { grid-template-columns: repeat(2, 1fr); } }
 </style>
 </head>
 <body>
@@ -266,6 +279,7 @@
     <div class="lib-header">
       <h1>Library</h1><span class="count" id="count"></span>
       <div class="lib-actions">
+        <button class="lib-btn" id="lib-btn-radar" title="Tech Radar — repos organized by your Adopt/Trial/Hold/Reject decisions">🎯 Radar</button>
         <button class="lib-btn" id="select" title="Select several repos to remove at once" aria-pressed="false">☑ Select</button>
         <button class="lib-btn hidden" id="compare-btn" title="Clear the compare selection" aria-label="Clear compare selection">⇄ 0/2 ✕</button>
         <button class="lib-btn" id="auto-organize" title="Auto-group repos by detected language and category">✦ Auto-organize</button>
@@ -318,6 +332,7 @@
     <div class="lib-colls" id="collections"></div>
 
     <div class="cmp-panel hidden" id="compare-panel"></div>
+    <div id="radar-panel" class="hidden"></div>
     <div id="grid"></div>
     <div class="lib-empty hidden" id="empty"></div>
   </div>

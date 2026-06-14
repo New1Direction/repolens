@@ -30,7 +30,7 @@ const langColor = (n) => LANG_COLORS[n] || '#64748b';
 let allRows = [];
 let cacheByRepo = new Map(); // repoId → full cached analysis (instant reopen)
 let decisionMap = new Map(); // repoId → decision payload
-const state = { query: '', sort: 'fit', capability: '', collection: '', decision: '' };
+const state = { query: '', sort: 'fit', capability: '', collection: '', decision: '', view: 'list' };
 
 // Collections ("Boards") — user-curated groups of repos. Loaded once on init,
 // kept in memory, and persisted per-change. `collection` in state holds the id of
@@ -523,6 +523,57 @@ function renderCaps() {
   });
 }
 
+// ─── Tech Radar view ─────────────────────────────────────────────────────────
+
+const RADAR_ICONS = { adopt: '✅', trial: '🔬', hold: '⏸', reject: '🚫' };
+
+function toggleRadarView() {
+  state.view = state.view === 'radar' ? 'list' : 'radar';
+  const btn = document.getElementById('lib-btn-radar');
+  btn?.classList.toggle('on', state.view === 'radar');
+  document.getElementById('radar-panel')?.classList.toggle('hidden', state.view !== 'radar');
+  document.getElementById('grid')?.classList.toggle('hidden', state.view === 'radar');
+  if (state.view === 'radar') renderRadar(); else render();
+}
+
+function renderRadar() {
+  const host = document.getElementById('radar-panel');
+  if (!host) return;
+  const byDecision = { adopt: [], trial: [], hold: [], reject: [] };
+  for (const [repoId, dec] of decisionMap.entries()) {
+    if (byDecision[dec.decision]) {
+      const row = allRows.find((r) => r.repoId === repoId);
+      if (row) byDecision[dec.decision].push({ row, note: dec.note });
+    }
+  }
+  const hasAny = Object.values(byDecision).some((arr) => arr.length > 0);
+  if (!hasAny) {
+    host.innerHTML = '<p class="radar-empty-msg">No decisions recorded yet.<br>Open a repo analysis and use the <strong>Decision Log</strong> on the Verdict tab to record Adopt, Trial, Hold, or Reject.</p>';
+    return;
+  }
+  const cols = ['adopt', 'trial', 'hold', 'reject'].map((key) => {
+    const meta = DECISION_META[key];
+    const items = byDecision[key];
+    const icon = RADAR_ICONS[key];
+    const chips = items.length
+      ? items.map(({ row }) => {
+          const label = row.repoId.includes('/') ? row.repoId.split('/')[1] : row.repoId;
+          return `<button class="radar-chip" data-repo="${esc(row.repoId)}" title="${esc(row.repoId)}${row.blurb ? ': ' + esc(row.blurb) : ''}">${esc(label)}</button>`;
+        }).join('')
+      : `<span class="radar-empty-col">—</span>`;
+    return `<div class="radar-col">
+      <div class="radar-col-head" style="color:${meta.color};border-bottom-color:${meta.border}">
+        <span>${icon}</span> ${esc(meta.label)} <span class="radar-col-n">${items.length}</span>
+      </div>
+      <div class="radar-chips">${chips}</div>
+    </div>`;
+  });
+  host.innerHTML = `<div class="radar-grid">${cols.join('')}</div>`;
+  host.querySelectorAll('.radar-chip').forEach((btn) => {
+    btn.addEventListener('click', () => openRow(btn.dataset.repo));
+  });
+}
+
 // ─── Decision filter ─────────────────────────────────────────────────────────
 
 function renderDecisionFilter() {
@@ -983,6 +1034,8 @@ function initLibraryPalette() {
     { name: 'Sort: Recently scanned', action: () => { state.sort = 'recent'; document.getElementById('sort').value = 'recent'; chrome.storage.local.set({ librarySort: 'recent' }); render(); } },
     { name: 'Sort: Stars', action: () => { state.sort = 'stars'; document.getElementById('sort').value = 'stars'; chrome.storage.local.set({ librarySort: 'stars' }); render(); } },
     { name: 'Sort: Name', action: () => { state.sort = 'name'; document.getElementById('sort').value = 'name'; chrome.storage.local.set({ librarySort: 'name' }); render(); } },
+    { section: 'View', name: 'Tech Radar', description: 'Organize repos by Adopt/Trial/Hold/Reject decision', action: () => { if (state.view !== 'radar') toggleRadarView(); } },
+    { name: 'List view', description: 'Default card grid', action: () => { if (state.view !== 'list') toggleRadarView(); } },
     { section: 'Actions', name: 'Auto-organize by language', description: 'Group repos into language collections', action: () => autoOrganize() },
     { name: 'Batch Scan', description: 'Scan multiple repos at once', action: () => chrome.tabs.create({ url: chrome.runtime.getURL('batch.html') }) },
     { name: 'Export Digest (JSON)', description: 'Download library as JSON', action: () => exportDigest('json') },
@@ -1000,6 +1053,7 @@ function initLibraryPalette() {
 
 async function init() {
   document.getElementById('settings')?.addEventListener('click', () => chrome.runtime.openOptionsPage());
+  document.getElementById('lib-btn-radar')?.addEventListener('click', toggleRadarView);
   wireToolbar(); // before the empty-state return, so Import works on an empty library
 
   const [points, cachedList, prefs, savedCollections, savedDecisions] = await Promise.all([
