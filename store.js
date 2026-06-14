@@ -62,6 +62,16 @@ async function allPayloads() {
   return (rows || []).map((r) => r.payload).filter((p) => p && p.repoId);
 }
 
+/** Map of repoId → bare metadata for cross-reference widgets (alternatives, similar). */
+export async function getLibraryIndex() {
+  try {
+    const payloads = await allPayloads();
+    return new Map(payloads.map((p) => [p.repoId, { stars: p.stars, language: p.language, license: p.license, capabilities: p.capabilities }]));
+  } catch {
+    return new Map();
+  }
+}
+
 /** Raw points ({ id, payload }) for the Library grid and the re-tagging backfill. */
 export async function scrollPoints({ limit = 500 } = {}) {
   try {

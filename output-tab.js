@@ -1,4 +1,4 @@
-import { findSimilar, getEgoGraph } from './store.js';
+import { findSimilar, getEgoGraph, getLibraryIndex } from './store.js';
 import { egoGraphSvg } from './graph.js';
 import { esc, paras, formatStars } from './format.js';
 import { formatTokens } from './estimate.js';
@@ -1660,9 +1660,21 @@ function renderTabs(d) {
     </ul></div>
   </div>`);
 
-  setTabContent(6, (d.alternatives ?? []).map(a =>
-    `<div class="alt-row"><div class="alt-name">${esc(a.name)}</div><div class="alt-when">${esc(a.when)}</div></div>`
-  ).join(''));
+  // Alternatives: enrich with "in library" badge and quick-scan link.
+  getLibraryIndex().then((libIdx) => {
+    const alts = d.alternatives ?? [];
+    setTabContent(6, alts.map(a => {
+      const inLib = libIdx.has(a.name);
+      const scanUrl = repoSourceUrl('github', a.name);
+      const badge = inLib
+        ? `<span class="alt-in-lib">In library</span>`
+        : `<a class="alt-scan-link" href="${scanUrl}" target="_blank" rel="noopener" title="Open to scan">↗ View</a>`;
+      return `<div class="alt-row">
+        <div class="alt-name">${esc(a.name)}${badge}</div>
+        <div class="alt-when">${esc(a.when)}</div>
+      </div>`;
+    }).join(''));
+  });
 
   const bars = ['commit_activity', 'issue_response', 'pr_merge_rate', 'maintainer_count'];
   const labels = ['Commit activity', 'Issue response', 'PR merge rate', 'Maintainers'];
