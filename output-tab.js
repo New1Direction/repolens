@@ -1406,28 +1406,39 @@ const ASK_SUGGESTIONS = [
 function renderAskRepo(d) {
   const host = document.getElementById('t26');
   if (!host) return;
-  const ask = d.askRepo;
+  const ask = d.askRepo || {};
+  const history = ask.history || [];
+  const pending = ask.pending;
 
-  const qaHtml = ask
-    ? `<div class="ask-qa">
-        <div class="ask-q">Q: <span>${esc(ask.question || '')}</span></div>
-        <div class="ask-a${ask.status === 'thinking' ? ' thinking' : ask.status === 'error' ? ' error' : ''}">
-          ${ask.status === 'thinking' ? 'Thinking…' : ask.status === 'error' ? esc(ask.error || 'Something went wrong') : esc(ask.answer || '')}
-        </div>
-      </div>` : '';
+  const historyHtml = history.map(({ question, answer }) => `
+    <div class="ask-qa">
+      <div class="ask-q">Q: <span>${esc(question)}</span></div>
+      <div class="ask-a">${esc(answer)}</div>
+    </div>`).join('');
 
-  const sugsHtml = !ask
+  const pendingHtml = pending ? `
+    <div class="ask-qa">
+      <div class="ask-q">Q: <span>${esc(pending.question || '')}</span></div>
+      <div class="ask-a${pending.status === 'thinking' ? ' thinking' : pending.status === 'error' ? ' error' : ''}">
+        ${pending.status === 'thinking' ? 'Thinking…' : pending.status === 'error' ? esc(pending.error || 'Something went wrong') : esc(pending.answer || '')}
+      </div>
+    </div>` : '';
+
+  const sugsHtml = !history.length && !pending
     ? `<div class="ask-suggestions">${ASK_SUGGESTIONS.map(s => `<button class="ask-sug">${esc(s)}</button>`).join('')}</div>`
     : '';
 
+  const isThinking = pending?.status === 'thinking';
+
   host.innerHTML = `<div class="ask-wrap">
-    <p class="ask-intro">Ask a specific question about <b>${esc(d.repoId || 'this repo')}</b>. Answers use the loaded analysis — no extra AI call needed for context.</p>
+    <p class="ask-intro">Ask a specific question about <b>${esc(d.repoId || 'this repo')}</b>. Answers use the loaded analysis as context.</p>
     <div class="ask-row">
-      <textarea class="ask-input" id="ask-input" rows="1" placeholder="e.g. Does it support GraphQL?"></textarea>
-      <button class="ask-send" id="ask-send">Ask</button>
+      <textarea class="ask-input" id="ask-input" rows="1" placeholder="e.g. Does it support GraphQL?"${isThinking ? ' disabled' : ''}></textarea>
+      <button class="ask-send" id="ask-send"${isThinking ? ' disabled' : ''}>Ask</button>
     </div>
     ${sugsHtml}
-    ${qaHtml}
+    ${historyHtml}
+    ${pendingHtml}
   </div>`;
 
   const input = host.querySelector('#ask-input');
@@ -1436,6 +1447,8 @@ function renderAskRepo(d) {
   const doAsk = () => {
     const q = input?.value.trim();
     if (!q || sendBtn?.disabled) return;
+    input.value = '';
+    input.disabled = true;
     sendBtn.disabled = true;
     chrome.runtime.sendMessage({ type: 'ASK_REPO', sessionKey, question: q });
   };
@@ -1445,11 +1458,17 @@ function renderAskRepo(d) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doAsk(); }
   });
 
-  host.querySelectorAll('.ask-sug').forEach(btn => {
-    btn.addEventListener('click', () => {
-      if (input) { input.value = btn.textContent; input.focus(); }
+  if (!isThinking) {
+    host.querySelectorAll('.ask-sug').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (input) { input.value = btn.textContent; input.focus(); }
+      });
     });
-  });
+    // Scroll last answer into view when a new answer arrives
+    if (pendingHtml && pending?.status !== 'thinking') {
+      host.querySelector('.ask-qa:last-child')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
 }
 
 function renderVersus(d) {
@@ -2033,6 +2052,17 @@ document.addEventListener('keydown', e => {
   if (e.key === 'm' && lastData) {
     e.preventDefault();
     copyMdBtn?.click();
+    return;
+  }
+  if (e.key === 'd' && lastData) {
+    e.preventDefault();
+    show(10);
+    return;
+  }
+  if (e.key === 'a' && lastData) {
+    e.preventDefault();
+    show(26);
+    setTimeout(() => document.getElementById('ask-input')?.focus(), 50);
     return;
   }
   if (!tabs.length) return;

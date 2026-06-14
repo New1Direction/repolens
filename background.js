@@ -244,23 +244,30 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 
   // Ask This Repo — grounded Q&A over the current analysis in session storage.
+  // Stores up to 5 Q&A pairs in askRepo.history; current pending is askRepo.pending.
   if (msg.type === 'ASK_REPO' && msg.sessionKey && msg.question) {
     sendResponse({ ok: true });
     (async () => {
+      const getSession = async () => (await chrome.storage.session.get(msg.sessionKey))[msg.sessionKey] || {};
       const setAsk = async (patch) => {
-        const cur = (await chrome.storage.session.get(msg.sessionKey))[msg.sessionKey] || {};
+        const cur = await getSession();
         await chrome.storage.session.set({ [msg.sessionKey]: { ...cur, askRepo: { ...(cur.askRepo || {}), ...patch } } });
       };
       try {
         const keys = await chrome.storage.local.get([...PROVIDER_KEYS, 'tone']);
-        const cur = (await chrome.storage.session.get(msg.sessionKey))[msg.sessionKey] || {};
-        await setAsk({ status: 'thinking', question: msg.question, answer: null, error: null });
+        const cur = await getSession();
+        const history = (cur.askRepo?.history || []).slice(-4); // keep last 4 completed pairs
+        await setAsk({ pending: { status: 'thinking', question: msg.question }, history });
         const prompt = buildAskRepoPrompt(msg.question, cur);
-        if (!prompt) { await setAsk({ status: 'error', error: 'Not enough context — try re-scanning first.' }); return; }
+        if (!prompt) { await setAsk({ pending: { status: 'error', question: msg.question, error: 'Not enough context — try re-scanning first.' }, history }); return; }
         const text = await callAI(keys, prompt, 'ask');
-        await setAsk({ status: 'done', answer: parseAskRepoAnswer(text) });
+        const answer = parseAskRepoAnswer(text);
+        const updated = [...history, { question: msg.question, answer }].slice(-5);
+        await setAsk({ pending: null, history: updated });
       } catch (e) {
-        await setAsk({ status: 'error', error: e?.message || 'Ask failed' });
+        const cur = await getSession();
+        const history = cur.askRepo?.history || [];
+        await setAsk({ pending: { status: 'error', question: msg.question, error: e?.message || 'Ask failed' }, history });
       }
     })();
     return true;
