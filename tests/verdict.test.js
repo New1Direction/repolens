@@ -42,11 +42,11 @@ describe('verdictCopyText', () => {
     };
     const txt = verdictCopyText(d);
     expect(txt).toContain('o/r — Solid');       // 78 health + 1 warning → Solid
+    expect(txt).toContain('Health 78/100');     // meta line
     expect(txt).toContain('A thing.');
     expect(txt).toContain('Use it when X.');
-    expect(txt).toContain('Fit: Solid');
-    expect(txt).toContain('- Risk: Watch out.');
-    expect(txt).not.toContain('- Good:'); // ok flags excluded
+    expect(txt).toContain('⚠ Risk: Watch out.');
+    expect(txt).not.toContain('⚠ Good:'); // ok flags excluded
   });
   it('handles a sparse object without throwing', () => {
     expect(typeof verdictCopyText({})).toBe('string');
