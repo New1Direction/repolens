@@ -1,0 +1,58 @@
+---
+title: Triage & decide
+description: Turn a pile of scans into decisions — keyboard-first, with a radar, collections, notes, and drift alerts.
+---
+
+A verdict tells you about *one* repo. Once you've scanned a few, the **Library** is where you turn them into decisions — and it's built to be driven from the keyboard.
+
+## Keyboard-first
+
+Focus a card with **j** / **k**, then act on it without ever touching the mouse:
+
+| Key | Action |
+|---|---|
+| **j** / **k** | Move focus between cards |
+| **Enter** | Open the focused repo's analysis |
+| **o** | Open the repo's source page (GitHub, npm, …) |
+| **r** | Re-scan the focused repo (fresh AI call) |
+| **d** | Decide — Adopt / Trial / Hold / Reject |
+| **e** | Evaluate against your rubric |
+| **n** | Add a note |
+| **c** | Add to a compare |
+| **p** | Pin to the top |
+| **/** | Jump to search |
+| **Esc** | Clear focus, or leave the current mode |
+| **⌘K** / **Ctrl K** | Open the command palette |
+
+## The command palette
+
+**⌘K** (or **Ctrl K**) opens a fuzzy-searchable palette — *"Type a command…"* — over everything the Library can do: filters, sorts, views, exports, and one-off actions. The footer spells out the controls: **↑↓ navigate · ↵ run · Esc close**.
+
+It's also where the less-common verbs live: **Batch Scan**, **Auto-organize by language**, **Re-scan all stale**, the [exports](/docs/evaluate#export-a-decision-matrix), and **★ Save current filter…** — which pins your current filter/sort as a one-tap command you can run again later.
+
+## Decisions: Adopt / Trial / Hold / Reject
+
+RepoLens borrows the Tech-Radar verbs. Press **d** on a focused card for a quick popover — **a** dopt, **t** rial, **h** old, **r** eject, or **c** lear — pre-pointed at Vee's suggestion when the repo already has a fit call. Each decision lands as a coloured badge with a relative timestamp (*"Trial · 3 days ago"*).
+
+- **In bulk** — turn on **Select**, tick some cards, and assign one decision to all of them.
+- **From the verdict** — every fit call maps to a suggested decision (strong → adopt, solid → trial, care → hold, risky → reject). Run **✦ Auto-decide all undecided (Vee)** from the palette to apply that mapping to every rated, undecided repo at once — then fix the handful you disagree with.
+
+## Tech Radar
+
+**🎯 Radar** reorganises the whole library into four columns — **Adopt · Trial · Hold · Reject** — with your notes inline. It's the one-screen "where did we land" view, and it exports to Markdown for a doc or a PR description.
+
+## Collections
+
+Group the repos you're weighing into named **Collections** (the per-card button reads **▦ Boards**). Hit **▦ Boards** on a card → **+ New collection…**, name it, and tick repos in or out; a filter bar at the top of the Library narrows the grid to one collection at a time. Collections travel with your [backup](/docs/storage).
+
+## Notes & pins
+
+Press **n** (or click **✎**) for an inline note — **Ctrl+Enter** saves, **Esc** closes — and the first line shows as a preview under the card. **p** pins a repo to the top of the grid so your live shortlist stays in view.
+
+## Fit changed? You'll see it
+
+Re-scan a repo and RepoLens diffs the new verdict against the old one: a green **↑** or amber **↓** badge spells out the move (*"↑ solid → strong"*). The palette filter **↕ Show: Fit changed since last scan** pulls up everything that shifted — handy after a dependency's had a busy month.
+
+## Drift alerts
+
+A daily background check flags repos you haven't re-scanned in about a month. You'll see a **↻ stale** count in the stats bar, a **⟳ stale** badge on the affected cards, and — when there's drift — a dismissable banner with a **Refresh stale** button that pre-fills a batch re-scan. Your shortlist stays honest without you having to babysit it.
