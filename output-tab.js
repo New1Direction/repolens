@@ -1464,12 +1464,20 @@ function getAskSuggestions(d) {
   return sugs.slice(0, 6);
 }
 
-function renderAskRepo(d) {
+async function renderAskRepo(d) {
   const host = document.getElementById('t26');
   if (!host) return;
   const ask = d.askRepo || {};
-  const history = ask.history || [];
+  let history = ask.history || [];
   const pending = ask.pending;
+
+  // Load persisted history when session is fresh (no history yet, no pending)
+  if (!history.length && !pending && d.repoId) {
+    try {
+      const stored = await chrome.storage.local.get(`repolens_ask_${d.repoId}`);
+      history = stored[`repolens_ask_${d.repoId}`] || [];
+    } catch (_) {}
+  }
 
   const historyHtml = history.map(({ question, answer }) => `
     <div class="ask-qa">
@@ -1492,9 +1500,12 @@ function renderAskRepo(d) {
     : '';
 
   const isThinking = pending?.status === 'thinking';
+  const clearBtn = history.length && !pending
+    ? `<button class="ask-clear" id="ask-clear" title="Clear ask history">Clear history</button>`
+    : '';
 
   host.innerHTML = `<div class="ask-wrap">
-    <p class="ask-intro">Ask a specific question about <b>${esc(d.repoId || 'this repo')}</b>. Answers use the loaded analysis as context.</p>
+    <p class="ask-intro">Ask a specific question about <b>${esc(d.repoId || 'this repo')}</b>. Answers use the loaded analysis as context. ${clearBtn}</p>
     <div class="ask-row">
       <textarea class="ask-input" id="ask-input" rows="1" placeholder="e.g. Does it support GraphQL?"${isThinking ? ' disabled' : ''}></textarea>
       <button class="ask-send" id="ask-send"${isThinking ? ' disabled' : ''}>Ask</button>
@@ -1519,6 +1530,14 @@ function renderAskRepo(d) {
   sendBtn?.addEventListener('click', doAsk);
   input?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doAsk(); }
+  });
+
+  document.getElementById('ask-clear')?.addEventListener('click', async () => {
+    if (!d.repoId) return;
+    await chrome.storage.local.remove(`repolens_ask_${d.repoId}`);
+    const stored = await chrome.storage.session.get(sessionKey);
+    const cur = stored[sessionKey] || {};
+    await chrome.storage.session.set({ [sessionKey]: { ...cur, askRepo: { history: [], pending: null } } });
   });
 
   if (!isThinking) {
@@ -2183,7 +2202,7 @@ document.getElementById('open-library')?.addEventListener('click', () => {
   chrome.tabs.create({ url: chrome.runtime.getURL('library.html') });
 });
 
-const CURRENT_VERSION = '2.3.0';
+const CURRENT_VERSION = '2.4.0';
 const whatsNewBtn = document.getElementById('whats-new-btn');
 const whatsNewDot = document.getElementById('whats-new-dot');
 chrome.storage.local.get('seenVersion', ({ seenVersion }) => {

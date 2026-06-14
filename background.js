@@ -298,7 +298,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       try {
         const keys = await chrome.storage.local.get([...PROVIDER_KEYS, 'tone']);
         const cur = await getSession();
-        const history = (cur.askRepo?.history || []).slice(-4); // keep last 4 completed pairs
+        // Seed session history from local storage if this is the first question in the session
+        let sessionHistory = cur.askRepo?.history || [];
+        if (!sessionHistory.length && cur.repoId) {
+          try {
+            const persisted = await chrome.storage.local.get(`repolens_ask_${cur.repoId}`);
+            sessionHistory = persisted[`repolens_ask_${cur.repoId}`] || [];
+          } catch (_) {}
+        }
+        const history = sessionHistory.slice(-4); // keep last 4 completed pairs for AI context
         await setAsk({ pending: { status: 'thinking', question: msg.question }, history });
         const prompt = buildAskRepoPrompt(msg.question, cur);
         if (!prompt) { await setAsk({ pending: { status: 'error', question: msg.question, error: 'Not enough context — try re-scanning first.' }, history }); return; }
@@ -306,6 +314,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         const answer = parseAskRepoAnswer(text);
         const updated = [...history, { question: msg.question, answer }].slice(-5);
         await setAsk({ pending: null, history: updated });
+        if (cur.repoId) {
+          chrome.storage.local.set({ [`repolens_ask_${cur.repoId}`]: updated.slice(-10) });
+        }
       } catch (e) {
         const cur = await getSession();
         const history = cur.askRepo?.history || [];
