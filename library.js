@@ -10,6 +10,7 @@ import { makeCollection, validateCollectionName, addRepoToCollection, toggleRepo
 import { listCached, removeCached, openCachedAnalysis, importCache, clearCache } from './cache.js';
 import { libraryRow, sortRows, filterRows, allCapabilities, relativeTime, sourceUrl, mergeRows, libraryStats } from './library-data.js';
 import { buildBackup, validateBackup, summarizeBackup, backupFilename } from './backup.js';
+import { detectPlatform } from './url-detector.js';
 import { html, escapeHtml as esc } from './safe-html.js';
 import { initTheme } from './theme.js';
 import { veeSvg } from './mascot.js';
@@ -1173,6 +1174,25 @@ async function init() {
     state.query = e.target.value;
     clearTimeout(searchTimer);
     searchTimer = setTimeout(render, 180); // debounce: don't re-render the whole grid on every keystroke
+  });
+  searchEl.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    const val = searchEl.value.trim();
+    if (!val) return;
+    // If the user typed a URL, open it to trigger analysis instead of searching
+    const detected = detectPlatform(val.startsWith('http') ? val : `https://${val}`);
+    if (detected) {
+      e.preventDefault();
+      const platformUrls = {
+        github: `https://github.com/${detected.repoId}`,
+        gitlab: `https://gitlab.com/${detected.repoId}`,
+        npm: `https://www.npmjs.com/package/${detected.repoId}`,
+        pypi: `https://pypi.org/project/${detected.repoId}`,
+      };
+      chrome.tabs.create({ url: platformUrls[detected.platform] || val });
+      searchEl.value = '';
+      state.query = '';
+    }
   });
 
   // '/' focuses search; Escape clears it when search is focused.
