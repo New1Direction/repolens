@@ -946,13 +946,16 @@ function renderDecisionFilter() {
     counts.hold  ? chip('hold',  'Hold',  counts.hold)  : '',
     counts.reject ? chip('reject', 'Reject', counts.reject) : '',
   ].join('');
-  host.querySelectorAll('[data-dec]').forEach((btn) => {
-    btn.addEventListener('click', () => {
+  if (!host._decDelegated) {
+    host._decDelegated = true;
+    host.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-dec]');
+      if (!btn) return;
       state.decision = btn.dataset.dec;
       renderDecisionFilter();
       render();
     });
-  });
+  }
 }
 
 // ─── Collections ("Boards") ──────────────────────────────────────────────────
@@ -974,15 +977,18 @@ function renderCollections() {
   ].join('');
   host.innerHTML = chips;
 
-  host.querySelectorAll('[data-coll]').forEach((btn) => {
-    btn.addEventListener('click', () => {
+  if (!host._collDelegated) {
+    host._collDelegated = true;
+    host.addEventListener('click', (e) => {
+      if (e.target.closest('[data-coll-new]')) { showCollectionInput(host); return; }
+      if (e.target.closest('[data-coll-del]')) { confirmDeleteCollection(e.target.closest('[data-coll-del]')); return; }
+      const btn = e.target.closest('[data-coll]');
+      if (!btn) return;
       state.collection = btn.dataset.coll;
       renderCollections();
       render();
     });
-  });
-  host.querySelector('[data-coll-new]')?.addEventListener('click', () => showCollectionInput(host));
-  host.querySelector('[data-coll-del]')?.addEventListener('click', (e) => confirmDeleteCollection(e.currentTarget));
+  }
 }
 
 function showCollectionInput(host, addRepoId) {
