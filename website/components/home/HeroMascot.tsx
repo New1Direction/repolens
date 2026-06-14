@@ -35,6 +35,7 @@ export function HeroMascot() {
     <div className="hero-mascot">
       <div className="hero-mascot-stage">
         {reduced ? (
+          // eslint-disable-next-line @next/next/no-img-element -- static export (output: export) with unoptimized images; next/image adds no value for this decorative poster
           <img src={`${BASE}/mascot-poster.jpg`} alt={ALT} width={230} height={270} />
         ) : (
           <video
