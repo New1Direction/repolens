@@ -321,7 +321,23 @@ async function init() {
 
 function renderCacheBanner(d) {
   const banner = document.getElementById('cache-banner');
-  if (banner) banner.style.display = d.cached ? 'flex' : 'none';
+  if (!banner) return;
+  if (!d.cached) { banner.style.display = 'none'; return; }
+  banner.style.display = 'flex';
+  const span = banner.querySelector('span');
+  if (!span) return;
+  if (d.saved_at) {
+    const ageMs = Date.now() - new Date(d.saved_at).getTime();
+    const ageDays = Math.floor(ageMs / 86_400_000);
+    const ageLabel = ageDays === 0 ? 'today' : ageDays === 1 ? 'yesterday' : `${ageDays} days ago`;
+    const stale = ageDays >= 7;
+    span.textContent = stale
+      ? `⚠ Cached analysis from ${ageLabel} — repo may have changed`
+      : `⚡ Loaded from cache · scanned ${ageLabel}`;
+    banner.classList.toggle('stale-banner', stale);
+  } else {
+    span.textContent = '⚡ Loaded from cache — analysis reused, no AI call.';
+  }
 }
 
 document.getElementById('rerun-fresh')?.addEventListener('click', async () => {
