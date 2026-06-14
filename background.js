@@ -326,6 +326,22 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
 
+  // Quick Ask — grounded Q&A for a single cached repo (no session key needed).
+  if (msg.type === 'ASK_CACHED' && msg.question && msg.analysis?.repoId) {
+    (async () => {
+      try {
+        const keys = await chrome.storage.local.get([...PROVIDER_KEYS, 'tone']);
+        const prompt = buildAskRepoPrompt(msg.question, msg.analysis);
+        if (!prompt) { sendResponse({ ok: false, error: 'Not enough context.' }); return; }
+        const text = await callAI(keys, prompt, 'ask');
+        sendResponse({ ok: true, answer: parseAskRepoAnswer(text) });
+      } catch (e) {
+        sendResponse({ ok: false, error: e?.message || 'Ask failed' });
+      }
+    })();
+    return true;
+  }
+
   // Ask Across My Library — grounded Q&A over the user's saved analyses.
   if (msg.type === 'ASK_LIBRARY' && msg.question && Array.isArray(msg.docs)) {
     (async () => {

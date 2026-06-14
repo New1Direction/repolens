@@ -102,11 +102,16 @@ function card(r) {
     ${tags || boardDots ? `<div class="lc-tags">${tags}${boardDots}</div>` : ''}
     <div class="lc-actions">
       <button class="lc-act${isPinned ? ' lc-act-pin-on' : ''}" data-act="pin" title="${isPinned ? 'Unpin' : 'Pin to top'}">📌</button>
+      ${cacheByRepo.has(r.repoId) ? `<button class="lc-act" data-act="quick-ask" title="Ask a quick question about this repo">? Ask</button>` : ''}
       <button class="lc-act${compareSet.has(r.repoId) ? ' lc-act-cmp-on' : ''}" data-act="compare" title="${compareSet.has(r.repoId) ? 'Remove from compare' : 'Add to compare (pick 2)'}">⇄</button>
       <button class="lc-act" data-act="boards" title="Add to a collection">▦ Boards</button>
       <button class="lc-act" data-act="rescan" title="Run a fresh scan (AI call)">↻ Re-scan</button>
       <button class="lc-act" data-act="source" title="Open the project page">Source ↗</button>
       <button class="lc-act lc-act-del" data-act="remove" title="Remove from library and local history">✕</button>
+    </div>
+    <div class="lc-quick-ask hidden" id="lc-qa-${esc(r.repoId).replace(/[^a-z0-9]/gi, '-')}">
+      <input class="lc-qa-input" placeholder="Ask a question…" type="text">
+      <div class="lc-qa-answer hidden"></div>
     </div>
   </div>`;
 }
@@ -158,12 +163,46 @@ function render() {
       else if (btn.dataset.act === 'boards') { e.stopPropagation(); openBoardsPopover(repoId, btn); }
       else if (btn.dataset.act === 'compare') { e.stopPropagation(); toggleCompare(repoId); }
       else if (btn.dataset.act === 'pin') { e.stopPropagation(); togglePin(repoId); }
+      else if (btn.dataset.act === 'quick-ask') { e.stopPropagation(); openQuickAsk(repoId, btn); }
     });
   });
   if (selectionMode) updateSelectionBar(); // keep the bar's count / "Select all" label in sync
 }
 
 const rowFor = (repoId) => allRows.find((r) => r.repoId === repoId);
+
+function openQuickAsk(repoId, btn) {
+  const safeId = repoId.replace(/[^a-z0-9]/gi, '-');
+  const panel = document.getElementById(`lc-qa-${safeId}`);
+  if (!panel) return;
+  const isOpen = !panel.classList.contains('hidden');
+  if (isOpen) { panel.classList.add('hidden'); return; }
+  panel.classList.remove('hidden');
+  const input = panel.querySelector('.lc-qa-input');
+  input?.focus();
+
+  const doAsk = async () => {
+    const q = (input?.value || '').trim();
+    if (!q) return;
+    const analysis = cacheByRepo.get(repoId);
+    if (!analysis) return;
+    const answerEl = panel.querySelector('.lc-qa-answer');
+    answerEl?.classList.remove('hidden');
+    if (answerEl) answerEl.textContent = 'Thinking…';
+    if (btn) btn.disabled = true;
+    try {
+      const resp = await chrome.runtime.sendMessage({ type: 'ASK_CACHED', question: q, analysis });
+      if (answerEl) answerEl.textContent = resp?.ok ? resp.answer : (resp?.error || 'Something went wrong.');
+    } catch {
+      if (answerEl) answerEl.textContent = 'Could not reach the extension.';
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  };
+
+  input?.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.stopPropagation(); doAsk(); } });
+  // Clear the event after first use by removing and re-adding the panel hidden on next render
+}
 
 function openRow(repoId) {
   const cached = cacheByRepo.get(repoId);
