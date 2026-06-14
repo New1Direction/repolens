@@ -1387,17 +1387,47 @@ function setJkFocus(idx) {
 
 document.addEventListener('keydown', (e) => {
   const t = e.target;
-  if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable) return;
+  const inField = t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable;
+  if (inField) return;
+
   if (e.key === 'j' || e.key === 'k') {
     e.preventDefault();
     const cards = getVisibleCards();
     if (!cards.length) return;
     if (jkIdx === -1) { setJkFocus(0); return; }
     setJkFocus(jkIdx + (e.key === 'j' ? 1 : -1));
+    return;
   }
   if (e.key === 'Enter' && jkIdx >= 0) {
     const cards = getVisibleCards();
     cards[jkIdx]?.click();
+    return;
+  }
+  if (e.key === 'Escape' && jkIdx >= 0) {
+    e.preventDefault();
+    getVisibleCards().forEach((c) => c.classList.remove('jk-active'));
+    jkIdx = -1;
+    return;
+  }
+  if (e.key === '/' && !e.metaKey && !e.ctrlKey) {
+    e.preventDefault();
+    document.getElementById('search')?.focus();
+    return;
+  }
+  if (jkIdx < 0) return;
+  const cards = getVisibleCards();
+  const activeCard = cards[jkIdx];
+  if (!activeCard) return;
+  const repoId = activeCard.dataset.repo;
+  if (e.key === 'n') {
+    openNote(repoId, activeCard.querySelector('[data-act="note"]'));
+  }
+  if (e.key === 'c') {
+    activeCard.querySelector('[data-act="compare"]')?.click();
+  }
+  if (e.key === 'p') {
+    const pinBtn = activeCard.querySelector('[data-act="pin"]');
+    if (pinBtn) pinBtn.click();
   }
 });
 
