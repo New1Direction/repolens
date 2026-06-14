@@ -1485,8 +1485,10 @@ function renderAskRepo(d) {
       </div>
     </div>` : '';
 
-  const sugsHtml = !history.length && !pending
-    ? `<div class="ask-suggestions">${getAskSuggestions(d).map(s => `<button class="ask-sug">${esc(s)}</button>`).join('')}</div>`
+  const asked = new Set(history.map(({ question }) => question));
+  const availableSugs = getAskSuggestions(d).filter((s) => !asked.has(s));
+  const sugsHtml = !pending && availableSugs.length
+    ? `<div class="ask-suggestions">${availableSugs.slice(0, history.length ? 3 : 6).map((s) => `<button class="ask-sug">${esc(s)}</button>`).join('')}</div>`
     : '';
 
   const isThinking = pending?.status === 'thinking';
