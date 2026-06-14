@@ -413,6 +413,25 @@
   .v-share:disabled { color: var(--ok-ink); border-color: var(--ok-edge); cursor: default; }
 
   /* Versus */
+  /* Ask This Repo */
+  .ask-wrap { max-width: 620px; }
+  .ask-intro { font-size: 13px; color: var(--text-sub); line-height: 1.6; margin-bottom: 20px; }
+  .ask-row { display: flex; gap: 8px; }
+  .ask-input { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; color: var(--text); font-size: 13px; outline: none; resize: none; font-family: var(--font); line-height: 1.5; min-height: 44px; max-height: 120px; }
+  .ask-input:focus { border-color: var(--accent); }
+  .ask-send { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 10px 18px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: opacity .15s; }
+  .ask-send:hover { opacity: .88; }
+  .ask-send:disabled { opacity: .4; cursor: default; }
+  .ask-qa { margin-top: 20px; }
+  .ask-q { font-size: 12px; font-weight: 700; color: var(--text-faint); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 6px; }
+  .ask-q span { color: var(--text-sub); font-weight: 400; text-transform: none; letter-spacing: 0; }
+  .ask-a { font-size: 14px; color: var(--text); line-height: 1.7; padding: 14px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+  .ask-a.thinking { color: var(--text-muted); font-style: italic; }
+  .ask-a.error { color: var(--bad); }
+  .ask-suggestions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 18px; }
+  .ask-sug { background: var(--surface); border: 1px solid var(--border-2); border-radius: 999px; padding: 5px 13px; font-size: 11px; color: var(--text-sub); cursor: pointer; transition: border-color .15s, color .15s; }
+  .ask-sug:hover { border-color: var(--accent); color: var(--text); }
+
   .vs-input-row { display: flex; gap: 8px; margin: 16px 0 8px; }
   .vs-input { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; color: var(--text); font-size: 13px; outline: none; font-family: ui-monospace, monospace; }
   .vs-input:focus { border-color: var(--accent); }
@@ -774,6 +793,7 @@
         <button class="tab-btn" data-tab="23">License</button>
         <button class="tab-btn" data-tab="24">Since Last Scan</button>
         <button class="tab-btn" data-tab="25">Fits MY Stack?</button>
+        <button class="tab-btn" data-tab="26">Ask</button>
       </div>
     </div>
     <div class="tab-menu" id="menu-library">
@@ -817,6 +837,7 @@
   <div class="tab-content" id="t23"></div>
   <div class="tab-content" id="t24"></div>
   <div class="tab-content" id="t25"></div>
+  <div class="tab-content" id="t26"></div>
 
   <!-- Save status badge (hidden until JS updates it) -->
   <div class="saved-badge" style="display:none"></div>

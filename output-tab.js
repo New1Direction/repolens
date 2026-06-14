@@ -214,6 +214,7 @@ function initOutputPalette(data) {
     { name: 'Run License Check', description: 'License compatibility', action: () => show(23) },
     { name: 'Run Since Last Scan', description: 'What changed since you last looked', action: () => show(24) },
     { name: 'Run Fits MY Stack?', description: 'Match against your tech stack', action: () => { show(25); startFitsStack(data); } },
+    { name: 'Ask This Repo', description: 'Ask a specific question about this repo', action: () => show(26) },
     { name: 'Run All Lenses', description: 'Fire every on-demand lens', action: () => runAllLenses() },
     // Actions
     { section: 'Actions', name: 'Open Library', description: 'Browse your saved repos', action: () => chrome.tabs.create({ url: chrome.runtime.getURL('library.html') }) },
@@ -307,6 +308,7 @@ async function init() {
   renderLicenseCompat(data);
   renderDiff(data);
   renderFitsStack(data);
+  renderAskRepo(data);
   renderTechStack(data);
   renderSimilar(data);
   renderVersus(data);
@@ -1390,6 +1392,66 @@ async function loadVersusChips(d) {
   }));
 }
 
+// ─── Ask This Repo ─────────────────────────────────────────────────────────────
+
+const ASK_SUGGESTIONS = [
+  'Does it support TypeScript?',
+  'What are the main trade-offs?',
+  'How mature is the ecosystem?',
+  'Is it production-ready?',
+  'How hard is it to self-host?',
+  'What license restrictions apply?',
+];
+
+function renderAskRepo(d) {
+  const host = document.getElementById('t26');
+  if (!host) return;
+  const ask = d.askRepo;
+
+  const qaHtml = ask
+    ? `<div class="ask-qa">
+        <div class="ask-q">Q: <span>${esc(ask.question || '')}</span></div>
+        <div class="ask-a${ask.status === 'thinking' ? ' thinking' : ask.status === 'error' ? ' error' : ''}">
+          ${ask.status === 'thinking' ? 'Thinking…' : ask.status === 'error' ? esc(ask.error || 'Something went wrong') : esc(ask.answer || '')}
+        </div>
+      </div>` : '';
+
+  const sugsHtml = !ask
+    ? `<div class="ask-suggestions">${ASK_SUGGESTIONS.map(s => `<button class="ask-sug">${esc(s)}</button>`).join('')}</div>`
+    : '';
+
+  host.innerHTML = `<div class="ask-wrap">
+    <p class="ask-intro">Ask a specific question about <b>${esc(d.repoId || 'this repo')}</b>. Answers use the loaded analysis — no extra AI call needed for context.</p>
+    <div class="ask-row">
+      <textarea class="ask-input" id="ask-input" rows="1" placeholder="e.g. Does it support GraphQL?"></textarea>
+      <button class="ask-send" id="ask-send">Ask</button>
+    </div>
+    ${sugsHtml}
+    ${qaHtml}
+  </div>`;
+
+  const input = host.querySelector('#ask-input');
+  const sendBtn = host.querySelector('#ask-send');
+
+  const doAsk = () => {
+    const q = input?.value.trim();
+    if (!q || sendBtn?.disabled) return;
+    sendBtn.disabled = true;
+    chrome.runtime.sendMessage({ type: 'ASK_REPO', sessionKey, question: q });
+  };
+
+  sendBtn?.addEventListener('click', doAsk);
+  input?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doAsk(); }
+  });
+
+  host.querySelectorAll('.ask-sug').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (input) { input.value = btn.textContent; input.focus(); }
+    });
+  });
+}
+
 function renderVersus(d) {
   const host = document.getElementById('t17');
   if (!host) return;
@@ -1460,6 +1522,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
   renderDocsQuality(nv);
   renderMaintenance(nv);
   renderFitsStack(nv);
+  renderAskRepo(nv);
   renderVersus(nv);
   renderSynergies(nv);
   renderCombinator(nv);

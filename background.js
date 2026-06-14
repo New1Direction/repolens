@@ -62,6 +62,7 @@ import { emptyLens, withRun, setActive } from './lens-runs.js';
 import { diffAnalyses } from './diff-analysis.js';
 import { buildFitsStackPrompt, parseFitsStack } from './fits-stack.js';
 import { buildStackPrompt, parseStack } from './stack-prompt.js';
+import { buildAskRepoPrompt, parseAskRepoAnswer } from './ask-repo.js';
 
 // Notify when a scan completes — clicking the notification focuses the result tab.
 chrome.notifications.onClicked.addListener(async (notifId) => {
@@ -239,6 +240,29 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'STACK_BUILD' && msg.sessionKey && Array.isArray(msg.repoIds) && msg.repoIds.length >= 2) {
     sendResponse({ ok: true });
     runStackBuild(msg.sessionKey, msg.repoIds);
+    return true;
+  }
+
+  // Ask This Repo — grounded Q&A over the current analysis in session storage.
+  if (msg.type === 'ASK_REPO' && msg.sessionKey && msg.question) {
+    sendResponse({ ok: true });
+    (async () => {
+      const setAsk = async (patch) => {
+        const cur = (await chrome.storage.session.get(msg.sessionKey))[msg.sessionKey] || {};
+        await chrome.storage.session.set({ [msg.sessionKey]: { ...cur, askRepo: { ...(cur.askRepo || {}), ...patch } } });
+      };
+      try {
+        const keys = await chrome.storage.local.get([...PROVIDER_KEYS, 'tone']);
+        const cur = (await chrome.storage.session.get(msg.sessionKey))[msg.sessionKey] || {};
+        await setAsk({ status: 'thinking', question: msg.question, answer: null, error: null });
+        const prompt = buildAskRepoPrompt(msg.question, cur);
+        if (!prompt) { await setAsk({ status: 'error', error: 'Not enough context — try re-scanning first.' }); return; }
+        const text = await callAI(keys, prompt, 'ask');
+        await setAsk({ status: 'done', answer: parseAskRepoAnswer(text) });
+      } catch (e) {
+        await setAsk({ status: 'error', error: e?.message || 'Ask failed' });
+      }
+    })();
     return true;
   }
 
