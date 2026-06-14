@@ -96,6 +96,24 @@ export function slugify(s) {
 }
 
 /**
+ * A compact Slack/Discord-friendly message summarising the repo verdict.
+ * Plain text with emoji, ≤280 chars for the header + body, no Markdown links.
+ */
+export function toSlackPost(d, fitLevel) {
+  if (!d?.repoId) return '';
+  const fitMark = { strong: '✅', solid: '✓', care: '⚠️', risky: '🔴' }[fitLevel] || '•';
+  const stars = d.stars ? ` · ${d.stars >= 1000 ? (d.stars / 1000).toFixed(1) + 'k' : d.stars}★` : '';
+  const lang = d.language ? ` · ${d.language}` : '';
+  const score = d.health?.score ? ` · health ${d.health.score}/100` : '';
+  const header = `${fitMark} *${d.repoId}*${stars}${lang}${score}`;
+  const desc = (d.bottom_line || d.description || '').slice(0, 140);
+  const topPro = (d.pros || [])[0] ? `✔ ${(d.pros || [])[0]}` : '';
+  const topCon = (d.cons || [])[0] ? `✖ ${(d.cons || [])[0]}` : '';
+  const extras = [topPro, topCon].filter(Boolean).join('  ');
+  return [header, desc, extras].filter(Boolean).join('\n');
+}
+
+/**
  * A concise integration scaffold — drop this into your repo as CLAUDE.md, a
  * Notion page, or an Obsidian note. Includes fit verdict, decision, capabilities,
  * caveats, and a ready-to-edit integration checklist.

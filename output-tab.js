@@ -6,7 +6,7 @@ import { THEMES, initTheme, saveTheme } from './theme.js';
 import { SYSTEMS_FRAMEWORKS } from './systems.js';
 import { IDEATE_FRAMEWORKS } from './ideate.js';
 import { HEURISTICS_FRAMEWORKS } from './heuristics.js';
-import { toMarkdown, toHtml, toScaffold, slugify } from './exporter.js';
+import { toMarkdown, toHtml, toScaffold, toSlackPost, slugify } from './exporter.js';
 import { lineageSvg, loopSvg } from './diagram.js';
 import { explainerFor, SCAN_EXPLAINERS } from './explainers.js';
 import { deriveFit, firstSentence, verdictCopyText } from './verdict.js';
@@ -224,6 +224,7 @@ function initOutputPalette(data) {
     { name: 'Batch Scan', description: 'Scan multiple repos at once', action: () => chrome.tabs.create({ url: chrome.runtime.getURL('batch.html') }) },
     { name: 'Copy URL', description: 'Copy the repo source URL', shortcut: 'U', action: () => document.getElementById('copy-url')?.click() },
     { name: 'Copy Markdown', description: 'Copy this analysis as MD', shortcut: 'M', action: () => document.getElementById('copy-md')?.click() },
+    { name: 'Copy Slack Post', description: 'Copy compact summary for Slack/Discord', action: () => copySlackBtn?.click() },
     { name: 'Export Scaffold', description: 'Download CLAUDE.md scaffold', action: () => document.getElementById('export-scaffold')?.click() },
     { name: 'Export HTML', description: 'Download self-contained report', action: () => document.getElementById('export-html')?.click() },
     { name: 'Open Settings', description: 'Configure API keys and providers', action: () => chrome.runtime.openOptionsPage() },
@@ -297,7 +298,8 @@ async function init() {
   lastData = data;
   renderPage(data);
   main.style.display = 'block';
-  document.title = `RepoLens — ${data.repoId}`;
+  const fitEmoji = { strong: '✅', solid: '✓', care: '⚠️', risky: '🔴' }[deriveFit(data).level] || '';
+  document.title = `${fitEmoji} ${data.repoId} — RepoLens`;
   initOutputPalette(data);
 
   // Header logo becomes Vee, reacting to the verdict (one-shot pop/squint on mount).
@@ -2133,6 +2135,13 @@ const copyMdBtn = document.getElementById('copy-md');
 copyMdBtn?.addEventListener('click', async () => {
   if (!lastData) return;
   await copyWithFlash(copyMdBtn, toMarkdown(lastData));
+});
+
+const copySlackBtn = document.getElementById('copy-slack');
+copySlackBtn?.addEventListener('click', async () => {
+  if (!lastData) return;
+  const fit = deriveFit(lastData);
+  await copyWithFlash(copySlackBtn, toSlackPost(lastData, fit.level));
 });
 
 document.getElementById('export-scaffold')?.addEventListener('click', async () => {
