@@ -90,11 +90,15 @@ function card(r) {
     ? `<span class="lc-decision" data-d="${esc(dec.decision)}" title="Your decision: ${esc(dec.decision)}">${esc(DECISION_META[dec.decision]?.label || dec.decision)}</span>`
     : '';
   const isPinned = pinned.has(r.repoId);
+  const platformBadge = r.platform && r.platform !== 'github'
+    ? `<span class="lc-platform" title="${esc(r.platform)}">${r.platform === 'npm' ? 'npm' : r.platform === 'pypi' ? 'PyPI' : r.platform === 'gitlab' ? 'GL' : esc(r.platform)}</span>`
+    : '';
   return `<div class="lib-card${sel ? ' is-selected' : ''}${isPinned ? ' is-pinned' : ''}" data-repo="${esc(r.repoId)}" title="${r.hasCache ? 'Open the saved analysis (instant, no AI call)' : 'Open the project page'}">
     <div class="lc-top">
       <input type="checkbox" class="lc-check"${sel ? ' checked' : ''} aria-label="Select ${esc(r.name)} for removal" title="Select for bulk removal">
       <span class="lc-name">${esc(r.name)}</span>
       ${owner ? `<span class="lc-owner">${esc(owner)}</span>` : ''}
+      ${platformBadge}
       <span class="lc-chip fit-${r.fit.level}">${esc(r.fit.label)}</span>
       ${decBadge}
       ${isPinned ? `<span class="lc-pin-badge" title="Pinned">📌</span>` : ''}
