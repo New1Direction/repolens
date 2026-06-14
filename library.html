@@ -388,6 +388,13 @@
   .qdec-btn.qdec-active { background: color-mix(in oklch, var(--qdec-color, currentColor) 18%, transparent); }
   .qdec-btn:active { transform: scale(.97); }
   .qdec-clear { border-left-color: var(--muted, #888); color: var(--muted, #888); font-weight: 400; font-style: italic; }
+  .qdec-vee { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-radius: 7px; background: color-mix(in oklch, var(--accent, #8b7cff) 10%, transparent); border: 1px solid color-mix(in oklch, var(--accent, #8b7cff) 22%, transparent); margin-bottom: 4px; cursor: pointer; text-align: left; transition: background 120ms; }
+  .qdec-vee:hover, .qdec-vee:focus-visible { background: color-mix(in oklch, var(--accent, #8b7cff) 18%, transparent); outline: none; }
+  .qdec-vee-ic { color: var(--accent, #8b7cff); font-size: 12px; line-height: 1; flex-shrink: 0; }
+  .qdec-vee-tier { font: 700 11px/1 var(--mono); color: var(--accent, #8b7cff); }
+  .qdec-vee-why { font: 400 10px/1 var(--mono); color: var(--muted, #6b7794); margin-left: 2px; }
+  .qdec-btn.qdec-suggested { box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--accent, #8b7cff) 40%, transparent); }
+  .qdec-sug-mark { font-size: 9px; color: var(--accent, #8b7cff); opacity: .8; }
 </style>
 </head>
 <body>

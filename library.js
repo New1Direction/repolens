@@ -1603,9 +1603,16 @@ async function autoOrganize() {
 
 // ─── Quick-decision popover (d key) ──────────────────────────────────────────
 
+const FIT_SUGGESTION = { strong: 'adopt', solid: 'trial', care: 'hold', risky: 'reject' };
+
 function showQuickDecision(repoId, anchorEl) {
   document.getElementById('rl-qdec')?.remove();
   const current = decisionMap.get(repoId)?.decision ?? null;
+  const row = allRows.find((r) => r.repoId === repoId);
+  const suggested = row?.fit?.level ? (FIT_SUGGESTION[row.fit.level] ?? null) : null;
+  const fitLabel = row?.fit?.label ?? '';
+  const health = row?.health ?? null;
+
   const pop = document.createElement('div');
   pop.id = 'rl-qdec';
   pop.setAttribute('role', 'dialog');
@@ -1616,10 +1623,15 @@ function showQuickDecision(repoId, anchorEl) {
     { key: 'hold',   label: 'Hold',   color: '#f59e0b' },
     { key: 'reject', label: 'Reject', color: '#ef4444' },
   ];
-  pop.innerHTML = `<p class="qdec-heading">${repoId.replace(/^[^/]+\//, '')}</p>` +
-    choices.map((c) =>
-      `<button class="qdec-btn${current === c.key ? ' qdec-active' : ''}" data-d="${c.key}" style="--qdec-color:${c.color}">${c.label}</button>`
-    ).join('') +
+  const veeHint = suggested
+    ? `<button class="qdec-vee" data-d="${suggested}" title="Accept Vee's suggestion"><span class="qdec-vee-ic" aria-hidden="true">✦</span><span class="qdec-vee-tier">${esc(DECISION_META[suggested]?.label || suggested)}</span><span class="qdec-vee-why">${esc(fitLabel)}${health ? ` · ♥ ${health}` : ''}</span></button>`
+    : '';
+  pop.innerHTML = `<p class="qdec-heading">${esc(repoId.replace(/^[^/]+\//, ''))}</p>` +
+    veeHint +
+    choices.map((c) => {
+      const isSuggested = suggested === c.key && current !== c.key;
+      return `<button class="qdec-btn${current === c.key ? ' qdec-active' : ''}${isSuggested ? ' qdec-suggested' : ''}" data-d="${c.key}" style="--qdec-color:${c.color}">${c.label}${isSuggested ? '<span class="qdec-sug-mark" aria-label="Vee suggestion"> ✦</span>' : ''}</button>`;
+    }).join('') +
     (current ? `<button class="qdec-btn qdec-clear" data-d="">Clear</button>` : '');
 
   async function pick(d) {
