@@ -171,6 +171,22 @@ function render() {
       return tb - ta || a.name.localeCompare(b.name);
     });
   }
+  if (state.sort === 'delta') {
+    // Repos with a fitDelta float to the top; among those, improved before regressed.
+    const FIT_ORDER = ['strong', 'solid', 'care', 'risky'];
+    rows = [...rows].sort((a, b) => {
+      const ad = a.fitDelta, bd = b.fitDelta;
+      if (ad && !bd) return -1;
+      if (!ad && bd) return 1;
+      if (ad && bd) {
+        // improved (to < from in FIT_ORDER) sorts above regressed
+        const aImp = FIT_ORDER.indexOf(ad.to) < FIT_ORDER.indexOf(ad.from);
+        const bImp = FIT_ORDER.indexOf(bd.to) < FIT_ORDER.indexOf(bd.from);
+        if (aImp !== bImp) return aImp ? -1 : 1;
+      }
+      return a.name.localeCompare(b.name);
+    });
+  }
   // Collection filter is applied here (not in the pure filterRows) so library-data
   // stays unaware of collections — the membership lives only in this module.
   if (state.collection) {
@@ -1525,6 +1541,20 @@ function getVisibleRows() {
       return tb - ta || a.name.localeCompare(b.name);
     });
   }
+  if (state.sort === 'delta') {
+    const FIT_ORDER = ['strong', 'solid', 'care', 'risky'];
+    rows = [...rows].sort((a, b) => {
+      const ad = a.fitDelta, bd = b.fitDelta;
+      if (ad && !bd) return -1;
+      if (!ad && bd) return 1;
+      if (ad && bd) {
+        const aImp = FIT_ORDER.indexOf(ad.to) < FIT_ORDER.indexOf(ad.from);
+        const bImp = FIT_ORDER.indexOf(bd.to) < FIT_ORDER.indexOf(bd.from);
+        if (aImp !== bImp) return aImp ? -1 : 1;
+      }
+      return a.name.localeCompare(b.name);
+    });
+  }
   if (state.collection) {
     const active = collections.find((c) => c.id === state.collection);
     const ids = new Set(active ? active.repoIds : []);
@@ -1818,6 +1848,7 @@ function initLibraryPalette() {
     { name: 'Sort: Stars', action: () => { state.sort = 'stars'; document.getElementById('sort').value = 'stars'; chrome.storage.local.set({ librarySort: 'stars' }); render(); } },
     { name: 'Sort: Name', action: () => { state.sort = 'name'; document.getElementById('sort').value = 'name'; chrome.storage.local.set({ librarySort: 'name' }); render(); } },
     { name: 'Sort: Recently decided', action: () => { state.sort = 'decided'; document.getElementById('sort').value = 'decided'; chrome.storage.local.set({ librarySort: 'decided' }); render(); } },
+    { name: 'Sort: Fit changed', description: 'Repos with fit delta (improved or regressed) at the top', action: () => { state.sort = 'delta'; document.getElementById('sort').value = 'delta'; chrome.storage.local.set({ librarySort: 'delta' }); render(); } },
     { section: 'View', name: 'Tech Radar', description: 'Organize repos by Adopt/Trial/Hold/Reject decision', action: () => { if (state.view !== 'radar') toggleRadarView(); } },
     { name: 'List view', description: 'Default card grid', action: () => { if (state.view !== 'list') toggleRadarView(); } },
     { section: 'Pins', name: 'Unpin all', description: 'Remove all pinned repos from the top section', action: async () => { pinned.clear(); await chrome.storage.local.set({ repolens_pinned: [] }); render(); } },
