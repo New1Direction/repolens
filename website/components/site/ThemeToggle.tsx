@@ -3,63 +3,57 @@
 import { useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
 
-/** Sun/moon switch driving next-themes (midnight ⇄ latte). */
+/**
+ * Sun⇄moon toggle that *morphs*: in dark mode a cutout circle carves the orb
+ * into a crescent and the rays retract; switching to light slides the cutout
+ * away and the rays bloom out. Pure CSS transitions on the SVG geometry,
+ * driven by the resolved theme; instant under reduced-motion.
+ */
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
-  // next-themes resolves the theme on the client only — render a stable
-  // placeholder on the server pass to avoid a hydration mismatch.
+  // next-themes resolves client-side only — render a stable shell on the
+  // server pass to avoid a hydration mismatch.
   useEffect(() => setMounted(true), []);
 
-  const isDark = resolvedTheme === 'dark';
-  const next = isDark ? 'light' : 'dark';
-  const label = mounted ? `Switch to ${isDark ? 'latte (light)' : 'midnight (dark)'}` : 'Toggle theme';
+  const isLight = mounted && resolvedTheme !== 'dark';
+  const label = mounted
+    ? `Switch to ${isLight ? 'midnight (dark)' : 'latte (light)'}`
+    : 'Toggle theme';
 
   return (
     <button
       type="button"
-      className="theme-toggle"
-      onClick={() => setTheme(next)}
+      className={`theme-toggle${isLight ? ' is-light' : ''}`}
+      onClick={() => setTheme(isLight ? 'dark' : 'light')}
       aria-label={label}
       title={label}
     >
-      <span className="theme-toggle-track" aria-hidden="true">
-        <span className={`theme-toggle-thumb${mounted && !isDark ? ' is-light' : ''}`}>
-          {mounted && !isDark ? <SunIcon /> : <MoonIcon />}
-        </span>
-      </span>
+      <svg className="tt-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+        <mask id="tt-moon-mask">
+          <rect x="0" y="0" width="24" height="24" fill="white" />
+          <circle className="tt-cutout" cx="17" cy="8" r="6" fill="black" />
+        </mask>
+        <circle
+          className="tt-orb"
+          cx="12"
+          cy="12"
+          r="6"
+          fill="currentColor"
+          mask="url(#tt-moon-mask)"
+        />
+        <g className="tt-rays" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+          <line x1="12" y1="1.4" x2="12" y2="3.8" />
+          <line x1="12" y1="20.2" x2="12" y2="22.6" />
+          <line x1="1.4" y1="12" x2="3.8" y2="12" />
+          <line x1="20.2" y1="12" x2="22.6" y2="12" />
+          <line x1="4.1" y1="4.1" x2="5.8" y2="5.8" />
+          <line x1="18.2" y1="18.2" x2="19.9" y2="19.9" />
+          <line x1="4.1" y1="19.9" x2="5.8" y2="18.2" />
+          <line x1="18.2" y1="5.8" x2="19.9" y2="4.1" />
+        </g>
+      </svg>
     </button>
-  );
-}
-
-function MoonIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" aria-hidden="true">
-      <path
-        d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function SunIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" aria-hidden="true">
-      <circle cx="12" cy="12" r="4.2" stroke="currentColor" strokeWidth="2" />
-      <g stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-        <line x1="12" y1="2.5" x2="12" y2="5" />
-        <line x1="12" y1="19" x2="12" y2="21.5" />
-        <line x1="2.5" y1="12" x2="5" y2="12" />
-        <line x1="19" y1="12" x2="21.5" y2="12" />
-        <line x1="4.9" y1="4.9" x2="6.7" y2="6.7" />
-        <line x1="17.3" y1="17.3" x2="19.1" y2="19.1" />
-        <line x1="4.9" y1="19.1" x2="6.7" y2="17.3" />
-        <line x1="17.3" y1="6.7" x2="19.1" y2="4.9" />
-      </g>
-    </svg>
   );
 }
