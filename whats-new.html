@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RepoLens — v2.9.0 Evaluate</title>
+<title>RepoLens — v3.0.0 Discover</title>
 <style>
   :root {
     --bg: #06060d;
@@ -226,14 +226,14 @@
   <header class="hero">
     <span class="kicker"><span class="pulse"></span> Shipped · Jun 12–14, 2026</span>
     <div class="hero-vee"><span class="vee is-scanning" id="heroVee" aria-hidden="true"></span></div>
-    <h1>Not just a score.<br><span class="grad">Your rubric.</span></h1>
-    <p class="hero-sub">Rate any repo against your own criteria — Documentation, Type safety, Maintenance, or whatever you care about. Weighted averages, star ratings per criterion, persistent notes, sort by eval score, and a customisable rubric. Press <kbd style="font:600 11px/1.5 var(--mono);background:var(--surface);border:1px solid var(--border-2);border-radius:4px;padding:1px 5px">e</kbd> on any card to start.</p>
-    <div class="hero-meta">🔭 RepoLens · v1.1.0 → v2.9.0</div>
+    <h1>Your library<br><span class="grad">finds its own peers.</span></h1>
+    <p class="hero-sub">Search GitHub from inside the extension, get AI recommendations based on your adopted repos, compare any N repos in a structured matrix, export a full decision matrix with eval scores and decisions, and a daily drift alert when repos go stale — five features, one version.</p>
+    <div class="hero-meta">🔭 RepoLens · v1.1.0 → v3.0.0</div>
   </header>
 
   <!-- STATS -->
   <section class="stats reveal">
-    <div class="stat"><div class="n">32</div><div class="l">Releases</div></div>
+    <div class="stat"><div class="n">33</div><div class="l">Releases</div></div>
     <div class="stat"><div class="n">731</div><div class="l">Tests passing</div></div>
     <div class="stat"><div class="n">13</div><div class="l">Themes</div></div>
     <div class="stat"><div class="n">20+</div><div class="l">AI providers</div></div>
@@ -244,60 +244,60 @@
   <section class="sec">
     <div class="reveal">
       <div class="sec-eyebrow">Just shipped</div>
-      <h2 class="sec-title">v2.9.0 — Evaluate.</h2>
-      <p class="sec-note">Score any repo against a customisable rubric — Documentation, Type safety, Maintenance, or your own criteria. Weighted averages, star ratings per criterion, optional note. Sort and filter by eval score. Auto-decide all undecided repos via Vee's fit suggestion in one palette command. Save and recall named filter snapshots.</p>
+      <h2 class="sec-title">v3.0.0 — Discover.</h2>
+      <p class="sec-note">Five features that turn your library from a passive catalogue into an active research tool: search GitHub from inside the extension, get AI recommendations from your adopted repos, compare any N repos in a structured matrix, export a full decision matrix with eval scores and criteria, and a daily drift alert when repos go stale.</p>
     </div>
 
     <div class="latest-card reveal">
       <div class="latest-top">
-        <span class="vtag new">v2.9.0</span>
+        <span class="vtag new">v3.0.0</span>
         <span class="vnew">● NEWEST</span>
-        <span class="vtheme">Evaluate.</span>
+        <span class="vtheme">Discover.</span>
         <span class="vdate">Jun 14</span>
       </div>
 
       <div class="bento">
         <div class="feat">
-          <div class="ic">▣</div>
-          <h3>Evaluations Workbench</h3>
-          <p>Press <code>e</code> on any card (or use the palette) to open a scoring popover. Rate 1–5 stars per criterion, add a note, and save. The weighted average appears as a badge on the card. Scores persist across sessions in <code>chrome.storage.local</code>.</p>
-          <div class="tagrow"><span class="tag">eval</span><span class="tag">score</span><span class="tag">rubric</span></div>
-        </div>
-        <div class="feat">
-          <div class="ic">📐</div>
-          <h3>Custom rubric</h3>
-          <p>Edit criteria names via the palette ("Edit rubric criteria"). Weights are preserved — rename "Type safety" to "TypeScript coverage" and scores keep their meaning. Stored per-browser.</p>
-          <div class="tagrow"><span class="tag">rubric</span><span class="tag">custom</span><span class="tag">criteria</span></div>
-        </div>
-        <div class="feat">
-          <div class="ic">↕</div>
-          <h3>Sort: Eval score</h3>
-          <p>New sort mode ranks repos highest → lowest by their weighted eval average. Unscored repos fall to the bottom. Available in the sort dropdown and the palette. Evaluated-only filter to hide noise.</p>
-          <div class="tagrow"><span class="tag">sort</span><span class="tag">filter</span><span class="tag">eval</span></div>
+          <div class="ic">🔍</div>
+          <h3>Discovery mode</h3>
+          <p>Click "Discover" in the toolbar to open a GitHub search panel. Type any query — "rust async runtime", "react state management" — and get 12 starred results, filtered to repos you don't already have. One click to open and scan.</p>
+          <div class="tagrow"><span class="tag">discover</span><span class="tag">search</span><span class="tag">github</span></div>
         </div>
         <div class="feat">
           <div class="ic">✦</div>
-          <h3>Auto-decide from Vee (bulk)</h3>
-          <p>One palette command — "Auto-decide all undecided (Vee)" — maps every unrated repo's fit level to a decision: strong → adopt, solid → trial, care → hold, risky → reject. Zero clicks per repo.</p>
-          <div class="tagrow"><span class="tag">bulk</span><span class="tag">vee</span><span class="tag">triage</span></div>
+          <h3>Recommendations</h3>
+          <p>Click "Recommendations" in the discovery panel to get repos suggested from your own adopted/trial decisions. RepoLens extracts your top capabilities and primary language, then searches GitHub for similar repos you haven't seen yet.</p>
+          <div class="tagrow"><span class="tag">recommendations</span><span class="tag">ai</span><span class="tag">discovery</span></div>
         </div>
         <div class="feat">
-          <div class="ic">★</div>
-          <h3>Saved filter snapshots</h3>
-          <p>Name and save any combination of query, sort, fit, decision, and language filters. Saved filters appear at the top of the palette — one keystroke to restore any view. Delete them from the palette too.</p>
-          <div class="tagrow"><span class="tag">filters</span><span class="tag">palette</span><span class="tag">workflow</span></div>
+          <div class="ic">⊞</div>
+          <h3>N-way compare table</h3>
+          <p>Select any 2–10 repos in selection mode and hit "⊞ Compare N". A full-screen matrix opens with every repo as a column and fit, health, stars, language, decision, eval score, per-rubric stars, capabilities, and note as rows. Export as Markdown or CSV directly from the modal.</p>
+          <div class="tagrow"><span class="tag">compare</span><span class="tag">matrix</span><span class="tag">export</span></div>
         </div>
         <div class="feat">
-          <div class="ic">⌨</div>
-          <h3>More palette commands</h3>
-          <p>11 new palette commands this release: eval, sort by eval, show evaluated only, edit rubric, auto-decide, save/delete/restore filters, fit changed filter, stale filter, needs-attention filter, and re-scan all stale.</p>
-          <div class="tagrow"><span class="tag">palette</span><span class="tag">speed</span><span class="tag">keyboard</span></div>
+          <div class="ic">📊</div>
+          <h3>Decision matrix export</h3>
+          <p>Two new palette commands export the full visible library as a structured matrix — CSV or Markdown — with every column: fit, health, stars, language, decision date, eval score, individual rubric criterion scores, eval note, and personal note. Ready for Notion, Obsidian, or a spreadsheet.</p>
+          <div class="tagrow"><span class="tag">export</span><span class="tag">csv</span><span class="tag">matrix</span></div>
+        </div>
+        <div class="feat">
+          <div class="ic">⏰</div>
+          <h3>Drift alerts</h3>
+          <p>A background alarm fires once a day, counts repos not scanned in 14+ days, and writes a summary. When you open the library a dismissable amber banner tells you exactly how many repos have gone stale — with a one-click "Refresh stale" shortcut.</p>
+          <div class="tagrow"><span class="tag">drift</span><span class="tag">alerts</span><span class="tag">stale</span></div>
+        </div>
+        <div class="feat">
+          <div class="ic">🗂</div>
+          <h3>Compare includes eval data</h3>
+          <p>The N-way compare modal and both matrix exports include your rubric scores per criterion, so you can see not just "who scored higher" but "which repo is better documented" and "which has stronger type safety" side-by-side.</p>
+          <div class="tagrow"><span class="tag">eval</span><span class="tag">compare</span><span class="tag">rubric</span></div>
         </div>
       </div>
 
       <div class="changed">
-        <div class="chg"><span class="ci">🧪</span><div><b>731 tests, all green.</b> <span>5 fitDelta unit tests from v2.8.0 + evaluations.js pure-function coverage.</span></div></div>
-        <div class="chg"><span class="ci">🔧</span><div><b>Palette accepts a getter function.</b> <span>Dynamic command lists (saved filters) now update without re-initialising — <code>initPalette(fn)</code> calls <code>fn()</code> fresh on each open.</span></div></div>
+        <div class="chg"><span class="ci">🔧</span><div><b>alarms permission added.</b> <span>Manifest now includes "alarms" so the background drift check can fire on a 24-hour schedule without requiring an open tab.</span></div></div>
+        <div class="chg"><span class="ci">🧪</span><div><b>712 tests, all green.</b> <span>No regressions across 60 test files.</span></div></div>
       </div>
     </div>
   </section>
@@ -307,10 +307,14 @@
     <div class="reveal">
       <div class="sec-eyebrow">The rest of the burst</div>
       <h2 class="sec-title">Everything else, newest first</h2>
-      <p class="sec-note">Twelve more releases across three days — from fit delta tracking to bring-any-model.</p>
+      <p class="sec-note">Thirteen more releases across three days — from fit delta tracking to bring-any-model.</p>
     </div>
 
     <div class="timeline">
+      <div class="rel reveal">
+        <div class="rel-head"><span class="rel-v">v2.9.0</span><span class="rel-theme">Evaluate.</span><span class="rel-date">Jun 14</span></div>
+        <div class="rel-body">Evaluations Workbench: score repos 1–5 against a custom rubric (<code>e</code> key), weighted average badge on each card, sort by eval score, evaluated-only filter, editable rubric names. Auto-decide all undecided repos from Vee's fit suggestion in one palette command. Named saved filter snapshots in the palette.</div>
+      </div>
       <div class="rel reveal">
         <div class="rel-head"><span class="rel-v">v2.8.0</span><span class="rel-theme">Delta.</span><span class="rel-date">Jun 14</span></div>
         <div class="rel-body">Fit delta tracking: re-scan any repo and a ↑ green or ↓ amber badge shows exactly how the verdict changed. Sort by fit changed. Triage % pill in stats. Hover preview surfaces decision, delta, and note. <code>r</code> key to re-scan the focused card. Fit chip tooltip shows the why. Three smart palette filters. Stale threshold unified to 30 days.</div>
@@ -452,7 +456,7 @@
       <span class="pill">Manifest V3</span>
     </div>
     <div>🔭 <b>RepoLens</b> — built for people who read code before they trust it.<br>
-    Full detail in the <a href="CHANGELOG.md">changelog</a>. Now at v2.9.0.</div>
+    Full detail in the <a href="CHANGELOG.md">changelog</a>. Now at v3.0.0.</div>
   </footer>
 
 </div>

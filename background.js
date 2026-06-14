@@ -142,6 +142,19 @@ chrome.runtime.onInstalled.addListener(({ reason }) => {
       contexts: ['link'],
     });
   });
+  // Drift check alarm — fires once a day to count stale repos.
+  chrome.alarms.create('repolens-drift', { delayInMinutes: 1, periodInMinutes: 60 * 24 });
+});
+
+// Count repos not scanned in 14+ days and write a summary for the library banner.
+chrome.alarms.onAlarm.addListener(async (alarm) => {
+  if (alarm.name !== 'repolens-drift') return;
+  try {
+    const points = await scrollPoints({ limit: 2000 });
+    const STALE_MS = 14 * 24 * 60 * 60 * 1000;
+    const staleCount = points.filter(p => p.payload?.savedAt && (Date.now() - Date.parse(p.payload.savedAt)) > STALE_MS).length;
+    await chrome.storage.local.set({ repolens_drift: { staleCount, checkedAt: new Date().toISOString() } });
+  } catch { /* offline or IDB unavailable */ }
 });
 
 // Scan a link right-clicked anywhere — detect platform from the href, open output tab.

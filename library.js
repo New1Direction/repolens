@@ -586,6 +586,12 @@ function updateSelectionBar() {
       ? `Build a wiring diagram from ${n} repos`
       : n < 2 ? 'Select 2–6 repos to build a stack' : 'Select at most 6 repos';
   }
+  const compare = document.getElementById('sel-compare');
+  if (compare) {
+    compare.disabled = n < 2;
+    compare.textContent = n >= 2 ? `⊞ Compare ${n}` : '⊞ Compare';
+    compare.title = n >= 2 ? `Compare ${n} repos side-by-side` : 'Select 2+ repos to compare';
+  }
   const decideEl = document.getElementById('sel-decide');
   if (decideEl) {
     decideEl.disabled = !n;
@@ -599,6 +605,106 @@ function selectAllToggle() {
   vis.forEach((id) => (allChosen ? selected.delete(id) : selected.add(id)));
   render(); // reflect the new checkbox / is-selected state across the grid
   updateSelectionBar();
+}
+
+// ─── N-way compare modal ──────────────────────────────────────────────────────
+
+function compareSelected() {
+  const repos = [...selected].map(id => allRows.find(r => r.repoId === id)).filter(Boolean);
+  if (repos.length < 2) { setStatus('Select at least 2 repos to compare.'); return; }
+
+  document.getElementById('rl-cmp-modal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'rl-cmp-modal';
+  modal.setAttribute('role', 'dialog');
+  modal.setAttribute('aria-label', `Compare ${repos.length} repos`);
+  modal.setAttribute('aria-modal', 'true');
+
+  const thCols = repos.map(r =>
+    `<th><a href="https://github.com/${esc(r.repoId)}" target="_blank" rel="noopener" class="cmp2-name">${esc(r.name)}</a><br><span class="cmp2-id">${esc(r.repoId)}</span></th>`
+  ).join('');
+
+  const TABLE_ROWS = [
+    { label: 'Fit', fn: r => `<span class="lc-chip fit-${esc(r.fit?.level ?? 'unrated')}">${esc(r.fit?.label ?? '—')}</span>` },
+    { label: 'Fit delta', fn: r => r.fitDelta ? `<span class="lc-fit-delta ${FIT_ORDER.indexOf(r.fitDelta.to) < FIT_ORDER.indexOf(r.fitDelta.from) ? 'up' : 'down'}">${r.fitDelta.from} → ${r.fitDelta.to}</span>` : '—' },
+    { label: 'Health', fn: r => r.health != null ? `${r.health}%` : '—' },
+    { label: 'Stars', fn: r => r.stars != null ? (r.stars >= 1000 ? (r.stars / 1000).toFixed(1) + 'k' : String(r.stars)) : '—' },
+    { label: 'Language', fn: r => esc(r.languages?.[0]?.name ?? '—') },
+    { label: 'Decision', fn: r => { const d = decisionMap.get(r.repoId); return d ? `<span class="lc-decision" data-d="${esc(d.decision)}">${esc(DECISION_META[d.decision]?.label || d.decision)}</span>` : '—'; } },
+    { label: 'Eval score', fn: r => { const ev = evalMap.get(r.repoId); const s = ev ? computeScore(ev, rubric) : null; return s !== null ? `${s.toFixed(1)}/5` : '—'; } },
+    ...rubric.map(crit => ({
+      label: crit.name,
+      fn: r => { const ev = evalMap.get(r.repoId); const v = ev?.scores?.[crit.id]; return v != null ? '★'.repeat(v) + '☆'.repeat(5 - v) : '—'; },
+    })),
+    { label: 'Capabilities', fn: r => r.capabilities?.slice(0, 5).map(c => `<span class="cap-tag">${esc(c)}</span>`).join(' ') || '—' },
+    { label: 'Note', fn: r => esc((notesMap.get(r.repoId) || '').slice(0, 80)) || '—' },
+  ];
+
+  const tBody = TABLE_ROWS.map(row =>
+    `<tr><th class="cmp2-label">${esc(row.label)}</th>${repos.map(r => `<td>${row.fn(r)}</td>`).join('')}</tr>`
+  ).join('');
+
+  modal.innerHTML = `
+    <div class="cmp2-inner">
+      <div class="cmp2-bar">
+        <span class="cmp2-title">Comparing ${repos.length} repos</span>
+        <div class="cmp2-btns">
+          <button class="lib-btn" id="cmp2-md">↓ Markdown</button>
+          <button class="lib-btn" id="cmp2-csv">↓ CSV</button>
+          <button class="lib-btn" id="cmp2-close" aria-label="Close">✕</button>
+        </div>
+      </div>
+      <div class="cmp2-scroll">
+        <table class="cmp2-table">
+          <thead><tr><th class="cmp2-label-col"></th>${thCols}</tr></thead>
+          <tbody>${tBody}</tbody>
+        </table>
+      </div>
+    </div>`;
+
+  document.body.appendChild(modal);
+  requestAnimationFrame(() => modal.classList.add('visible'));
+
+  const close = () => { modal.classList.remove('visible'); setTimeout(() => modal.remove(), 200); };
+  modal.querySelector('#cmp2-close')?.addEventListener('click', close);
+  modal.addEventListener('click', e => { if (e.target === modal) close(); });
+  const escFn = e => { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', escFn); } };
+  document.addEventListener('keydown', escFn);
+  modal.querySelector('#cmp2-md')?.addEventListener('click', () => exportCompareMatrix(repos, 'md'));
+  modal.querySelector('#cmp2-csv')?.addEventListener('click', () => exportCompareMatrix(repos, 'csv'));
+}
+
+function exportCompareMatrix(repos, format) {
+  const date = new Date().toISOString().slice(0, 10);
+  const dl = (blob, name) => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); URL.revokeObjectURL(a.href); };
+  const getRow = r => {
+    const dec = decisionMap.get(r.repoId);
+    const ev = evalMap.get(r.repoId);
+    const score = ev ? computeScore(ev, rubric) : null;
+    return {
+      repoId: r.repoId, fit: r.fit?.label ?? '—', health: r.health ?? '—', stars: r.stars ?? '—',
+      language: r.languages?.[0]?.name ?? '—',
+      decision: dec ? (DECISION_META[dec.decision]?.label || dec.decision) : '—',
+      evalScore: score !== null ? score.toFixed(1) : '—',
+      critScores: rubric.map(c => ev?.scores?.[c.id] ?? '—'),
+      note: (notesMap.get(r.repoId) || '').slice(0, 80),
+    };
+  };
+  if (format === 'csv') {
+    const qv = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const hdr = ['repoId', 'fit', 'health', 'stars', 'language', 'decision', 'evalScore', ...rubric.map(c => c.name), 'note'].join(',');
+    const rows = repos.map(r => { const d = getRow(r); return [qv(d.repoId), qv(d.fit), d.health, d.stars, qv(d.language), qv(d.decision), d.evalScore, ...d.critScores, qv(d.note)].join(','); });
+    dl(new Blob([[hdr, ...rows].join('\n')], { type: 'text/csv' }), `repolens-compare-${date}.csv`);
+  } else {
+    const critCols = rubric.map(c => ` ${c.name} |`).join('');
+    const hdr = `| Repo | Fit | Health | Stars | Language | Decision | Eval |${critCols} Note |`;
+    const sep = `|---|---|---|---|---|---|---|${rubric.map(() => '---|').join('')}---|`;
+    const rows = repos.map(r => {
+      const d = getRow(r);
+      return `| [${d.repoId}](https://github.com/${d.repoId}) | ${d.fit} | ${d.health} | ${d.stars} | ${d.language} | ${d.decision} | ${d.evalScore} |${d.critScores.map(s => ` ${s} |`).join('')} ${d.note.replace(/\|/g, '\\|')} |`;
+    });
+    dl(new Blob([`# Compare: ${repos.map(r => r.name).join(' · ')} — ${date}\n\n${hdr}\n${sep}\n${rows.join('\n')}\n`], { type: 'text/markdown' }), `repolens-compare-${date}.md`);
+  }
 }
 
 function resetDelBtn(btn) {
@@ -945,7 +1051,40 @@ function wireToolbar() {
     e.currentTarget.value = '';
     await bulkDecide(val === 'clear' ? null : val);
   });
+  document.getElementById('sel-compare')?.addEventListener('click', compareSelected);
   document.getElementById('sel-done')?.addEventListener('click', () => setSelectionMode(false));
+  document.getElementById('discover-btn')?.addEventListener('click', openDiscovery);
+  document.getElementById('discover-form')?.addEventListener('submit', async e => {
+    e.preventDefault();
+    const q = document.getElementById('discover-input')?.value.trim();
+    if (!q) return;
+    const resultsEl = document.querySelector('#discover-panel .dc-results');
+    if (!resultsEl) return;
+    resultsEl.innerHTML = '<div class="dc-loading">Searching GitHub…</div>';
+    try {
+      const items = await searchGitHub(q);
+      showDiscoveryResults(items, resultsEl, `"${q}" — ${items.length} results`);
+    } catch (err) {
+      resultsEl.innerHTML = `<p class="dc-empty">Search failed: ${esc(err.message)}</p>`;
+    }
+  });
+  document.getElementById('discover-panel')?.addEventListener('click', e => {
+    const btn = e.target.closest('.dc-open');
+    if (btn?.dataset.url) chrome.tabs.create({ url: btn.dataset.url });
+  });
+  document.getElementById('discover-recs')?.addEventListener('click', () => {
+    document.getElementById('discover-input').value = '';
+    recommendFromLibrary(document.querySelector('#discover-panel .dc-results'));
+  });
+  document.getElementById('drift-dismiss')?.addEventListener('click', () => {
+    sessionStorage.setItem('drift_dismissed', '1');
+    document.getElementById('drift-banner')?.classList.add('hidden');
+  });
+  document.getElementById('drift-refresh')?.addEventListener('click', () => {
+    sessionStorage.setItem('drift_dismissed', '1');
+    document.getElementById('drift-banner')?.classList.add('hidden');
+    refreshStale();
+  });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && selectionMode) setSelectionMode(false);
   });
@@ -1573,6 +1712,125 @@ function exportDigest(format) {
   }
 }
 
+// ─── Decision Matrix export ───────────────────────────────────────────────────
+
+function exportDecisionMatrix(format = 'csv') {
+  const rows = getVisibleRows();
+  if (!rows.length) { setStatus('No repos to export.'); return; }
+  const date = new Date().toISOString().slice(0, 10);
+  const dl = (blob, name) => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); URL.revokeObjectURL(a.href); };
+
+  if (format === 'csv') {
+    const qv = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const critHeaders = rubric.map(c => qv(c.name)).join(',');
+    const hdr = `repoId,name,platform,fit,health,stars,language,decision,decisionDate,evalScore,${critHeaders},evalNote,note,savedAt`;
+    const csvRows = rows.map(r => {
+      const dec = decisionMap.get(r.repoId);
+      const ev = evalMap.get(r.repoId);
+      const score = ev ? computeScore(ev, rubric) : null;
+      return [
+        qv(r.repoId), qv(r.name), qv(r.platform ?? ''),
+        r.fit?.level ?? '', r.health ?? '', r.stars ?? '',
+        qv(r.languages?.[0]?.name ?? ''),
+        dec?.decision ?? '', dec?.savedAt ? new Date(dec.savedAt).toISOString().slice(0, 10) : '',
+        score !== null ? score.toFixed(2) : '',
+        rubric.map(c => ev?.scores?.[c.id] ?? '').join(','),
+        qv(ev?.note ?? ''), qv(notesMap.get(r.repoId) ?? ''),
+        r.savedAt ? new Date(r.savedAt).toISOString().slice(0, 10) : '',
+      ].join(',');
+    });
+    dl(new Blob([[hdr, ...csvRows].join('\n')], { type: 'text/csv' }), `repolens-matrix-${date}.csv`);
+  } else {
+    const critCols = rubric.map(c => ` ${c.name} |`).join('');
+    const hdr = `| Repo | Fit | Health | Stars | Language | Decision | Eval |${critCols} Note |`;
+    const sep = `|---|---|---|---|---|---|---|${rubric.map(() => '---|').join('')}---|`;
+    const mdRows = rows.map(r => {
+      const dec = decisionMap.get(r.repoId);
+      const ev = evalMap.get(r.repoId);
+      const score = ev ? computeScore(ev, rubric) : null;
+      const note = (notesMap.get(r.repoId) || ev?.note || '').slice(0, 60).replace(/\|/g, '\\|');
+      return `| [${r.repoId}](https://github.com/${r.repoId}) | ${r.fit?.label ?? '—'} | ${r.health ?? '—'} | ${r.stars ?? '—'} | ${r.languages?.[0]?.name ?? '—'} | ${dec ? (DECISION_META[dec.decision]?.label || dec.decision) : '—'} | ${score !== null ? score.toFixed(1) : '—'} |${rubric.map(c => ` ${ev?.scores?.[c.id] ?? '—'} |`).join('')} ${note} |`;
+    });
+    dl(new Blob([`# RepoLens Decision Matrix — ${date}\n\n_${rows.length} repos · Generated by RepoLens_\n\n${hdr}\n${sep}\n${mdRows.join('\n')}\n`], { type: 'text/markdown' }), `repolens-matrix-${date}.md`);
+  }
+  setStatus(`Exported ${rows.length} repos to decision matrix.`);
+}
+
+// ─── Discovery mode ───────────────────────────────────────────────────────────
+
+let discoveryOpen = false;
+
+function openDiscovery() {
+  const panel = document.getElementById('discover-panel');
+  if (!panel) return;
+  discoveryOpen = !discoveryOpen;
+  panel.classList.toggle('hidden', !discoveryOpen);
+  document.getElementById('discover-btn')?.classList.toggle('on', discoveryOpen);
+  if (discoveryOpen) {
+    document.getElementById('discover-input')?.focus();
+    const resultsEl = panel.querySelector('.dc-results');
+    if (resultsEl && !resultsEl.firstChild) recommendFromLibrary(resultsEl);
+  }
+}
+
+async function searchGitHub(query) {
+  const res = await fetch(
+    `https://api.github.com/search/repositories?q=${encodeURIComponent(query)}&sort=stars&order=desc&per_page=12`,
+    { headers: { Accept: 'application/vnd.github.v3+json' } }
+  );
+  if (!res.ok) throw new Error(`GitHub search failed (${res.status})`);
+  return (await res.json()).items || [];
+}
+
+function showDiscoveryResults(items, resultsEl, heading) {
+  const existing = new Set(allRows.map(r => r.repoId));
+  const fresh = items.filter(item => !existing.has(item.full_name));
+  if (!fresh.length) { resultsEl.innerHTML = '<p class="dc-empty">No new repos found — all results are already in your library.</p>'; return; }
+  const stars = n => n >= 1000 ? (n / 1000).toFixed(1) + 'k★' : `${n || 0}★`;
+  const cards = fresh.map(item => `
+    <div class="dc-card">
+      <div class="dc-card-top">
+        <span class="dc-name">${esc(item.name)}</span>
+        <span class="dc-meta">${stars(item.stargazers_count)}</span>
+        ${item.language ? `<span class="dc-lang">${esc(item.language)}</span>` : ''}
+      </div>
+      <p class="dc-desc">${esc((item.description || '').slice(0, 120))}</p>
+      <div class="dc-foot">
+        <button class="lib-btn dc-open" data-url="${esc(item.html_url)}">Open &amp; Scan ↗</button>
+        <span class="dc-id">${esc(item.full_name)}</span>
+      </div>
+    </div>`).join('');
+  resultsEl.innerHTML = heading ? `<div class="dc-heading">${esc(heading)}</div>${cards}` : cards;
+}
+
+async function recommendFromLibrary(resultsEl) {
+  if (!resultsEl) resultsEl = document.querySelector('#discover-panel .dc-results');
+  if (!resultsEl) return;
+
+  const adopted = allRows.filter(r => { const d = decisionMap.get(r.repoId); return d && (d.decision === 'adopt' || d.decision === 'trial'); });
+  if (!adopted.length) {
+    resultsEl.innerHTML = '<p class="dc-empty">Adopt or trial some repos to unlock recommendations.</p>';
+    return;
+  }
+
+  const capFreq = {};
+  for (const r of adopted) for (const c of r.capabilities || []) capFreq[c] = (capFreq[c] || 0) + 1;
+  const topCaps = Object.entries(capFreq).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([c]) => c);
+
+  const langFreq = {};
+  for (const r of adopted) { const l = r.languages?.[0]?.name; if (l) langFreq[l] = (langFreq[l] || 0) + 1; }
+  const topLang = Object.entries(langFreq).sort((a, b) => b[1] - a[1])[0]?.[0];
+
+  const query = [topCaps.join(' '), topLang ? `language:${topLang}` : ''].filter(Boolean).join(' ') || 'developer tools';
+  resultsEl.innerHTML = '<div class="dc-loading">Finding recommendations…</div>';
+  try {
+    const items = await searchGitHub(query);
+    showDiscoveryResults(items, resultsEl, `Recommended from ${adopted.length} adopted/trial repos`);
+  } catch (err) {
+    resultsEl.innerHTML = `<p class="dc-empty">Recommendation search failed: ${esc(err.message)}</p>`;
+  }
+}
+
 function getVisibleRows() {
   let rows = sortRows(filterRows(allRows, state), state.sort);
   if (state.sort === 'decided') {
@@ -2101,7 +2359,10 @@ function initLibraryPalette() {
     { name: 'Export Library (Markdown)', description: 'Download library as a readable Markdown report', action: () => exportDigest('md') },
     { name: 'Export Digest (JSON)', description: 'Download library as JSON', action: () => exportDigest('json') },
     { name: 'Export Digest (CSV)', description: 'Download library as CSV', action: () => exportDigest('csv') },
+    { name: '⊞ Export Decision Matrix (CSV)', description: 'Full matrix: fit, health, decision, eval score, rubric criteria, notes', action: () => exportDecisionMatrix('csv') },
+    { name: '⊞ Export Decision Matrix (Markdown)', description: 'Same as CSV but formatted as a Markdown table', action: () => exportDecisionMatrix('md') },
     { name: 'Export Backup', description: 'Full library backup', action: () => exportLibrary() },
+    { name: '🔍 Discover repos', description: 'Search GitHub and get recommendations based on your library', action: () => openDiscovery() },
     { name: 'Import Backup', description: 'Restore from a backup file', action: () => pickImportFile() },
     { section: 'Saved filters', name: '★ Save current filter…', description: 'Bookmark this filter combo by name', action: async () => {
       const name = prompt('Name this filter:');
@@ -2164,6 +2425,15 @@ async function init() {
       }
     }
   } catch { /* best-effort */ }
+  // Drift alert: show banner if background worker found stale repos
+  chrome.storage.local.get('repolens_drift').then(({ repolens_drift: drift }) => {
+    if (drift?.staleCount && !sessionStorage.getItem('drift_dismissed')) {
+      const banner = document.getElementById('drift-banner');
+      const msg = banner?.querySelector('.drift-msg');
+      if (banner && msg) { msg.textContent = `${drift.staleCount} repos haven't been scanned in 14+ days.`; banner.classList.remove('hidden'); }
+    }
+  }).catch(() => {});
+
   if (prefs?.librarySort) state.sort = prefs.librarySort;
   if (prefs?.libraryDensity === 'compact') {
     document.getElementById('grid')?.classList.add('density-compact');
