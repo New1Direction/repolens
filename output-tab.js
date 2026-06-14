@@ -1624,7 +1624,8 @@ function verdictDashboard(d) {
     <div class="v-facts">${cells}</div>
     ${flags}
     ${entries}
-    ${jumps}`;
+    ${jumps}
+    <div class="v-ask-cta"><span>Have a specific question?</span><button class="v-jump" data-jump="26">Ask This Repo <span class="arr">→</span></button></div>`;
 }
 
 function renderTabs(d) {
