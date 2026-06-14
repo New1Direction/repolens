@@ -151,7 +151,10 @@ function render() {
     rows = rows.filter((r) => ids.has(r.repoId));
   }
   // Decision filter: same pattern — decisionMap lives here, not in library-data.
-  if (state.decision) {
+  // Special sentinel 'undecided' shows repos without any saved decision.
+  if (state.decision === 'undecided') {
+    rows = rows.filter((r) => !decisionMap.has(r.repoId));
+  } else if (state.decision) {
     rows = rows.filter((r) => decisionMap.get(r.repoId)?.decision === state.decision);
   }
   // NL filter: when active, restrict to the AI-ranked ID list (preserving AI order).
@@ -937,6 +940,7 @@ function renderDecisionFilter() {
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
   if (!total) { host.classList.add('hidden'); host.innerHTML = ''; return; }
   host.classList.remove('hidden');
+  const undecidedCount = allRows.filter((r) => !decisionMap.has(r.repoId)).length;
   const chip = (id, label, n) =>
     `<button class="lib-coll${state.decision === id ? ' on' : ''}" data-dec="${esc(id || '')}">${esc(label)}<span class="coll-n">${n}</span></button>`;
   host.innerHTML = [
@@ -945,6 +949,7 @@ function renderDecisionFilter() {
     counts.trial ? chip('trial', 'Trial', counts.trial) : '',
     counts.hold  ? chip('hold',  'Hold',  counts.hold)  : '',
     counts.reject ? chip('reject', 'Reject', counts.reject) : '',
+    undecidedCount ? chip('undecided', 'Undecided', undecidedCount) : '',
   ].join('');
   if (!host._decDelegated) {
     host._decDelegated = true;
@@ -1526,6 +1531,7 @@ function initLibraryPalette() {
     { name: 'Show: Trial only', action: () => { state.decision = 'trial'; renderDecisionFilter(); render(); } },
     { name: 'Show: Hold only', action: () => { state.decision = 'hold'; renderDecisionFilter(); render(); } },
     { name: 'Show: Rejected only', action: () => { state.decision = 'reject'; renderDecisionFilter(); render(); } },
+    { name: 'Show: Undecided only', action: () => { state.decision = 'undecided'; renderDecisionFilter(); render(); } },
     { section: 'Sort', name: 'Sort: Best fit', action: () => { state.sort = 'fit'; document.getElementById('sort').value = 'fit'; chrome.storage.local.set({ librarySort: 'fit' }); render(); } },
     { name: 'Sort: Health', action: () => { state.sort = 'health'; document.getElementById('sort').value = 'health'; chrome.storage.local.set({ librarySort: 'health' }); render(); } },
     { name: 'Sort: Recently scanned', action: () => { state.sort = 'recent'; document.getElementById('sort').value = 'recent'; chrome.storage.local.set({ librarySort: 'recent' }); render(); } },
