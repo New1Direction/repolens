@@ -1998,6 +1998,31 @@ async function renderDecisionControl(d) {
       applyDecisionPreview(dec);
       const msg = document.getElementById('dl-saved-msg');
       if (msg) { msg.textContent = '✓ Saved'; setTimeout(() => { msg.textContent = ''; }, 1800); }
+      // Offer integration steps for Adopt decisions.
+      if (selected === 'adopt' && !block.querySelector('.dl-integrate')) {
+        const intDiv = document.createElement('div');
+        intDiv.className = 'dl-integrate';
+        intDiv.innerHTML = `<button class="dl-integrate-btn" title="Ask AI to generate a quick integration checklist for this repo">✦ Get integration steps</button><div class="dl-integrate-result"></div>`;
+        block.appendChild(intDiv);
+        intDiv.querySelector('.dl-integrate-btn')?.addEventListener('click', async (e) => {
+          const btn = e.currentTarget;
+          const result = intDiv.querySelector('.dl-integrate-result');
+          btn.disabled = true;
+          btn.textContent = 'Generating…';
+          try {
+            const resp = await chrome.runtime.sendMessage({
+              type: 'ASK_CACHED',
+              question: `Give me a concise 4–5 step integration checklist for ${d.repoId}. Include install command, minimal config, and the first meaningful usage. Be specific, not generic.`,
+              analysis: d,
+            });
+            if (result) result.textContent = resp?.ok ? resp.answer : (resp?.error || 'Could not generate steps.');
+          } catch {
+            if (result) result.textContent = 'Could not reach the extension.';
+          } finally {
+            btn.remove();
+          }
+        });
+      }
       // Ensure Clear button appears after first save.
       if (!block.querySelector('#dl-clear')) {
         const clrBtn = document.createElement('button');
