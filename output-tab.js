@@ -190,7 +190,7 @@ function renderQuickVerdict(qd) {
   host.style.display = 'block';
 }
 
-function initOutputPalette(data) {
+async function initOutputPalette(data) {
   const commands = [
     // Navigation
     { section: 'Navigation', name: 'Verdict', description: 'Overall fit + score', shortcut: 'V', action: () => show(9) },
@@ -235,7 +235,26 @@ function initOutputPalette(data) {
     { name: "What's New", description: 'Release notes and recent features', action: () => chrome.tabs.create({ url: chrome.runtime.getURL('whats-new.html') }) },
   ];
 
-  initPalette(commands);
+  // Append recent repos from library as jump targets (opens library pre-searched to that repo)
+  const allCommands = [...commands];
+  try {
+    const idx = await getLibraryIndex();
+    if (idx.size) {
+      const recentCmds = [...idx.values()]
+        .sort((a, b) => (Date.parse(b.savedAt) || 0) - (Date.parse(a.savedAt) || 0))
+        .slice(0, 8)
+        .filter((r) => r.repoId !== data.repoId)
+        .map((r, i) => ({
+          section: i === 0 ? 'Recent repos' : undefined,
+          name: r.repoId,
+          description: r.blurb || r.category || 'Open in library',
+          action: () => chrome.tabs.create({ url: chrome.runtime.getURL(`library.html#search=${encodeURIComponent(r.repoId)}`) }),
+        }));
+      allCommands.push(...recentCmds);
+    }
+  } catch (_) {}
+
+  initPalette(allCommands);
   document.getElementById('open-palette')?.addEventListener('click', () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }));
   });
