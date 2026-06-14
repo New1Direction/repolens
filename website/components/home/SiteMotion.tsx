@@ -34,6 +34,13 @@ export function SiteMotion() {
           { opacity: 0, y: 26, duration: 0.7, stagger: 0.09, ease, clearProps: 'transform' },
         );
 
+        // Scrubbed parallax — the mascot port drifts up as the hero scrolls away.
+        gsap.to('.hero .hero-mascot-stage', {
+          yPercent: -14,
+          ease: 'none',
+          scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: 0.4 },
+        });
+
         // 2) Section reveals (every .reveal except the bento, handled below).
         const reveals = gsap.utils.toArray<HTMLElement>('.reveal:not(.feature-section)');
         ScrollTrigger.batch(reveals, {
@@ -73,6 +80,12 @@ export function SiteMotion() {
                 delay: 0.15,
                 clearProps: 'transform',
               });
+              // Draw the line icons in (stroke-dashoffset 1 → 0).
+              gsap.fromTo(
+                bento.querySelectorAll('.feat .icon-stroke'),
+                { strokeDashoffset: 1 },
+                { strokeDashoffset: 0, duration: 0.7, stagger: 0.035, ease: 'power2.out', delay: 0.35 },
+              );
             },
           });
         }
