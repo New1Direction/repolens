@@ -1453,15 +1453,26 @@ async function loadVersusChips(d) {
 // ─── Ask This Repo ─────────────────────────────────────────────────────────────
 
 function getAskSuggestions(d) {
-  const sugs = ['What are the main trade-offs?'];
+  const sugs = [];
+  // Context-specific first
+  if (d.alternatives?.length) {
+    const alt = d.alternatives[0];
+    const altName = (alt.name || alt).toString().split('/').pop();
+    sugs.push(`How does this compare to ${altName}?`);
+  }
   if (d.red_flags?.length) sugs.push('What are the main risks of using this?');
   if (d.health?.score != null && d.health.score < 65) sugs.push('Is the project still actively maintained?');
   if (d.license && d.license !== 'Unknown') sugs.push(`What restrictions does the ${d.license} license impose?`);
+  if (d.capabilities?.length) sugs.push(`Does it support ${d.capabilities[0]}?`);
   if (d.language && d.language !== 'Unknown') sugs.push(`Is the code idiomatic ${d.language}?`);
-  else sugs.push('Does it support TypeScript?');
+  // Universal fallbacks
+  sugs.push('What are the main trade-offs?');
   sugs.push('How hard is it to integrate into an existing project?');
   sugs.push('Is it production-ready?');
-  return sugs.slice(0, 6);
+  sugs.push('What is the learning curve like?');
+  sugs.push('Does it have good documentation?');
+  // Deduplicate and cap
+  return [...new Set(sugs)].slice(0, 6);
 }
 
 async function renderAskRepo(d) {
