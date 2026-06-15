@@ -55,14 +55,14 @@ function Lens() {
         <sphereGeometry args={[1.12, 64, 64]} />
         <MeshTransmissionMaterial
           transmission={1}
-          thickness={1.4}
-          roughness={0.04}
-          ior={1.45}
-          chromaticAberration={0.08}
-          anisotropicBlur={0.12}
-          distortion={0.25}
-          distortionScale={0.35}
-          temporalDistortion={0.05}
+          thickness={1.05}
+          roughness={0.03}
+          ior={1.35}
+          chromaticAberration={0.035}
+          anisotropicBlur={0.04}
+          distortion={0.03}
+          distortionScale={0.1}
+          temporalDistortion={0}
           samples={6}
           resolution={512}
         />
