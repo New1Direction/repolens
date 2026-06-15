@@ -1,12 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { flushSync } from 'react-dom';
 import { useTheme } from 'next-themes';
-
-type ViewTransitionDocument = Document & {
-  startViewTransition?: (callback: () => void) => unknown;
-};
+import { scanToTheme } from '@/lib/themeScan';
 
 /**
  * Sun⇄moon toggle that *morphs*: in dark mode a cutout circle carves the orb
@@ -29,16 +25,7 @@ export function ThemeToggle() {
   // Transitions API (see ::view-transition-new(root) in global.css). flushSync
   // makes next-themes apply the class synchronously so the snapshot captures the
   // new theme. Instant flip where the API is missing or motion is reduced.
-  const runToggle = () => {
-    const next = isLight ? 'dark' : 'light';
-    const doc = document as ViewTransitionDocument;
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduce || typeof doc.startViewTransition !== 'function') {
-      setTheme(next);
-      return;
-    }
-    doc.startViewTransition(() => flushSync(() => setTheme(next)));
-  };
+  const runToggle = () => scanToTheme(setTheme, isLight ? 'dark' : 'light');
 
   return (
     <button

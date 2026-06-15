@@ -207,6 +207,39 @@ export function VerdictDemo() {
     }
   };
 
+  const [interactive, setInteractive] = useState(false);
+  useEffect(() => {
+    const fine = window.matchMedia('(pointer: fine)').matches;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    setInteractive(fine && !reduce);
+  }, []);
+
+  // Holographic tilt — write CSS vars straight to the card so a pointer move
+  // never triggers a React re-render. Desktop + non-reduced-motion only.
+  const onHoloMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const el = cardRef.current;
+    if (!interactive || !el) return;
+    const r = el.getBoundingClientRect();
+    const px = (e.clientX - r.left) / r.width;
+    const py = (e.clientY - r.top) / r.height;
+    const MAX = 9;
+    el.style.setProperty('--rx', `${(-(py - 0.5) * 2 * MAX).toFixed(2)}deg`);
+    el.style.setProperty('--ry', `${((px - 0.5) * 2 * MAX).toFixed(2)}deg`);
+    el.style.setProperty('--px', `${(px * 100).toFixed(1)}%`);
+    el.style.setProperty('--py', `${(py * 100).toFixed(1)}%`);
+    el.style.setProperty('--active', '1');
+  };
+
+  const onHoloLeave = () => {
+    const el = cardRef.current;
+    if (!el) return;
+    el.style.setProperty('--rx', '0deg');
+    el.style.setProperty('--ry', '0deg');
+    el.style.setProperty('--px', '50%');
+    el.style.setProperty('--py', '50%');
+    el.style.setProperty('--active', '0');
+  };
+
   const current = TABS[active];
 
   return (
@@ -238,7 +271,13 @@ export function VerdictDemo() {
           </ul>
         </div>
 
-        <div className="vd-card" ref={cardRef}>
+        <div className="vd-card-stage">
+          <div
+            className={`vd-card${interactive ? ' is-holo' : ''}`}
+            ref={cardRef}
+            onPointerMove={onHoloMove}
+            onPointerLeave={onHoloLeave}
+          >
           <div className="vd-card-bar" aria-hidden="true">
             <span className="vd-dot" />
             <span className="vd-dot" />
@@ -292,6 +331,10 @@ export function VerdictDemo() {
             tabIndex={0}
           >
             {current.panel}
+          </div>
+
+            <div className="vd-foil" aria-hidden="true" />
+            <div className="vd-glare" aria-hidden="true" />
           </div>
         </div>
       </div>

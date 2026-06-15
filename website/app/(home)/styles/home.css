@@ -215,6 +215,64 @@
   box-shadow: var(--shadow-lg);
   overflow: hidden;
 }
+
+/* ── Holographic verdict card — tilts toward the cursor with an iridescent foil
+   sweep + a glare that tracks the pointer. JS adds .is-holo on desktop only
+   (pointer:fine, motion OK). Content stays legible: the foil is a blended
+   sheen, intensifying on hover, not a wash. ──────────────────────────────── */
+.vd-card-stage {
+  perspective: 1300px;
+}
+.vd-card.is-holo {
+  transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition: transform 0.2s var(--ease-out);
+  will-change: transform;
+}
+.vd-foil,
+.vd-glare {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s var(--ease-out);
+}
+/* The foil: a broad cyan→blue→silver→coral→lavender band that drifts with the
+   pointer (matches the reference holographic sheet). Faint at rest, vivid on tilt. */
+.vd-card.is-holo .vd-foil {
+  opacity: calc(0.14 + var(--active, 0) * 0.54);
+  mix-blend-mode: hard-light;
+  background: linear-gradient(
+    115deg,
+    transparent 6%,
+    rgba(6, 182, 212, 0.55) 20%,
+    rgba(37, 99, 255, 0.45) 33%,
+    rgba(255, 255, 255, 0.62) 45%,
+    rgba(255, 90, 95, 0.46) 58%,
+    rgba(167, 139, 250, 0.5) 72%,
+    transparent 90%
+  );
+  background-size: 200% 200%;
+  background-position: calc(var(--px, 50%) * 0.7 + 15%) calc(var(--py, 50%) * 0.7 + 15%);
+}
+/* The glare: a soft white spotlight that sits under the cursor. */
+.vd-card.is-holo .vd-glare {
+  opacity: calc(var(--active, 0) * 0.6);
+  mix-blend-mode: soft-light;
+  background: radial-gradient(
+    circle at var(--px, 50%) var(--py, 50%),
+    rgba(255, 255, 255, 0.75),
+    rgba(255, 255, 255, 0) 42%
+  );
+}
+@media (prefers-reduced-motion: reduce) {
+  .vd-card.is-holo {
+    transform: none;
+    transition: none;
+  }
+}
+
 .vd-card-bar {
   display: flex;
   align-items: center;
