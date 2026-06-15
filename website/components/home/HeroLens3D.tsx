@@ -2,7 +2,13 @@
 
 import { Suspense, useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Environment, Lightformer, MeshTransmissionMaterial, useTexture } from '@react-three/drei';
+import {
+  Environment,
+  Lightformer,
+  MeshTransmissionMaterial,
+  Sparkles,
+  useTexture,
+} from '@react-three/drei';
 import * as THREE from 'three';
 
 // Static assets aren't auto-prefixed with the GitHub Pages basePath, so prefix by hand.
@@ -67,7 +73,7 @@ function Lens() {
         <torusGeometry args={[1.16, 0.04, 28, 140]} />
         <meshStandardMaterial
           color="#67e8f9"
-          emissive="#06b6d4"
+          emissive="#22d3ee"
           emissiveIntensity={2.6}
           roughness={0.25}
           metalness={0.3}
@@ -92,6 +98,16 @@ export default function HeroLens3D() {
       <Suspense fallback={null}>
         <VeeDisc />
         <Lens />
+        {/* drifting motes of light around the lens */}
+        <Sparkles
+          count={34}
+          scale={[3.4, 3.4, 1.6]}
+          size={3.2}
+          speed={0.4}
+          opacity={0.8}
+          color="#7fe9ff"
+          position={[0, 0, 0.5]}
+        />
         {/* Procedural studio env — NO external HDR (keeps zero external calls). */}
         <Environment resolution={256}>
           <Lightformer form="rect" intensity={2.2} position={[2.5, 3, 2]} scale={[5, 5, 1]} color="#cfe6ff" />
