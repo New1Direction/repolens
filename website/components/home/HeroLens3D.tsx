@@ -7,7 +7,7 @@ import {
   Lightformer,
   MeshTransmissionMaterial,
   Sparkles,
-  useTexture,
+  useVideoTexture,
 } from '@react-three/drei';
 import * as THREE from 'three';
 
@@ -15,13 +15,19 @@ import * as THREE from 'three';
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 /**
- * Vee on a disc directly behind the lens — sized to sit fully within the lens
- * silhouette, so he's only ever seen *through* the glass (refracted), never as a
- * bare rectangle. Swap the poster for a transparent cutout later for an even
- * cleaner float.
+ * Vee — the live mascot clip — on a disc directly behind the lens, sized to sit
+ * fully within the lens silhouette so he's only ever seen *through* the glass
+ * (refracted), never as a bare rectangle. The video texture means he actually
+ * moves. Swap mascot.mp4 for a transparent cutout/render later for a cleaner float.
  */
 function VeeDisc() {
-  const tex = useTexture(`${BASE}/mascot-poster.jpg`);
+  const tex = useVideoTexture(`${BASE}/mascot.mp4`, {
+    muted: true,
+    loop: true,
+    start: true,
+    playsInline: true,
+    crossOrigin: 'anonymous',
+  });
   tex.colorSpace = THREE.SRGBColorSpace;
   return (
     <mesh position={[0, 0.02, -0.55]}>
@@ -70,13 +76,13 @@ function Lens() {
       {/* glowing aperture rim — a ring around the lens edge, facing the viewer
           (no rotation: TorusGeometry already lies in the camera-facing plane). */}
       <mesh>
-        <torusGeometry args={[1.16, 0.04, 28, 140]} />
+        <torusGeometry args={[1.16, 0.034, 28, 140]} />
         <meshStandardMaterial
-          color="#67e8f9"
-          emissive="#22d3ee"
-          emissiveIntensity={2.6}
-          roughness={0.25}
-          metalness={0.3}
+          color="#86b6ee"
+          emissive="#2f7fe0"
+          emissiveIntensity={1.45}
+          roughness={0.3}
+          metalness={0.45}
           toneMapped={false}
         />
       </mesh>
@@ -100,12 +106,12 @@ export default function HeroLens3D() {
         <Lens />
         {/* drifting motes of light around the lens */}
         <Sparkles
-          count={34}
+          count={26}
           scale={[3.4, 3.4, 1.6]}
-          size={3.2}
-          speed={0.4}
-          opacity={0.8}
-          color="#7fe9ff"
+          size={3}
+          speed={0.35}
+          opacity={0.55}
+          color="#acd0ff"
           position={[0, 0, 0.5]}
         />
         {/* Procedural studio env — NO external HDR (keeps zero external calls). */}

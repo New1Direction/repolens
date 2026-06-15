@@ -126,9 +126,9 @@
   z-index: -1;
   border-radius: 50%;
   background:
-    radial-gradient(circle at 50% 48%, color-mix(in srgb, var(--accent-3) 45%, transparent), transparent 58%),
-    radial-gradient(circle at 50% 52%, var(--accent-glow), transparent 70%);
-  opacity: 0.7;
+    radial-gradient(circle at 50% 48%, color-mix(in srgb, var(--accent) 38%, transparent), transparent 60%),
+    radial-gradient(circle at 50% 52%, var(--accent-glow), transparent 72%);
+  opacity: 0.5;
   filter: blur(16px);
 }
 .hero-lens-3d canvas {
