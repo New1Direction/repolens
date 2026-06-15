@@ -108,34 +108,6 @@
   max-width: 34ch;
   text-align: center;
 }
-
-/* Floating 3D glass lens (replaces the framed clip on capable desktops). The
-   canvas is transparent; a soft radial glow gives the lens some atmosphere so
-   it doesn't read as floating in a void. */
-.hero-lens-3d {
-  position: relative;
-  width: clamp(300px, 38vw, 440px);
-  aspect-ratio: 1 / 1;
-  isolation: isolate;
-  cursor: grab;
-}
-.hero-lens-3d::before {
-  content: '';
-  position: absolute;
-  inset: -8%;
-  z-index: -1;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 50% 48%, color-mix(in srgb, var(--accent) 38%, transparent), transparent 60%),
-    radial-gradient(circle at 50% 52%, var(--accent-glow), transparent 72%);
-  opacity: 0.5;
-  filter: blur(16px);
-}
-.hero-lens-3d canvas {
-  display: block;
-  width: 100% !important;
-  height: 100% !important;
-}
 .hero-title {
   font-size: clamp(2.6rem, 0.9rem + 5.4vw, 5rem);
   font-weight: 800;
