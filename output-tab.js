@@ -38,7 +38,7 @@ import { getScene, saveScene } from './store.js';
 import { snapshotTrend, sparkline } from './snapshots.js';
 import { introStageB, COPY } from './onboarding.js';
 import { startCoachmark } from './coachmark.js';
-import { clearDemoEverywhere } from './demo-repo.js';
+import { clearDemoEverywhere, isDemo } from './demo-repo.js';
 
 // Apply the saved theme ASAP (before render) to minimise flash.
 initTheme();
@@ -277,6 +277,7 @@ async function initOutputPalette(data) {
 async function maybeContinueOnboarding(d) {
   const { onboardingStage } = await chrome.storage.local.get('onboardingStage');
   if (onboardingStage !== 'verdict') return;
+  if (!isDemo(d)) return; // Stage B only continues over the seeded demo, never a real repo
   await chrome.storage.local.remove('onboardingStage');
   // Immutable copy before injecting the before-hook on the Blueprint/Canvas step.
   const steps = introStageB().map((s) => ({ ...s }));
