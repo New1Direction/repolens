@@ -116,6 +116,18 @@ mascotInput.addEventListener('change', () => {
   chrome.storage.local.set({ mascotEnabled: mascotInput.checked });
 });
 
+const animateIconInput = document.getElementById('animateIcon');
+chrome.storage.local.get('animateIcon', ({ animateIcon }) => {
+  animateIconInput.checked = animateIcon !== false; // default ON
+});
+animateIconInput.addEventListener('change', () => {
+  chrome.storage.local.set({ animateIcon: animateIconInput.checked });
+});
+
+// Persist the user's OS reduced-motion preference so the service worker (which has
+// no DOM / matchMedia) can honor it before animating the toolbar icon.
+chrome.storage.local.set({ reduceMotion: matchMedia('(prefers-reduced-motion: reduce)').matches });
+
 // ─── Voice / tone ────────────────────────────────────────────────────────────
 chrome.storage.local.get('tone', ({ tone }) => renderTonePicker(tone || DEFAULT_TONE));
 
