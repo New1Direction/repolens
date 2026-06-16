@@ -283,6 +283,19 @@ export async function addEdge({ id, source, target, label, properties = {} }) {
   await idbPut('edges', { id: String(id), source: String(source), target: String(target), label, properties });
 }
 
+/** The whole library graph: every node payload + every edge. Best-effort — empty on failure. */
+export async function getLibraryGraph() {
+  try {
+    const [nodeRows, edges] = await Promise.all([idbGetAll('nodes'), idbGetAll('edges')]);
+    return {
+      nodes: (nodeRows || []).map((r) => r.payload).filter(Boolean),
+      edges: (edges || []),
+    };
+  } catch {
+    return { nodes: [], edges: [] };
+  }
+}
+
 /** Ring-1 ego graph for one repo. Returns { center, edges, neighbors } or null on failure. */
 export async function getEgoGraph(repoId) {
   const centerId = hashRepoId(repoId);
