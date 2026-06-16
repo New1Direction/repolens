@@ -21,6 +21,14 @@ export function edgeBezier(a, b) {
   return `M${sx},${sy} C${mx},${sy} ${mx},${ty} ${tx},${ty}`;
 }
 
+/** Pure: the class string for a node element (kind + optional root/fit). */
+export function nodeClass(n) {
+  let c = `rl-node rl-kind-${n.kind}`;
+  if (n.ref && n.ref.root) c += ' is-root';
+  if (n.ref && n.ref.fit) c += ` rl-fit-${n.ref.fit}`;
+  return c;
+}
+
 /**
  * Mount an interactive canvas into `host`.
  * @returns {{ moveNode, setSpotlight, clearSpotlight, getScene, destroy }}
@@ -68,9 +76,8 @@ export function mountCanvas(host, inputScene, { onChange } = {}) {
     edgeLayer.append(p); edgeEls.set(e.id, p);
   }
   for (const n of scene.nodes) {
-    const g = el('g', { class: `rl-node rl-kind-${n.kind}`, transform: `translate(${n.x},${n.y})`, tabindex: '0' });
+    const g = el('g', { class: nodeClass(n), transform: `translate(${n.x},${n.y})`, tabindex: '0' });
     g.dataset.node = n.id;
-    if (n.ref && n.ref.root) g.classList.add('is-root');
     const rect = el('rect', { width: NODE_W, height: NODE_H, rx: 8 });
     const text = el('text', { x: NODE_W / 2, y: NODE_H / 2, 'text-anchor': 'middle', 'dominant-baseline': 'central' });
     text.textContent = n.label;

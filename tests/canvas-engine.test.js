@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { edgeBezier, NODE_W, NODE_H } from '../canvas-engine.js';
+import { edgeBezier, NODE_W, NODE_H, nodeClass } from '../canvas-engine.js';
 
 describe('edgeBezier', () => {
   it('starts at the source node right-middle and ends at the target left-middle', () => {
@@ -15,5 +15,13 @@ describe('edgeBezier', () => {
     const d = edgeBezier({ x: 0, y: 0 }, { x: 200, y: 0 });
     const mx = (0 + NODE_W + 200) / 2;
     expect(d).toContain(`C${mx},`);
+  });
+});
+
+describe('nodeClass', () => {
+  it('includes kind, root, and fit when present', () => {
+    expect(nodeClass({ kind: 'repo', ref: { root: false, fit: 'strong' } })).toBe('rl-node rl-kind-repo rl-fit-strong');
+    expect(nodeClass({ kind: 'module', ref: { root: true } })).toBe('rl-node rl-kind-module is-root');
+    expect(nodeClass({ kind: 'data', ref: {} })).toBe('rl-node rl-kind-data');
   });
 });
