@@ -6,17 +6,22 @@ import { escapeHtml as esc } from './safe-html.js';
 
 const SVGNS = 'http://www.w3.org/2000/svg';
 export const NODE_W = 132, NODE_H = 44;
+// Auto-width card bounds: each card fits its label, clamped to [MIN_W, MAX_W];
+// labels past MAX_W are ellipsised (full text kept in the <title> tooltip).
+const MIN_W = 96, MAX_W = 210, PAD_X = 14, CHAR_W = 7.8;
 const el = (name, attrs = {}) => { const e = document.createElementNS(SVGNS, name); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
 
 /**
- * Pure: cubic-bezier path string from source node's right-middle to target node's left-middle.
- * a, b are node objects with {x, y} top-left coordinates.
- * @param {{ x: number, y: number }} a
- * @param {{ x: number, y: number }} b
+ * Pure: cubic-bezier from the source node's right-middle to the target's left-middle.
+ * Uses the source node's rendered width (`_w`, set by the engine when it auto-sizes a
+ * card) so the edge still meets the card edge when a long label widens it; falls back
+ * to NODE_W when `_w` is absent.
+ * @param {{ x:number, y:number, _w?:number }} a
+ * @param {{ x:number, y:number }} b
  * @returns {string}
  */
 export function edgeBezier(a, b) {
-  const sx = a.x + NODE_W, sy = a.y + NODE_H / 2;
+  const sx = a.x + ((a && a._w) || NODE_W), sy = a.y + NODE_H / 2;
   const tx = b.x, ty = b.y + NODE_H / 2, mx = (sx + tx) / 2;
   return `M${sx},${sy} C${mx},${sy} ${mx},${ty} ${tx},${ty}`;
 }
@@ -71,6 +76,30 @@ export function mountCanvas(host, inputScene, { onChange } = {}) {
     return (byId(e.from) && byId(e.to)) ? edgeBezier(byId(e.from), byId(e.to)) : '';
   }
 
+  // Measure a candidate string in the live text node; fall back to a monospace
+  // estimate when getComputedTextLength is unavailable (hidden host / jsdom).
+  function widthOf(textEl, str) {
+    textEl.textContent = str;
+    const m = textEl.getComputedTextLength ? textEl.getComputedTextLength() : 0;
+    return m > 0 ? m : str.length * CHAR_W;
+  }
+  // Fit a card to its label: clamp width to [MIN_W, MAX_W]; truncate with an ellipsis
+  // past MAX_W (the full label lives in the node's <title>). Records n._w for edges.
+  function sizeNode(n, rect, text) {
+    const maxTextW = MAX_W - PAD_X * 2;
+    let tw = widthOf(text, n.label);
+    if (tw > maxTextW) {
+      let s = n.label;
+      while (s.length > 1 && widthOf(text, s + '…') > maxTextW) s = s.slice(0, -1);
+      text.textContent = s.replace(/\s+$/, '') + '…';
+      tw = widthOf(text, text.textContent);
+    }
+    const w = Math.max(MIN_W, Math.min(MAX_W, Math.round(tw + PAD_X * 2)));
+    rect.setAttribute('width', w);
+    text.setAttribute('x', w / 2);
+    n._w = w;
+  }
+
   for (const e of scene.edges) {
     const p = el('path', { class: `rl-edge rl-${e.rel}`, d: edgePath(e), fill: 'none' });
     p.dataset.edge = e.id;
@@ -80,10 +109,12 @@ export function mountCanvas(host, inputScene, { onChange } = {}) {
     const g = el('g', { class: nodeClass(n), transform: `translate(${n.x},${n.y})`, tabindex: '0' });
     g.dataset.node = n.id;
     const rect = el('rect', { width: NODE_W, height: NODE_H, rx: 8 });
-    const text = el('text', { x: NODE_W / 2, y: NODE_H / 2, 'text-anchor': 'middle', 'dominant-baseline': 'central' });
+    const text = el('text', { y: NODE_H / 2, 'text-anchor': 'middle', 'dominant-baseline': 'central' });
     text.textContent = n.label;
-    g.append(rect, text);
+    const title = el('title'); title.textContent = n.label; // full label on hover (survives truncation)
+    g.append(rect, text, title);
     nodeLayer.append(g); nodeEls.set(n.id, g);
+    sizeNode(n, rect, text); // fit the card to its label
     wireDrag(g, n);
   }
   applyCamera();
