@@ -2,8 +2,6 @@
 // Vanilla, dependency-free interactive SVG canvas. Pointer Events only.
 // Layout is pure+memoized (positions live in the scene); selection/spotlight is an overlay pass.
 
-import { escapeHtml as esc } from './safe-html.js';
-
 const SVGNS = 'http://www.w3.org/2000/svg';
 export const NODE_W = 132, NODE_H = 44;
 // Auto-width card bounds: each card fits its label, clamped to [MIN_W, MAX_W];
