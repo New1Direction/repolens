@@ -26,16 +26,16 @@ beforeEach(() => {
 describe('THEMES', () => {
   it('has all themes with key, label, swatch', () => {
     expect(THEMES.map(t => t.key)).toEqual([
-      'midnight', 'paper', 'terminal', 'synthwave', 'bmw', 'xai', 'claude', 'apple',
-      'nord', 'gruvbox', 'rosepine', 'latte', 'solarized',
+      'monoink', 'midnight', 'paper', 'terminal', 'synthwave', 'bmw', 'xai', 'claude',
+      'apple', 'nord', 'gruvbox', 'rosepine', 'latte', 'solarized',
     ]);
     for (const t of THEMES) {
       expect(t.label).toBeTruthy();
       expect(t.swatch).toBeTruthy();
     }
   });
-  it('defaults to midnight', () => {
-    expect(DEFAULT_THEME).toBe('midnight');
+  it('defaults to monoink', () => {
+    expect(DEFAULT_THEME).toBe('monoink');
   });
 });
 
@@ -44,9 +44,9 @@ describe('applyTheme', () => {
     applyTheme('terminal');
     expect(document.documentElement.getAttribute('data-theme')).toBe('terminal');
   });
-  it('falls back to midnight for an unknown key', () => {
+  it('falls back to the default for an unknown key', () => {
     applyTheme('bogus');
-    expect(document.documentElement.getAttribute('data-theme')).toBe('midnight');
+    expect(document.documentElement.getAttribute('data-theme')).toBe('monoink');
   });
 });
 
@@ -57,10 +57,10 @@ describe('initTheme', () => {
     expect(key).toBe('paper');
     expect(document.documentElement.getAttribute('data-theme')).toBe('paper');
   });
-  it('applies midnight when nothing is stored', async () => {
+  it('applies the default when nothing is stored', async () => {
     const key = await initTheme();
-    expect(key).toBe('midnight');
-    expect(document.documentElement.getAttribute('data-theme')).toBe('midnight');
+    expect(key).toBe('monoink');
+    expect(document.documentElement.getAttribute('data-theme')).toBe('monoink');
   });
 });
 
