@@ -8,6 +8,7 @@ import { deriveFit } from './verdict.js';
 import { idbPut, idbGet, idbGetAll, idbDelete, idbClear } from './store/idb.js';
 import { rankRepos } from './store/search.js';
 import { buildEgoGraph } from './store/egograph.js';
+import { toSnapshot, appendSnapshot, SNAPSHOT_CAP } from './snapshots.js';
 
 /** Stable numeric key for a repo id (djb2). Unchanged from the VelesDB era so existing ids line up. */
 export function hashRepoId(repoId) {
@@ -48,6 +49,49 @@ export async function saveRepo(analysis) {
     prevFitLevel,
   };
   await idbPut('repos', { id: hashRepoId(analysis.repoId), payload });
+  await appendScanSnapshot(payload, existing?.payload);
+}
+
+/**
+ * Append a snapshot for a repo's current payload (best-effort — a ledger write
+ * must never fail a scan). `prevPayload` (the repo's previous state, which saveRepo
+ * already reads) seeds one prior point the first time, so an existing repo's first
+ * re-scan yields a real 2-point trend instead of losing its history.
+ */
+export async function appendScanSnapshot(payload, prevPayload) {
+  if (!payload || !payload.repoId) return;
+  try {
+    const id = hashRepoId(payload.repoId);
+    const rec = await idbGet('snapshots', id).catch(() => null);
+    let snaps = rec && Array.isArray(rec.snaps) ? rec.snaps : [];
+    if (!snaps.length && prevPayload && prevPayload.saved_at) {
+      snaps = [toSnapshot(prevPayload)];
+    }
+    snaps = appendSnapshot(snaps, toSnapshot(payload), SNAPSHOT_CAP);
+    await idbPut('snapshots', { id, repoId: payload.repoId, snaps });
+  } catch {
+    /* the ledger is additive; a write failure must not break the scan */
+  }
+}
+
+/** A repo's snapshot history (oldest→newest). Best-effort — [] on failure. */
+export async function listSnapshots(repoId) {
+  try {
+    const rec = await idbGet('snapshots', hashRepoId(repoId));
+    return rec && Array.isArray(rec.snaps) ? rec.snaps : [];
+  } catch {
+    return [];
+  }
+}
+
+/** All snapshot histories as a Map(repoId → snaps[]) for batch rendering. */
+export async function listAllSnapshots() {
+  try {
+    const rows = await idbGetAll('snapshots');
+    return new Map((rows || []).filter((r) => r && r.repoId).map((r) => [r.repoId, r.snaps || []]));
+  } catch {
+    return new Map();
+  }
 }
 
 /** Save a full analysis. (No collection init needed — IndexedDB stores auto-create.) */

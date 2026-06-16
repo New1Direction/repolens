@@ -111,3 +111,42 @@ describe('store — graph', () => {
     expect(ego.edges).toEqual([]);
   });
 });
+
+import { appendScanSnapshot, listSnapshots, listAllSnapshots } from '../store.js';
+
+describe('scan ledger', () => {
+  it('saveRepo records a snapshot and re-scan appends a second point', async () => {
+    await saveRepo({ repoId: 'led/one', health: 70, stars: 10, red_flags: [] });
+    await saveRepo({ repoId: 'led/one', health: 90, stars: 20, red_flags: [] });
+    const snaps = await listSnapshots('led/one');
+    expect(snaps.length).toBe(2);
+    expect(snaps[0].health).toBe(70);
+    expect(snaps[1].health).toBe(90);
+  });
+
+  it('caps history at 30 (ring buffer)', async () => {
+    for (let i = 0; i < 35; i++) {
+      await appendScanSnapshot({ repoId: 'led/cap', health: i, stars: 0, red_flags: [], saved_at: `2026-06-01T00:00:${String(i).padStart(2, '0')}.000Z` });
+    }
+    const snaps = await listSnapshots('led/cap');
+    expect(snaps.length).toBe(30);
+    expect(snaps[snaps.length - 1].health).toBe(34);
+  });
+
+  it('seeds the prior scan into the ledger on first re-scan of an existing repo', async () => {
+    // A repo scanned before the ledger existed has a repos payload but no snapshots.
+    // appendScanSnapshot must record that prior state (prevPayload) before the new one.
+    const prev = { repoId: 'led/seed', health: 40, stars: 1, red_flags: [], saved_at: '2026-05-01T00:00:00.000Z' };
+    const next = { repoId: 'led/seed', health: 80, stars: 2, red_flags: [], saved_at: '2026-06-01T00:00:00.000Z' };
+    await appendScanSnapshot(next, prev);
+    const snaps = await listSnapshots('led/seed');
+    expect(snaps.map((s) => s.health)).toEqual([40, 80]);
+  });
+
+  it('listAllSnapshots returns a Map keyed by repoId', async () => {
+    await saveRepo({ repoId: 'led/map', health: 60, stars: 0, red_flags: [] });
+    const map = await listAllSnapshots();
+    expect(map.has('led/map')).toBe(true);
+    expect(Array.isArray(map.get('led/map'))).toBe(true);
+  });
+});
