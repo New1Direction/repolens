@@ -19,7 +19,7 @@
 
 RepoLens is a **Manifest V3 Chrome extension**. Open a GitHub, GitLab, npm, or PyPI page and click the toolbar icon. RepoLens reads the repo, runs it past the AI provider you picked, and opens a tab that leads with a straight answer: should you use this? You see the verdict before any of the README's pitch.
 
-> Stars tell you a project is popular. They don't tell you whether it fits your problem. RepoLens answers the question you actually have: should I use this, and what am I signing up for?
+> Stars tell you a project is popular. They don't tell you whether it fits your problem. RepoLens answers the question you have: should I use this, and what am I signing up for?
 
 ---
 

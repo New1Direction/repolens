@@ -126,7 +126,7 @@ animateIconInput.addEventListener('change', () => {
 
 // Persist the user's OS reduced-motion preference so the service worker (which has
 // no DOM / matchMedia) can honor it before animating the toolbar icon.
-chrome.storage.local.set({ reduceMotion: matchMedia('(prefers-reduced-motion: reduce)').matches });
+chrome.storage.local.set({ reduceMotion: typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches });
 
 // ─── Voice / tone ────────────────────────────────────────────────────────────
 chrome.storage.local.get('tone', ({ tone }) => renderTonePicker(tone || DEFAULT_TONE));

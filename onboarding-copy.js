@@ -6,7 +6,7 @@ export const COPY = {
   introGreet: "Hey, I'm Vee. I read the source so you don't have to. Got two minutes?",
   introCard: 'Every repo you scan lands here, with its fit score, its health, and your notes.',
   introCorkboard: 'Same library, as a board. A line between two repos means they go together.',
-  introSearch: 'Find a repo by name, or just ask your library a question in plain words.',
+  introSearch: 'Find a repo by name, or ask your library a question in plain words.',
   introOpen: 'Click a card and I open the full read on that repo.',
   verdict: "The honest call on whether to use it, before the README starts selling.",
   blueprint: "How it's built, as a map you can drag around. Hit the tour button to walk it.",
