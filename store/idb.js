@@ -2,11 +2,11 @@
 // This is the only place that touches the raw IndexedDB API — everything else builds on idbPut/idbGet/etc.
 
 const DB_NAME = 'repolens';
-// v2 added the 'collections' store. v3 added the 'decisions' store. Each upgrade
-// is additive — onupgradeneeded creates any store in STORES that doesn't already
-// exist, so existing data survives every version bump untouched.
-const DB_VERSION = 3;
-const STORES = ['repos', 'nodes', 'edges', 'collections', 'decisions'];
+// v2 added the 'collections' store. v3 added the 'decisions' store. v4 added the
+// 'snapshots' store (the Scan Ledger). Each upgrade is additive — onupgradeneeded
+// creates any store in STORES that doesn't already exist, so existing data survives.
+const DB_VERSION = 4;
+const STORES = ['repos', 'nodes', 'edges', 'collections', 'decisions', 'snapshots'];
 
 let dbPromise = null;
 
