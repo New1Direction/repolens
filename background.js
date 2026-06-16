@@ -64,6 +64,7 @@ import { buildFitsStackPrompt, parseFitsStack } from './fits-stack.js';
 import { buildStackPrompt, parseStack } from './stack-prompt.js';
 import { buildAskRepoPrompt, parseAskRepoAnswer } from './ask-repo.js';
 import { buildComparePrompt, parseCompareResult } from './compare-repos.js';
+import { startScanAnim, stopScanAnim } from './icon-anim.js';
 
 // Notify when a scan completes — clicking the notification focuses the result tab.
 chrome.notifications.onClicked.addListener(async (notifId) => {
@@ -199,7 +200,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       .set({ [msg.sessionKey]: { loading: true, status: 'fetching', ...detected } })
       .then(() => {
         sendResponse({ ok: true });
-        runAnalysis(msg.sessionKey, detected); // fire and forget; tab polls the session
+        runAnalysis(msg.sessionKey, detected, sender.tab?.id); // fire and forget; tab polls the session
       })
       .catch((err) => sendResponse({ ok: false, error: err?.message || 'Could not start the scan' }));
     return true; // keep the message channel open for the async sendResponse
@@ -555,7 +556,7 @@ chrome.action.onClicked.addListener(async (tab) => {
   // Open the output tab immediately with a loading state, then run the analysis.
   await chrome.storage.session.set({ [sessionKey]: { loading: true, status: 'fetching', ...detected } });
   await chrome.tabs.create({ url: `output-tab.html?key=${sessionKey}` });
-  runAnalysis(sessionKey, detected);
+  runAnalysis(sessionKey, detected, tab.id);
 });
 
 // Every provider credential + model-selector key, read together wherever an AI
@@ -645,7 +646,7 @@ async function runBatchScan(batchKey, urls) {
 }
 
 // Fetch → AI → parse → store. Used by the initial click and by RERUN (retry).
-async function runAnalysis(sessionKey, detected) {
+async function runAnalysis(sessionKey, detected, tabId) {
   // Load every provider credential + model + routing in one read; pass the whole
   // object to callAI so registry (compat) providers are reachable too — not just
   // the five first-class ones. Extra keys (autoSave/tone) are ignored downstream.
@@ -653,6 +654,7 @@ async function runAnalysis(sessionKey, detected) {
   const { autoSave = true, tone } = settings;
 
   try {
+    startScanAnim(tabId); // fire-and-forget; no-ops without a tabId / when disabled / reduced motion
     // Snapshot the previous cached analysis for diff comparison (before it's overwritten).
     const prevCached = await getCached(detected.platform, detected.repoId).catch(() => null);
 
@@ -749,7 +751,9 @@ async function runAnalysis(sessionKey, detected) {
       });
     } catch { /* notifications are best-effort */ }
 
+    stopScanAnim(tabId); // success: reset to the static icon
   } catch (err) {
+    stopScanAnim(tabId); // error: reset to the static icon
     // AI failures already carry a humanized message + kind; other failures (fetch,
     // parse) get classified here so the tab can still route the error CTA.
     const errorKind = err.kind || categorizeError(err).kind;
