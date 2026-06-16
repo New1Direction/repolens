@@ -1,10 +1,10 @@
 <div align="center">
 
-# 🔭 RepoLens
+# RepoLens
 
-### One click opens the case file on any repo.
+### Click any repo. Get a straight answer on whether to use it.
 
-**The verdict · the evidence · the red flags · how it's actually built — in plain English, before the README's pitch.**
+**The verdict, the evidence, the red flags, and how it's built. In plain English, before the README's pitch.**
 
 ![Chrome Manifest V3](https://img.shields.io/badge/Chrome-Manifest_V3-1a73e8?logo=googlechrome&logoColor=white)
 ![Zero build](https://img.shields.io/badge/build-none-0e1722)
