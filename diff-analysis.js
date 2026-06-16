@@ -1,7 +1,7 @@
 // Pure helpers for "Diff Since I Last Looked" — compares two cached analysis snapshots.
 // No DOM, no chrome APIs, unit-testable.
 
-const FIT_ORDER = ['strong', 'solid', 'care', 'risky'];
+export const FIT_ORDER = ['strong', 'solid', 'care', 'risky'];
 const FIT_RANK = Object.fromEntries(FIT_ORDER.map((f, i) => [f, i]));
 
 export function daysSince(isoTs) {
