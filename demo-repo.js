@@ -58,7 +58,7 @@ export function isDemo(repo) {
  */
 export async function clearDemoEverywhere() {
   try {
-    const { deleteRepo, deleteScene, scrollPoints } = await import('./store.js');
+    const { deleteRepo, deleteScene, deleteSnapshots, scrollPoints } = await import('./store.js');
     // Only tear down when the stored honojs/hono row is actually the demo —
     // never delete a real scan that happens to share the demo's id.
     const points = await scrollPoints();
@@ -66,6 +66,8 @@ export async function clearDemoEverywhere() {
     if (row?.payload?.__demo__ === true) {
       await deleteRepo(DEMO_REPO.repoId);
       await deleteScene(demoScene().id);
+      // Defense-in-depth: clear any snapshot orphan left by an already-seeded user.
+      await deleteSnapshots(DEMO_REPO.repoId);
     }
   } catch { /* best-effort teardown */ }
 }

@@ -62,6 +62,10 @@ export async function saveRepo(analysis) {
  * re-scan yields a real 2-point trend instead of losing its history.
  */
 export async function appendScanSnapshot(payload, prevPayload) {
+  // The onboarding demo is a fixture, not a real scan — never let it seed the
+  // ledger (an orphan snapshot would leak into backups and replaying the intro
+  // would double it up). The demo repo/scene are torn down separately.
+  if (payload && payload.__demo__ === true) return;
   if (!payload || !payload.repoId) return;
   try {
     const id = hashRepoId(payload.repoId);
@@ -85,6 +89,13 @@ export async function listSnapshots(repoId) {
   } catch {
     return [];
   }
+}
+
+/** Remove a repo's snapshot history. Best-effort — never throws (mirrors deleteRepo). */
+export async function deleteSnapshots(repoId) {
+  try {
+    await idbDelete('snapshots', hashRepoId(repoId));
+  } catch { /* best-effort */ }
 }
 
 /** All snapshot histories as a Map(repoId → snaps[]) for batch rendering. */

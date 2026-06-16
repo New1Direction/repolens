@@ -3,7 +3,7 @@
 // show), and each card manages its repo: click to reopen the saved analysis, hover for
 // re-scan / source / remove actions.
 
-import { scrollPoints, deleteRepo, exportStores, importStores, clearLibrary, listCollections, saveCollection, deleteCollection, listDecisions, saveDecision, listAllSnapshots, getLibraryGraph, getScene, saveScene, saveRepo, deleteScene } from './store.js';
+import { scrollPoints, deleteRepo, deleteSnapshots, exportStores, importStores, clearLibrary, listCollections, saveCollection, deleteCollection, listDecisions, saveDecision, listAllSnapshots, getLibraryGraph, getScene, saveScene, saveRepo, deleteScene } from './store.js';
 import { introStageA, shouldOfferMilestone, milestoneSteps, COPY } from './onboarding.js';
 import { startCoachmark } from './coachmark.js';
 import { DEMO_REPO, demoScene, isDemo } from './demo-repo.js';
@@ -961,7 +961,7 @@ async function exportLibrary() {
   try {
     setStatus('Preparing backup…');
     const [stores, cached] = await Promise.all([exportStores(), listCached().catch(() => [])]);
-    const backup = buildBackup({ repos: stores.repos, nodes: stores.nodes, edges: stores.edges, cache: cached, collections: stores.collections, decisions: stores.decisions, snapshots: stores.snapshots });
+    const backup = buildBackup({ repos: stores.repos, nodes: stores.nodes, edges: stores.edges, cache: cached, collections: stores.collections, decisions: stores.decisions, snapshots: stores.snapshots, scenes: stores.scenes });
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1346,7 +1346,9 @@ async function renderCorkboard() {
     const g = ev.target.closest('[data-node]');
     if (!g) return;
     const id = g.dataset.node;
-    if (id && id.includes('/')) openRow(id); // repo node ids are "owner/name"
+    // Open only true repo nodes. Detect by the engine's kind class — idea nodes use
+    // their title as id and titles often contain '/', so id-shape was a false positive.
+    if (id && g.classList.contains('rl-kind-repo')) openRow(id);
   });
 }
 
@@ -2699,7 +2701,7 @@ async function init() {
   if (allRows.some((r) => isDemo(r))) {
     const { onboardingSeen } = await chrome.storage.local.get('onboardingSeen').catch(() => ({}));
     if (onboardingSeen && !sessionStorage.getItem(INTRO_PENDING)) {
-      for (const r of allRows) if (isDemo(r)) await deleteRepo(r.repoId);
+      for (const r of allRows) if (isDemo(r)) { await deleteRepo(r.repoId); await deleteSnapshots(r.repoId); }
       try { await deleteScene(demoScene().id); } catch { /* scene may not exist */ }
       allRows = allRows.filter((r) => !isDemo(r));
       if (!allRows.length) { location.reload(); return; } // back to the clean empty state
