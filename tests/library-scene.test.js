@@ -37,4 +37,16 @@ describe('buildLibraryScene', () => {
     expect(s.nodes.some((n) => n.kind === 'idea')).toBe(false);
     expect(s.nodes.map((n) => n.id)).toEqual(['a/b']);
   });
+  it('joins edges that reference hashed node-store ids back to repo ids (real data shape)', () => {
+    const g = {
+      nodes: [
+        { nodeId: '100', repoId: 'a/b', name: 'b', analyzed: true, kind: 'repo' },
+        { nodeId: '200', repoId: 'c/d', name: 'd', analyzed: true, kind: 'repo' },
+      ],
+      edges: [{ id: 'e9', source: '100', target: '200', label: 'SYNERGIZES_WITH', properties: {} }],
+    };
+    const s = buildLibraryScene({ graph: g, repos: [] });
+    expect(s.edges).toHaveLength(1);
+    expect(s.edges[0]).toMatchObject({ from: 'a/b', to: 'c/d', rel: 'SYNERGIZES_WITH' });
+  });
 });

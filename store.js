@@ -288,7 +288,7 @@ export async function getLibraryGraph() {
   try {
     const [nodeRows, edges] = await Promise.all([idbGetAll('nodes'), idbGetAll('edges')]);
     return {
-      nodes: (nodeRows || []).map((r) => r.payload).filter(Boolean),
+      nodes: (nodeRows || []).filter((r) => r && r.payload).map((r) => ({ nodeId: String(r.id), ...r.payload })),
       edges: (edges || []),
     };
   } catch {

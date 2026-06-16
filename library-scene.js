@@ -2,7 +2,7 @@
 // Library graph (nodes/edges stores) + repo metadata → a 'corkboard' scene.
 import { createScene } from './scene.js';
 
-const idOf = (n) => String(n.repoId || n.id || n.title || '');
+const idOf = (n) => String(n.repoId || n.title || n.nodeId || '');
 
 /**
  * @param {object} args
@@ -44,10 +44,17 @@ export function buildLibraryScene({ graph, repos = [], only = null }) {
     };
   });
 
-  const ids = new Set(nodes.map((n) => n.id));
+  // Edges in the store reference the hashed node-store id (nodeIdFor), not the repoId.
+  // Map those back to scene node ids; also tolerate edges that already use the scene id.
+  const byNodeId = new Map();
+  for (const n of rawNodes) {
+    const sid = idOf(n);
+    if (n.nodeId != null) byNodeId.set(String(n.nodeId), sid);
+    byNodeId.set(sid, sid);
+  }
   const edges = (graph?.edges || [])
-    .filter((e) => ids.has(String(e.source)) && ids.has(String(e.target)))
-    .map((e) => ({ id: String(e.id), from: String(e.source), to: String(e.target), rel: String(e.label || 'ALTERNATIVE_TO'), note: null, userDrawn: false }));
+    .map((e) => ({ id: String(e.id), from: byNodeId.get(String(e.source)), to: byNodeId.get(String(e.target)), rel: String(e.label || 'ALTERNATIVE_TO'), note: null, userDrawn: false }))
+    .filter((e) => e.from && e.to);
 
   const scene = createScene({ scope: 'corkboard', repoId: null, title: 'Library' });
   scene.nodes = nodes;
