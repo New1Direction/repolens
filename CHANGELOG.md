@@ -7,7 +7,7 @@ This project follows [Semantic Versioning](https://semver.org/) and groups chang
 by theme. Dates are when the release landed on `main` — 1.1.0 through 1.6.0 shipped
 the same day, as a rapid burst of improvements, so they share a date.
 
-## [3.1.0] — 2026-06-16 · _Interactive Canvas (Blueprint + Guided Tour)_
+## [3.1.0] — 2026-06-16 · _Interactive Canvas (Blueprint · Guided Tour · Corkboard · Stack Studio)_
 
 ### Added
 
@@ -16,6 +16,7 @@ the same day, as a rapid burst of improvements, so they share a date.
 - **Export to `.excalidraw` and SVG.** Download the canvas as an `.excalidraw` file (opens hand-drawn in excalidraw.com, Obsidian, or VS Code) or as a clean SVG for docs and slides.
 - **Persistent arrangements.** Node positions and canvas state are stored in a new `scenes` IndexedDB store and round-trip through the library backup/export envelope, so layouts travel with your library.
 - **Corkboard (Library-wide canvas).** A toggle in the Library page switches your whole collection into a red-string board: every scanned repo is a draggable manila card, and related repos are joined by colored string keyed to relationship type (alternatives, synergies, head-to-heads, combined ideas) and shaded by fit score. Filter by Collection to focus a board, and the arrangement is saved so it's exactly where you left it next session. Reuses the same canvas engine as Blueprint — zero new dependencies, theme-aware, reduced-motion safe.
+- **Stack Studio (canvas view of a tech-stack).** The Tech-Stack Builder result gains a **View on canvas** toggle: the repos you wired together render as layer-coloured cards in adoption order, joined by their integrations, with any gaps shown as dashed cards — the same engine, turning "how these fit together" into a living diagram.
 - **Zero-build, zero dependencies.** Plain ES modules only — no bundler, no new npm packages. Theme-aware across all 13 themes and reduced-motion safe throughout.
 
 ## [3.0.1] — 2026-06-15 · _Audit hardening_
