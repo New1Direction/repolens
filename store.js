@@ -8,6 +8,7 @@ import { deriveFit } from './verdict.js';
 import { idbPut, idbGet, idbGetAll, idbDelete, idbClear } from './store/idb.js';
 import { rankRepos } from './store/search.js';
 import { buildEgoGraph } from './store/egograph.js';
+import { toSnapshot, appendSnapshot, SNAPSHOT_CAP } from './snapshots.js';
 
 /** Stable numeric key for a repo id (djb2). Unchanged from the VelesDB era so existing ids line up. */
 export function hashRepoId(repoId) {
@@ -48,6 +49,49 @@ export async function saveRepo(analysis) {
     prevFitLevel,
   };
   await idbPut('repos', { id: hashRepoId(analysis.repoId), payload });
+  await appendScanSnapshot(payload, existing?.payload);
+}
+
+/**
+ * Append a snapshot for a repo's current payload (best-effort — a ledger write
+ * must never fail a scan). `prevPayload` (the repo's previous state, which saveRepo
+ * already reads) seeds one prior point the first time, so an existing repo's first
+ * re-scan yields a real 2-point trend instead of losing its history.
+ */
+export async function appendScanSnapshot(payload, prevPayload) {
+  if (!payload || !payload.repoId) return;
+  try {
+    const id = hashRepoId(payload.repoId);
+    const rec = await idbGet('snapshots', id).catch(() => null);
+    let snaps = rec && Array.isArray(rec.snaps) ? rec.snaps : [];
+    if (!snaps.length && prevPayload && prevPayload.saved_at) {
+      snaps = [toSnapshot(prevPayload)];
+    }
+    snaps = appendSnapshot(snaps, toSnapshot(payload), SNAPSHOT_CAP);
+    await idbPut('snapshots', { id, repoId: payload.repoId, snaps });
+  } catch {
+    /* the ledger is additive; a write failure must not break the scan */
+  }
+}
+
+/** A repo's snapshot history (oldest→newest). Best-effort — [] on failure. */
+export async function listSnapshots(repoId) {
+  try {
+    const rec = await idbGet('snapshots', hashRepoId(repoId));
+    return rec && Array.isArray(rec.snaps) ? rec.snaps : [];
+  } catch {
+    return [];
+  }
+}
+
+/** All snapshot histories as a Map(repoId → snaps[]) for batch rendering. */
+export async function listAllSnapshots() {
+  try {
+    const rows = await idbGetAll('snapshots');
+    return new Map((rows || []).filter((r) => r && r.repoId).map((r) => [r.repoId, r.snaps || []]));
+  } catch {
+    return new Map();
+  }
 }
 
 /** Save a full analysis. (No collection init needed — IndexedDB stores auto-create.) */
@@ -232,14 +276,15 @@ const validRows = (rows) => (rows || []).filter((r) => r && r.id != null);
 
 /** Gather every row from all stores for a backup envelope. */
 export async function exportStores() {
-  const [repos, nodes, edges, collections, decisions] = await Promise.all([
+  const [repos, nodes, edges, collections, decisions, snapshots] = await Promise.all([
     idbGetAll('repos'),
     idbGetAll('nodes'),
     idbGetAll('edges'),
     idbGetAll('collections'),
     idbGetAll('decisions'),
+    idbGetAll('snapshots'),
   ]);
-  return { repos: repos || [], nodes: nodes || [], edges: edges || [], collections: collections || [], decisions: decisions || [] };
+  return { repos: repos || [], nodes: nodes || [], edges: edges || [], collections: collections || [], decisions: decisions || [], snapshots: snapshots || [] };
 }
 
 /**
@@ -251,20 +296,21 @@ export async function exportStores() {
  * @param {{ repos?: object[], nodes?: object[], edges?: object[] }} rows
  * @param {{ mode?: 'merge'|'replace' }} [opts]
  */
-export async function importStores({ repos = [], nodes = [], edges = [], collections = [], decisions = [] } = {}, { mode = 'merge' } = {}) {
+export async function importStores({ repos = [], nodes = [], edges = [], collections = [], decisions = [], snapshots = [] } = {}, { mode = 'merge' } = {}) {
   if (mode === 'replace') {
-    await Promise.all([idbClear('repos'), idbClear('nodes'), idbClear('edges'), idbClear('collections'), idbClear('decisions')]);
+    await Promise.all([idbClear('repos'), idbClear('nodes'), idbClear('edges'), idbClear('collections'), idbClear('decisions'), idbClear('snapshots')]);
   }
-  const vr = validRows(repos), vn = validRows(nodes), ve = validRows(edges), vc = validRows(collections), vd = validRows(decisions);
+  const vr = validRows(repos), vn = validRows(nodes), ve = validRows(edges), vc = validRows(collections), vd = validRows(decisions), vs = validRows(snapshots);
   for (const row of vr) await idbPut('repos', row);
   for (const row of vn) await idbPut('nodes', row);
   for (const row of ve) await idbPut('edges', row);
   for (const row of vc) await idbPut('collections', row);
   for (const row of vd) await idbPut('decisions', row);
-  return { repos: vr.length, nodes: vn.length, edges: ve.length, collections: vc.length, decisions: vd.length };
+  for (const row of vs) await idbPut('snapshots', row);
+  return { repos: vr.length, nodes: vn.length, edges: ve.length, collections: vc.length, decisions: vd.length, snapshots: vs.length };
 }
 
 /** Wipe the whole library (all stores). Backs the "Clear library" action. */
 export async function clearLibrary() {
-  await Promise.all([idbClear('repos'), idbClear('nodes'), idbClear('edges'), idbClear('collections'), idbClear('decisions')]);
+  await Promise.all([idbClear('repos'), idbClear('nodes'), idbClear('edges'), idbClear('collections'), idbClear('decisions'), idbClear('snapshots')]);
 }

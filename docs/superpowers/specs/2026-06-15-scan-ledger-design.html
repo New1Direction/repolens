@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scan Ledger — Design Blueprint</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;0,9..144,900;1,9..144,500&family=Spline+Sans+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#f3ead9; --paper2:#fbf5e9; --card:#fffaf0; --ink:#211b13; --ink2:#5a4f3f; --ink3:#8a7d66;
+  --rule:#d8c9ad; --rule2:#e7dcc4;
+  --amber:#c2691c; --amber-d:#9d520f; --blue:#2f5fae; --red:#b4322a;
+  --strong:#2f7d34; --solid:#2f5fae; --care:#b8902a; --risky:#b4322a;
+  --shadow:0 1px 0 #fff6 inset, 0 2px 14px -6px #5a4f3f55;
+  --serif:'Newsreader',Georgia,serif; --display:'Fraunces',Georgia,serif; --mono:'Spline Sans Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+body{margin:0;color:var(--ink);font-family:var(--serif);font-size:18px;line-height:1.62;
+  background:radial-gradient(1100px 560px at 82% -8%,#fff4 0,#fff0 60%),repeating-linear-gradient(180deg,transparent 0 31px,#cdbf9f33 31px 32px),var(--paper);
+  background-attachment:fixed;}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.5;mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.045'/%3E%3C/svg%3E");}
+.wrap{position:relative;z-index:1;max-width:960px;margin:0 auto;padding:0 28px 110px}
+code{font-family:var(--mono);font-size:.82em;background:#e9dcc0;color:#5a3410;padding:.05em .34em;border-radius:3px;border:1px solid #d8c08e}
+h1,h2,h3,h4{font-family:var(--display);font-weight:600;line-height:1.08;letter-spacing:-.012em;margin:0}
+em{font-style:italic}
+
+.masthead{padding:46px 0 22px;border-bottom:2.5px solid var(--ink);position:relative}
+.kicker{font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.32em;color:var(--amber-d);margin:0 0 14px}
+.masthead h1{font-family:var(--display);font-weight:900;font-size:clamp(40px,7vw,76px);line-height:.92;letter-spacing:-.022em}
+.masthead h1 em{font-weight:500;color:var(--amber)}
+.dek{font-size:clamp(17px,2.3vw,22px);color:var(--ink2);max-width:62ch;margin:16px 0 0}
+.meta{display:flex;flex-wrap:wrap;gap:8px 22px;margin-top:24px;font-family:var(--mono);font-size:12px;color:var(--ink2);text-transform:uppercase;letter-spacing:.05em}
+.meta b{color:var(--ink);font-weight:600}
+.scope-stamp{position:absolute;top:42px;right:-4px;transform:rotate(-7deg);border:3px double var(--blue);color:var(--blue);border-radius:9px;padding:8px 16px 7px;text-align:center;background:#eef3fb88}
+.scope-stamp .t{font-family:var(--mono);font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:var(--blue)}
+.scope-stamp .b{font-family:var(--display);font-size:22px;font-weight:900;line-height:1;margin-top:2px}
+@media(max-width:680px){.scope-stamp{position:static;transform:none;display:inline-block;margin-top:18px}}
+
+.shead{display:flex;align-items:baseline;gap:13px;margin:58px 0 6px;padding-bottom:9px;border-bottom:1.5px solid var(--ink)}
+.shead .num{font-family:var(--mono);font-size:12px;color:var(--amber-d);letter-spacing:.1em}
+.shead h2{font-size:clamp(24px,3.6vw,34px);font-weight:700}
+.lead{font-size:18px;color:var(--ink2);margin:14px 0 0;max-width:70ch}
+
+.why{background:#fbeede;border:1px solid var(--rule);border-left:4px solid var(--amber);border-radius:10px;padding:18px 22px;margin-top:20px}
+.why h4{font-size:19px;margin-bottom:6px}
+.why p{margin:6px 0 0;font-size:16.5px;color:var(--ink2)}
+.why .now{font-family:var(--mono);font-size:13px;color:var(--amber-d);background:#fff6e9;border:1px dashed #e2c79a;border-radius:6px;padding:8px 12px;margin-top:12px}
+
+/* live mockups */
+.mocks{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:24px}
+@media(max-width:760px){.mocks{grid-template-columns:1fr}}
+.mock-label{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--ink3);margin:0 0 8px}
+.panel{background:var(--card);border:1px solid var(--rule);border-radius:12px;padding:16px;box-shadow:var(--shadow)}
+
+/* library card mock */
+.lib-card{background:#fffdf7;border:1px solid var(--rule);border-radius:11px;padding:14px 15px}
+.lc-top{display:flex;align-items:center;gap:9px}
+.lc-name{font-family:var(--mono);font-weight:600;font-size:14.5px;color:var(--ink)}
+.fit-chip{font-family:var(--mono);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;padding:2px 8px;border-radius:5px;margin-left:auto}
+.fit-strong{background:#e6f1e4;color:var(--strong);border:1px solid #b7d6b2}
+.lc-sub{font-family:var(--mono);font-size:11.5px;color:var(--ink3);margin-top:5px}
+.lc-spark{display:flex;align-items:center;gap:10px;margin-top:12px;padding-top:11px;border-top:1px solid var(--rule2)}
+.lc-spark .cap{font-family:var(--mono);font-size:11px;color:var(--strong)}
+.lc-spark .cap b{color:var(--ink)}
+
+/* history strip mock */
+.hist h4{font-family:var(--display);font-size:17px;margin-bottom:2px}
+.hist .scans{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink3);margin-bottom:11px}
+.hist-row{display:grid;grid-template-columns:54px 1fr;gap:10px;align-items:center;font-size:14px;padding:7px 0;border-top:1px solid var(--rule2)}
+.hist-row .k{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3)}
+.hist-row .v{color:var(--ink2);font-family:var(--mono);font-size:12.5px}
+.hist-row .v b{color:var(--ink)}
+.up{color:var(--strong);font-weight:600}
+.spark-wrap{display:inline-flex;align-items:center;gap:9px}
+.hint{font-family:var(--mono);font-size:11px;color:var(--ink3);margin-top:12px;text-align:center;font-style:normal}
+
+/* decisions */
+.decisions{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:20px}
+@media(max-width:680px){.decisions{grid-template-columns:1fr}}
+.dec{background:var(--card);border:1px solid var(--rule);border-radius:9px;padding:13px 16px;border-left:3px solid var(--strong)}
+.dec .q{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3)}
+.dec .a{font-family:var(--display);font-size:18px;font-weight:600;margin-top:3px;color:var(--ink)}
+.dec .a small{font-family:var(--serif);font-weight:400;font-size:14px;color:var(--ink2);display:block;margin-top:2px}
+
+pre{background:#2a2118;color:#f0e6d2;border-radius:10px;padding:16px 18px;overflow:auto;font-family:var(--mono);font-size:13px;line-height:1.6;border:1px solid #1a140d;box-shadow:var(--shadow)}
+pre .c{color:#b6a585}
+pre .k{color:#e0a35e}
+pre .s{color:#9ec98a}
+
+.flow{display:grid;gap:10px;margin-top:18px}
+.flow-step{display:grid;grid-template-columns:30px 1fr;gap:13px;align-items:start;background:var(--card);border:1px solid var(--rule);border-radius:9px;padding:12px 15px}
+.flow-n{font-family:var(--display);font-weight:900;font-size:17px;color:var(--amber);width:30px;height:30px;display:grid;place-items:center;border:2px solid var(--rule);border-radius:50%}
+.flow-step p{margin:0;font-size:15.5px;color:var(--ink2)}
+.flow-step b{color:var(--ink)}
+.flow-step code{font-size:12.5px}
+
+.api{margin-top:18px}
+.api .fn{background:var(--card);border:1px solid var(--rule);border-radius:9px;padding:11px 15px;margin-bottom:8px}
+.api .sig{font-family:var(--mono);font-size:13px;color:var(--amber-d)}
+.api .desc{font-size:14.5px;color:var(--ink2);margin-top:3px}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px}
+@media(max-width:680px){.grid2{grid-template-columns:1fr}}
+.box{background:var(--card);border:1px solid var(--rule);border-radius:10px;padding:15px 18px}
+.box h4{font-size:17px;margin-bottom:8px}
+.box ul{margin:0;padding-left:18px}
+.box li{font-size:14.5px;color:var(--ink2);margin-bottom:7px}
+.box li b{color:var(--ink)}
+.tag{font-family:var(--mono);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;padding:2px 7px;border-radius:4px;background:#ece3d3;color:var(--ink2)}
+.new{background:#e6f1e4;color:var(--strong)}
+
+footer{margin-top:64px;padding-top:20px;border-top:2px solid var(--ink);font-family:var(--mono);font-size:12px;color:var(--ink3);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="kicker">Design Blueprint · for review</p>
+    <h1>Scan <em>Ledger</em></h1>
+    <p class="dek">Give every repo a memory. Each scan becomes a durable, versioned snapshot — so a repo's health, fit, and flags read as a <em>trajectory</em>, not a single anonymous number.</p>
+    <div class="meta">
+      <span>Feature <b>Scan Ledger</b></span>
+      <span>Direction <b>evaluations compound</b></span>
+      <span>Filed <b>2026-06-15</b></span>
+      <span>Spec <b>scan-ledger-design.md</b></span>
+    </div>
+    <div class="scope-stamp">
+      <div class="t">v1 scope</div>
+      <div class="b">FOUNDATION<br>+ TRAJECTORY</div>
+    </div>
+  </header>
+
+  <!-- WHY -->
+  <div class="shead"><span class="num">01</span><h2>Why now</h2></div>
+  <div class="why">
+    <h4>The product contradicts its own thesis.</h4>
+    <p>RepoLens's pitch is <em>"evaluations compound"</em> — but today <code>saveRepo</code> <b>overwrites</b> the latest analysis on every re-scan and keeps just a single <code>prevFitLevel</code>. The <code>diffAnalyses()</code> engine is fully built, yet structurally starved: it can only ever see <b>two</b> points because only one prior exists.</p>
+    <p class="now">Scan Ledger persists the history those features were waiting for — the missing substrate that later unlocks drift/regret alerts and decision-replay.</p>
+  </div>
+
+  <!-- WHAT YOU'LL SEE -->
+  <div class="shead"><span class="num">02</span><h2>What you'll see</h2></div>
+  <p class="lead">Two read-only surfaces. Both appear only once a repo has ≥2 scans, and both stay static under reduced-motion.</p>
+  <div class="mocks">
+    <div>
+      <p class="mock-label">Library card — health sparkline</p>
+      <div class="panel">
+        <div class="lib-card">
+          <div class="lc-top">
+            <span class="lc-name">facebook/react</span>
+            <span class="fit-chip fit-strong">Strong</span>
+          </div>
+          <div class="lc-sub">ui-library · 220k★ · health 91</div>
+          <div class="lc-spark">
+            <svg width="120" height="32" viewBox="0 0 120 32" fill="none" aria-label="health trajectory">
+              <polyline points="0,32 24,18.5 48,25.3 72,11.8 96,5.1 120,0" fill="none" stroke="#2f7d34" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <polygon points="0,32 24,18.5 48,25.3 72,11.8 96,5.1 120,0 120,32" fill="#2f7d3418"/>
+              <circle cx="120" cy="0" r="2.6" fill="#2f7d34"/>
+            </svg>
+            <span class="cap"><b>+19</b> · 6 scans · 60d</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <p class="mock-label">Verdict tab — "History" strip</p>
+      <div class="panel hist">
+        <h4>History</h4>
+        <div class="scans">6 scans · last 60 days</div>
+        <div class="hist-row">
+          <span class="k">Health</span>
+          <span class="v spark-wrap">
+            <svg width="92" height="22" viewBox="0 0 120 32" fill="none" style="width:92px;height:22px">
+              <polyline points="0,32 24,18.5 48,25.3 72,11.8 96,5.1 120,0" fill="none" stroke="#2f7d34" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            72 → 80 → 76 → 84 → 88 → <b>91</b>
+          </span>
+        </div>
+        <div class="hist-row">
+          <span class="k">Fit</span>
+          <span class="v">care → solid → solid → solid → strong <span class="up">↑</span></span>
+        </div>
+        <div class="hist-row">
+          <span class="k">Flags</span>
+          <span class="v"><b>−2</b> resolved · +0 new</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="hint">Mockups rendered live — the real sparkline is an inline SVG string built the same way <code>graph.js</code> / <code>diagram.js</code> draw, no chart library.</p>
+
+  <!-- DECISIONS -->
+  <div class="shead"><span class="num">03</span><h2>Confirmed decisions</h2></div>
+  <div class="decisions">
+    <div class="dec"><div class="q">Snapshot trigger</div><div class="a">Every scan<small>It's a <em>scan</em> ledger — honest, and the cap bounds it.</small></div></div>
+    <div class="dec"><div class="q">Sparkline metric</div><div class="a">Health over time<small>Fit shown as the line's tint + the progression row.</small></div></div>
+    <div class="dec"><div class="q">Retention</div><div class="a">30 / repo<small>Ring buffer — drop the oldest.</small></div></div>
+    <div class="dec"><div class="q">Storage shape</div><div class="a">One record / repo<small>A <code>snaps[]</code> array — trivial trimming, one read.</small></div></div>
+  </div>
+
+  <!-- UNDER THE HOOD -->
+  <div class="shead"><span class="num">04</span><h2>Under the hood</h2></div>
+  <p class="lead">A new IndexedDB store, one new pure module, thin store wrappers. Everything testable lands on the testable side of the codebase.</p>
+
+  <h3 style="margin:22px 0 10px;font-size:19px">Data model — new <code>snapshots</code> store</h3>
+<pre><span class="c">// one record per repo, keyed by id (same convention as every store)</span>
+{
+  id:     &lt;repoHash&gt;,   <span class="c">// hashRepoId(repoId) — the hash 'repos' already uses</span>
+  repoId: <span class="k">string</span>,
+  snaps:  Snapshot[]    <span class="c">// oldest → newest, max 30</span>
+}
+
+Snapshot = {
+  ts:      <span class="k">string</span>,        <span class="c">// ISO; equals the scan's saved_at</span>
+  health:  <span class="k">number</span> | null,
+  fit:     <span class="s">'strong'</span>|<span class="s">'solid'</span>|<span class="s">'care'</span>|<span class="s">'risky'</span>|<span class="s">'unrated'</span>,
+  stars:   <span class="k">number</span>,
+  flags:   <span class="k">string</span>[],      <span class="c">// red_flag titles at scan time</span>
+  version: <span class="k">string</span> | null  <span class="c">// repo HEAD sha / pkg version, if known</span>
+}</pre>
+
+  <h3 style="margin:26px 0 6px;font-size:19px">Data flow</h3>
+  <div class="flow">
+    <div class="flow-step"><span class="flow-n">1</span><p>A scan completes → <code>saveRepo()</code> writes the <code>repos</code> payload <b>(unchanged)</b>, then calls <code>appendScanSnapshot(payload)</code>.</p></div>
+    <div class="flow-step"><span class="flow-n">2</span><p>Library loads → snapshots are <b>batch-read once</b> via a single <code>idbGetAll('snapshots')</code> into a Map (no per-card round-trips); each card draws its sparkline.</p></div>
+    <div class="flow-step"><span class="flow-n">3</span><p>Verdict tab renders → the History strip is built from the same <code>snapshotTrend()</code>, through the existing <code>html</code>/<code>esc</code> escaping path.</p></div>
+  </div>
+
+  <h3 style="margin:26px 0 6px;font-size:19px">New pure module — <code>snapshots.js</code> <span class="tag new">fully unit-tested</span></h3>
+  <div class="api">
+    <div class="fn"><div class="sig">toSnapshot(payload) → Snapshot</div><div class="desc">Trim a repo payload to a snapshot. Fit via <code>deriveFit(payload)?.level</code> — the same helper <code>store.js</code> already uses, so the ledger matches the app.</div></div>
+    <div class="fn"><div class="sig">appendSnapshot(snaps, snap, cap = 30) → Snapshot[]</div><div class="desc">Immutable: append, then keep the last <code>cap</code>.</div></div>
+    <div class="fn"><div class="sig">snapshotTrend(snaps) → { series, healthDelta, fitDirection, flagsResolved, flagsNew, daysSpan }</div><div class="desc">Reuses <code>diffAnalyses()</code> (first vs latest) by adapting each snapshot's <code>ts</code> → <code>cachedAt</code>.</div></div>
+    <div class="fn"><div class="sig">sparkline(series, { metric:'health', width, height }) → string | null</div><div class="desc">An inline-SVG points/path string. <code>null</code> if &lt;2 usable points.</div></div>
+  </div>
+
+  <!-- MIGRATION + EDGES -->
+  <div class="shead"><span class="num">05</span><h2>Migration, backup &amp; edges</h2></div>
+  <div class="grid2">
+    <div class="box">
+      <h4>Additive migration</h4>
+      <ul>
+        <li><code>store/idb.js</code>: <b>DB_VERSION 3 → 4</b>, add <code>'snapshots'</code> to <code>STORES</code>. Existing data untouched — same as the v2 (collections) / v3 (decisions) upgrades.</li>
+        <li><b>Backfill:</b> a repo scanned before this feature has no record — on first read, synthesize <b>one</b> snapshot from its stored payload, so existing users see a point right away.</li>
+      </ul>
+    </div>
+    <div class="box">
+      <h4>Backup &amp; safety</h4>
+      <ul>
+        <li><code>snapshots</code> joins <code>exportStores</code>/<code>importStores</code>; bump <code>BACKUP_VERSION</code>; clamp to the 30-cap on import (fails safe).</li>
+        <li><b>Quota:</b> 30 × ~200 B × N repos ≈ a few MB — negligible for IndexedDB.</li>
+        <li><b>Race:</b> <code>saveRepo</code> is the only writer and scans are serialized — read-modify-write is safe.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- TEST + FILES -->
+  <div class="shead"><span class="num">06</span><h2>Testing &amp; footprint</h2></div>
+  <div class="grid2">
+    <div class="box">
+      <h4>Tests</h4>
+      <ul>
+        <li><b><code>snapshots.test.js</code></b> — append/trim/immutability, trend deltas, fit direction, sparkline math (&lt;2 → null).</li>
+        <li><b>Store (fake-indexeddb)</b> — append + cap at 30, backfill-from-payload, export/import round-trip + clamp.</li>
+        <li>UI rendering stays untested (repo norm); its pure view-model builders are covered.</li>
+      </ul>
+    </div>
+    <div class="box">
+      <h4>Files</h4>
+      <ul>
+        <li><span class="tag new">new</span> <code>snapshots.js</code>, <code>tests/snapshots.test.js</code></li>
+        <li><span class="tag">edit</span> <code>store/idb.js</code> · <code>store.js</code> · <code>library.js</code> · <code>output-tab.js</code> · <code>backup.js</code></li>
+      </ul>
+    </div>
+  </div>
+
+  <footer>
+    <span>Scan Ledger · design blueprint · 2026-06-15</span>
+    <span>canonical spec: docs/superpowers/specs/2026-06-15-scan-ledger-design.md</span>
+  </footer>
+</div>
+</body>
+</html>
