@@ -7,6 +7,16 @@ This project follows [Semantic Versioning](https://semver.org/) and groups chang
 by theme. Dates are when the release landed on `main` — 1.1.0 through 1.6.0 shipped
 the same day, as a rapid burst of improvements, so they share a date.
 
+## [3.1.0] — 2026-06-16 · _Interactive Canvas (Blueprint + Guided Tour)_
+
+### Added
+
+- **Canvas tab (Blueprint).** A new **Canvas** tab in the Lenses group turns any repo's Deep Dive into an interactive, zoomable, pannable map of the repo's atoms — modules, subsystems, and their lineage — colour-coded by kind with a live node legend. Drag nodes to rearrange; positions persist across sessions.
+- **Guided Tour.** Spotlights the architecture node-by-node in dependency order with plain-English narration drawn from the Deep Dive. Navigate with **Back / Next**, auto-play, or keyboard **← → Esc**; fully reduced-motion safe.
+- **Export to `.excalidraw` and SVG.** Download the canvas as an `.excalidraw` file (opens hand-drawn in excalidraw.com, Obsidian, or VS Code) or as a clean SVG for docs and slides.
+- **Persistent arrangements.** Node positions and canvas state are stored in a new `scenes` IndexedDB store and round-trip through the library backup/export envelope, so layouts travel with your library.
+- **Zero-build, zero dependencies.** Plain ES modules only — no bundler, no new npm packages. Theme-aware across all 13 themes and reduced-motion safe throughout.
+
 ## [3.0.1] — 2026-06-15 · _Audit hardening_
 
 A focused correctness, security, and tooling pass from a full code audit — no
