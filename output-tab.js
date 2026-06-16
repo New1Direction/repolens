@@ -42,6 +42,8 @@ import { clearDemoEverywhere, isDemo } from './demo-repo.js';
 
 // Apply the saved theme ASAP (before render) to minimise flash.
 initTheme();
+// Mirror the OS reduced-motion preference into storage for the service worker.
+chrome.storage.local.set({ reduceMotion: typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches });
 
 function renderThemeSwitcher() {
   const host = document.getElementById('theme-switcher');

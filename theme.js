@@ -1,6 +1,7 @@
-export const DEFAULT_THEME = 'midnight';
+export const DEFAULT_THEME = 'monoink';
 
 export const THEMES = [
+  { key: 'monoink',   label: 'Mono Ink',  swatch: 'linear-gradient(135deg, #0f1115 50%, #2563eb 50%)' },
   { key: 'midnight',  label: 'Midnight',  swatch: '#0a0a0f' },
   { key: 'paper',     label: 'Paper',     swatch: '#f7f7fb' },
   { key: 'terminal',  label: 'Terminal',  swatch: '#07100b' },

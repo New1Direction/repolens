@@ -31,6 +31,8 @@ import { CountUp } from './vendor/countup.mjs';
 
 // Honour the user's chosen theme on this standalone page (sets <html data-theme>).
 initTheme();
+// Mirror the OS reduced-motion preference into storage for the service worker.
+chrome.storage.local.set({ reduceMotion: typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches });
 
 // Respect the OS "reduce motion" setting — used to skip count-up / confetti / etc.
 const prefersReducedMotion = () =>

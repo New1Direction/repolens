@@ -18,6 +18,7 @@ export const SAFE_SETTING_KEYS = [
   'aiGapMs',
   'sktpgEnabled',
   'mascotEnabled',
+  'animateIcon',
   'partRouting',
   'anthropicModel',
   'googleModel',

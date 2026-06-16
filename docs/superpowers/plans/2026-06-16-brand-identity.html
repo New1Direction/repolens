@@ -1,0 +1,978 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RepoLens — Brand Identity Spec</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet"><style>:root{--ink:#0f1115;--surface:#ffffff;--surface2:#f4f6f9;--border:#d7dde6;--grey:#6b7280;--muted:#9aa3af;--accent:#2563eb;--accent-strong:#1d4ed8}
+*{box-sizing:border-box}body{margin:0;background:var(--surface);color:var(--ink);font:16px/1.65 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:860px;margin:0 auto;padding:48px 28px 110px}
+h1{font:700 34px/1.12 "Space Grotesk",system-ui,sans-serif;letter-spacing:-.02em;margin:4px 0 10px}
+h2{font:700 22px/1.2 "Space Grotesk",system-ui,sans-serif;letter-spacing:-.01em;margin:38px 0 10px;padding-top:18px;border-top:1px solid var(--border)}
+h3{font-size:16px;margin:22px 0 6px}
+p,li{margin:8px 0}strong{color:var(--ink)}em{color:var(--grey)}a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+blockquote{margin:14px 0;padding:10px 16px;background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;color:var(--grey)}
+code{font:13.5px ui-monospace,SFMono-Regular,monospace;background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:1px 5px;color:var(--accent-strong)}
+pre{background:var(--ink);color:#e5edff;border-radius:10px;padding:14px 16px;overflow:auto;font:13px/1.55 ui-monospace,monospace}pre code{background:none;border:0;padding:0;color:inherit}
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14.5px}th,td{text-align:left;vertical-align:top;padding:8px 11px;border:1px solid var(--border)}th{background:var(--surface2)}
+hr{border:0;border-top:1px solid var(--border);margin:30px 0}ul,ol{padding-left:22px}</style></head><body><div class="wrap"><h1>RepoLens Brand Identity Implementation Plan</h1>
+<blockquote><strong>For agentic workers:</strong> REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (<code>- [ ]</code>) syntax for tracking.</blockquote>
+<p><strong>Goal:</strong> Ship RepoLens with one coherent "Mono Ink" identity — a dark-tile Vee-lens app icon, a scan-only animated toolbar icon, Mono Ink as the default theme, a wordmark + tagline, and a warm-human de-slopped voice across Vee's copy, README, and CHANGELOG.</p>
+<p><strong>Architecture:</strong> Four independently committable phases. (A) A framework-free canvas drawing module (<code>icon-draw.js</code>) is the single source of truth for the icon shape; a generator harness (<code>tools/make-icons.html</code>) exports the PNGs; a service-worker animation module (<code>icon-anim.js</code>) reuses the same draw function over an <code>OffscreenCanvas</code> and is hooked into <code>runAnalysis</code>, gated by an <code>animateIcon</code> setting and a persisted reduced-motion flag. (B) A new <code>[data-theme="monoink"]</code> block in <code>themes.css</code> becomes the engine default in <code>theme.js</code>. (C) A wordmark SVG plus tagline edits. (D) Vendored stop-slop rules and a re-voice pass over <code>onboarding-copy.js</code>, <code>README.md</code>, and <code>CHANGELOG.md</code>.</p>
+<p><strong>Tech Stack:</strong> Vanilla ES modules (no bundler, no new npm packages). Vitest (node environment, no jsdom). Canvas2D / OffscreenCanvas. Chrome MV3 <code>chrome.action.setIcon</code>. CSS custom properties.</p>
+<hr>
+<h2>Conventions used in this plan</h2>
+<ul><li>All paths are relative to the repo root <code>/Users/clubpenguin/Documents/clubP/repolens</code>.</li><li>Verification commands available in this repo: <code>node --check &lt;file&gt;</code>, <code>npx vitest run [path]</code>, <code>npx eslint .</code>. There is <strong>no DOM test environment</strong> (no jsdom) — for visual / DOM / service-worker glue, use the "verify live" steps (open an HTML harness in Chrome, or load the unpacked extension), mirroring the existing <code>onboarding-demo.html</code> precedent. Do not invent a jsdom test.</li><li>The mascot glyph and the in-app loading spinner read <code>--accent</code>, so they auto-recolor when the theme changes — most theme tasks are CSS + a string-presence test, not DOM tests.</li><li><strong>Do not run <code>npm install</code>.</strong> All deps are already present.</li></ul>
+<h2>File structure (created / modified across all phases)</h2>
+<p><strong>Created</strong></p>
+<ul><li><code>icon-draw.js</code> — pure canvas draw of the Mono Ink Vee icon (one responsibility: shapes + colors).</li><li><code>icon-anim.js</code> — service-worker scan animation (timer + frame params + <code>setIcon</code>); imports <code>icon-draw.js</code>.</li><li><code>tools/make-icons.html</code> — one-off PNG export harness; imports <code>icon-draw.js</code>.</li><li><code>assets/wordmark.svg</code> — horizontal lockup (lens + "RepoLens").</li><li><code>docs/style/stop-slop/</code> — vendored writing standard (<code>SKILL.md</code>, <code>references/phrases.md</code>, <code>references/structures.md</code>).</li><li><code>docs/style/README.md</code> — points to stop-slop as the project writing standard.</li><li><code>tests/icon-draw.test.js</code>, <code>tests/icon-anim.test.js</code> — unit tests for the pure pieces.</li><li><code>icons/icon16.png</code>, <code>icons/icon32.png</code>, <code>icons/icon48.png</code>, <code>icons/icon128.png</code> — real PNGs (replacing 70-byte stubs; 32 is new).</li></ul>
+<p><strong>Modified</strong></p>
+<ul><li><code>manifest.json</code> — <code>icons</code> + <code>action.default_icon</code> (+32), <code>description</code> (tagline).</li><li><code>background.js</code> — import <code>icon-anim.js</code>; start/stop animation in <code>runAnalysis</code>; thread <code>tabId</code>.</li><li><code>theme.js</code> — add <code>monoink</code> to <code>THEMES</code>; set <code>DEFAULT_THEME='monoink'</code>.</li><li><code>themes.css</code> — add <code>[data-theme="monoink"]</code> block.</li><li><code>mascot.css</code> — only if the live contrast check forces a minimal aperture/pupil tweak under monoink.</li><li><code>options.html</code>, <code>options.js</code> — <code>animateIcon</code> checkbox + read/save + persist <code>reduceMotion</code>.</li><li><code>library.js</code>, <code>output-tab.js</code> — persist <code>reduceMotion</code> on init.</li><li><code>settings-backup.js</code> — add <code>'animateIcon'</code> to <code>SAFE_SETTING_KEYS</code>.</li><li><code>onboarding-copy.js</code> — re-voiced <code>COPY</code>.</li><li><code>tests/onboarding-copy.test.js</code> — unchanged (must stay green); optionally extended.</li><li><code>tests/theme.test.js</code> — extended for <code>monoink</code> default + ordering.</li><li><code>README.md</code>, <code>CHANGELOG.md</code> — tagline, de-slop pass, changelog entry.</li></ul>
+<hr>
+<h1>Phase A — Icon system</h1>
+<blockquote>Goal of this phase: a real dark-tile single-lens icon at 16/32/48/128, generated from one canvas draw function, plus a scan-only animation in the service worker gated by <code>animateIcon</code> + reduced motion. Independently committable (each task ends in a commit).</blockquote>
+<h2>Task A1: <code>icon-draw.js</code> — pure canvas draw of the Mono Ink icon</h2>
+<p>The icon is the existing Vee lens (designed on a 48-unit grid in <code>mascot.js</code>) rendered onto a dark rounded-square tile. <code>drawVeeIcon</code> is framework-free: it only touches a Canvas2D-style context API (<code>fillStyle</code>, <code>strokeStyle</code>, <code>lineWidth</code>, <code>beginPath</code>, <code>arc</code>, <code>fill</code>, <code>stroke</code>, <code>save</code>, <code>restore</code>, <code>translate</code>, <code>rotate</code>, <code>roundRect</code>/<code>rect</code>, <code>clearRect</code>, <code>setLineDash</code>), so it works with both <code>CanvasRenderingContext2D</code> and <code>OffscreenCanvasRenderingContext2D</code>. The <code>opts</code> exist so the animation (Task A4) can drive the aperture and ring per frame.</p>
+<p><strong>Files:</strong></p>
+<ul><li>Create: <code>icon-draw.js</code></li><li>Test: <code>tests/icon-draw.test.js</code></li></ul>
+<ul><li>☐ <strong>Step 1: Write the failing test</strong></li></ul>
+<p>Create <code>tests/icon-draw.test.js</code>:</p>
+<pre><code>import { describe, it, expect } from 'vitest';
+import { drawVeeIcon, ICON_COLORS, BASE_GRID } from '../icon-draw.js';
+
+// A recording stub for a Canvas2D-style context. It captures every arc() call
+// and the fillStyle/strokeStyle active at draw time, so we can assert geometry
+// and colors without a real canvas.
+function recordingCtx() {
+  const calls = { arcs: [], fills: [], strokes: [], rects: [], setLineDash: [] };
+  const ctx = {
+    fillStyle: '', strokeStyle: '', lineWidth: 0,
+    save() {}, restore() {}, beginPath() {}, closePath() {},
+    translate() {}, rotate() {}, clearRect() {},
+    rect(x, y, w, h) { calls.rects.push({ x, y, w, h, fillStyle: ctx.fillStyle }); },
+    roundRect(x, y, w, h, r) { calls.rects.push({ x, y, w, h, r, fillStyle: ctx.fillStyle }); },
+    arc(x, y, radius) { calls.arcs.push({ x, y, radius, fillStyle: ctx.fillStyle, strokeStyle: ctx.strokeStyle, lineWidth: ctx.lineWidth }); },
+    setLineDash(d) { calls.setLineDash.push(d); },
+    fill() { calls.fills.push({ fillStyle: ctx.fillStyle }); },
+    stroke() { calls.strokes.push({ strokeStyle: ctx.strokeStyle, lineWidth: ctx.lineWidth }); },
+  };
+  return { ctx, calls };
+}
+
+describe('drawVeeIcon', () =&gt; {
+  it('scales the three lens-circle radii by size/48 from the base grid', () =&gt; {
+    const { ctx, calls } = recordingCtx();
+    drawVeeIcon(ctx, 96); // factor = 2
+    const radii = calls.arcs.map((a) =&gt; a.radius).sort((a, b) =&gt; a - b);
+    // base radii: pupil 2.4, aperture 9, barrel 17 → ×2
+    expect(radii).toEqual([4.8, 18, 34]);
+  });
+
+  it('uses the Mono Ink colors: dark tile, light barrel, blue aperture, light pupil', () =&gt; {
+    const { ctx, calls } = recordingCtx();
+    drawVeeIcon(ctx, 48); // factor = 1
+    // tile is a filled rounded rect in ink
+    expect(calls.rects.some((r) =&gt; r.fillStyle === ICON_COLORS.tile)).toBe(true);
+    const barrel = calls.arcs.find((a) =&gt; a.radius === 17);
+    const aperture = calls.arcs.find((a) =&gt; a.radius === 9);
+    const pupil = calls.arcs.find((a) =&gt; a.radius === 2.4);
+    expect(barrel.strokeStyle).toBe(ICON_COLORS.ring);
+    expect(aperture.strokeStyle).toBe(ICON_COLORS.aperture);
+    expect(pupil.fillStyle).toBe(ICON_COLORS.pupil);
+  });
+
+  it('honors apertureScale and ringColor opts', () =&gt; {
+    const { ctx, calls } = recordingCtx();
+    drawVeeIcon(ctx, 48, { apertureScale: 0.5, ringColor: '#3b82f6' });
+    const aperture = calls.arcs.find((a) =&gt; Math.abs(a.radius - 4.5) &lt; 1e-6); // 9 * 0.5
+    expect(aperture).toBeTruthy();
+    const barrel = calls.arcs.find((a) =&gt; a.radius === 17);
+    expect(barrel.strokeStyle).toBe('#3b82f6');
+  });
+
+  it('exposes the base grid constant', () =&gt; {
+    expect(BASE_GRID).toBe(48);
+  });
+});</code></pre>
+<ul><li>☐ <strong>Step 2: Run test to verify it fails</strong></li></ul>
+<p>Run: <code>npx vitest run tests/icon-draw.test.js</code> Expected: FAIL — <code>Failed to resolve import "../icon-draw.js"</code> (module does not exist yet).</p>
+<ul><li>☐ <strong>Step 3: Write <code>icon-draw.js</code></strong></li></ul>
+<p>Create <code>icon-draw.js</code>:</p>
+<pre><code>// icon-draw.js — the RepoLens app icon, drawn once, used everywhere.
+//
+// One responsibility: paint the "Mono Ink" Vee lens onto a Canvas2D-style
+// context. The lens geometry is the same 48-unit grid as the in-app mascot
+// (mascot.js): a barrel ring (r17), an aperture (r9), a pupil (r2.4). Here it
+// sits on a dark rounded-square tile so the icon pops on a light browser
+// toolbar. Framework-free: it only calls the shared Canvas2D / OffscreenCanvas
+// API, so the export harness (tools/make-icons.html) and the service-worker
+// animation (icon-anim.js) share this exact draw.
+
+/** The drawing grid the lens is designed on. Every coordinate scales by size/BASE_GRID. */
+export const BASE_GRID = 48;
+
+/** Mono Ink icon palette. Light marks on a near-black tile. */
+export const ICON_COLORS = Object.freeze({
+  tile: '#0f1115',     // --rl-ink
+  ring: '#cbd5e1',     // light barrel ring
+  aperture: '#3b82f6', // electric-blue aperture
+  pupil: '#e5edff',    // --rl-on-dark light pupil
+});
+
+/**
+ * Draw the icon at a given pixel size onto a Canvas2D-style context.
+ * @param {CanvasRenderingContext2D|OffscreenCanvasRenderingContext2D} ctx
+ * @param {number} size pixel width/height of the square icon
+ * @param {object} [opts]
+ * @param {number} [opts.apertureScale=1] multiply the aperture radius (animation)
+ * @param {number} [opts.apertureRotation=0] radians to rotate the aperture (dashed spin)
+ * @param {number} [opts.ringScale=1] multiply the barrel-ring radius (breathe)
+ * @param {string} [opts.ringColor] override the barrel-ring stroke (grey→blue breathe)
+ * @param {boolean} [opts.dashed=false] dash the aperture so spin reads
+ */
+export function drawVeeIcon(ctx, size, opts = {}) {
+  const {
+    apertureScale = 1,
+    apertureRotation = 0,
+    ringScale = 1,
+    ringColor = ICON_COLORS.ring,
+    dashed = false,
+  } = opts;
+
+  const f = size / BASE_GRID; // grid → pixels
+  const cx = 24 * f;
+  const cy = 24 * f;
+
+  ctx.clearRect(0, 0, size, size);
+
+  // Dark rounded-square tile.
+  const radius = size * 0.22;
+  ctx.fillStyle = ICON_COLORS.tile;
+  ctx.beginPath();
+  if (typeof ctx.roundRect === 'function') {
+    ctx.roundRect(0, 0, size, size, radius);
+  } else {
+    // Manual rounded rect for engines without roundRect.
+    const r = Math.min(radius, size / 2);
+    ctx.moveTo(r, 0);
+    ctx.lineTo(size - r, 0);
+    ctx.arc(size - r, r, r, -Math.PI / 2, 0);
+    ctx.lineTo(size, size - r);
+    ctx.arc(size - r, size - r, r, 0, Math.PI / 2);
+    ctx.lineTo(r, size);
+    ctx.arc(r, size - r, r, Math.PI / 2, Math.PI);
+    ctx.lineTo(0, r);
+    ctx.arc(r, r, r, Math.PI, Math.PI * 1.5);
+  }
+  ctx.fill();
+
+  // Barrel ring (r17) — light grey by default, scalable + recolorable for breathe.
+  ctx.strokeStyle = ringColor;
+  ctx.lineWidth = 2 * f;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 17 * f * ringScale, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Aperture (r9) — electric blue, scalable + rotatable + optionally dashed.
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(apertureRotation);
+  ctx.strokeStyle = ICON_COLORS.aperture;
+  ctx.lineWidth = 3 * f;
+  if (dashed) {
+    const circ = 2 * Math.PI * (9 * f * apertureScale);
+    ctx.setLineDash([circ / 8, circ / 16]);
+  } else {
+    ctx.setLineDash([]);
+  }
+  ctx.beginPath();
+  ctx.arc(0, 0, 9 * f * apertureScale, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+
+  // Pupil (r2.4) — light blue-white, fixed center.
+  ctx.setLineDash([]);
+  ctx.fillStyle = ICON_COLORS.pupil;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 2.4 * f, 0, Math.PI * 2);
+  ctx.fill();
+}</code></pre>
+<ul><li>☐ <strong>Step 4: Run test to verify it passes</strong></li></ul>
+<p>Run: <code>npx vitest run tests/icon-draw.test.js</code> Expected: PASS (4 tests).</p>
+<ul><li>☐ <strong>Step 5: Syntax + lint</strong></li></ul>
+<p>Run: <code>node --check icon-draw.js &amp;&amp; npx eslint icon-draw.js tests/icon-draw.test.js</code> Expected: no output (clean exit 0).</p>
+<ul><li>☐ <strong>Step 6: Commit</strong></li></ul>
+<pre><code>git add icon-draw.js tests/icon-draw.test.js
+git commit -m "feat(brand): icon-draw.js — pure canvas draw of the Mono Ink Vee icon"</code></pre>
+<h2>Task A2: <code>tools/make-icons.html</code> — PNG export harness</h2>
+<p>A standalone page that imports <code>icon-draw.js</code>, paints the icon at each size onto visible canvases, and auto-downloads each as <code>iconNN.png</code>. It is a developer tool, not shipped in the extension.</p>
+<p><strong>Files:</strong></p>
+<ul><li>Create: <code>tools/make-icons.html</code></li></ul>
+<ul><li>☐ <strong>Step 1: Write <code>tools/make-icons.html</code></strong></li></ul>
+<p>Create <code>tools/make-icons.html</code>:</p>
+<pre><code>&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+  &lt;meta charset="utf-8" /&gt;
+  &lt;title&gt;RepoLens — icon export&lt;/title&gt;
+  &lt;style&gt;
+    body { margin: 0; padding: 24px; background: #f4f6f9; color: #0f1115;
+           font-family: system-ui, -apple-system, sans-serif; }
+    h1 { font-size: 18px; margin: 0 0 4px; }
+    p { font-size: 13px; color: #6b7280; margin: 0 0 18px; max-width: 560px; }
+    .row { display: flex; gap: 24px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 18px; }
+    .cell { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .cell span { font-size: 12px; color: #6b7280; }
+    canvas { background:
+      repeating-conic-gradient(#e9edf3 0% 25%, #ffffff 0% 50%) 50% / 16px 16px;
+      border: 1px solid #d7dde6; image-rendering: pixelated; }
+    button { padding: 8px 14px; border: 1px solid #0f1115; border-radius: 8px;
+             background: #fff; color: #0f1115; font-size: 13px; cursor: pointer; }
+  &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;h1&gt;RepoLens icon export&lt;/h1&gt;
+  &lt;p&gt;Renders the Mono Ink Vee icon at 16/32/48/128 from &lt;code&gt;icon-draw.js&lt;/code&gt;.
+     Click "Download all" and move the four &lt;code&gt;iconNN.png&lt;/code&gt; files into
+     &lt;code&gt;../icons/&lt;/code&gt;. The checkerboard behind each canvas is page CSS only,
+     not part of the icon (the tile is opaque).&lt;/p&gt;
+  &lt;div class="row" id="row"&gt;&lt;/div&gt;
+  &lt;button id="download"&gt;Download all&lt;/button&gt;
+
+  &lt;script type="module"&gt;
+    import { drawVeeIcon } from '../icon-draw.js';
+
+    const SIZES = [16, 32, 48, 128];
+    const row = document.getElementById('row');
+    const canvases = {};
+
+    for (const size of SIZES) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      // Upscale tiny canvases for visibility without changing the bitmap.
+      canvas.style.width = Math.max(size, 64) + 'px';
+      canvas.style.height = Math.max(size, 64) + 'px';
+      const label = document.createElement('span');
+      label.textContent = `icon${size}.png`;
+      cell.append(canvas, label);
+      row.append(cell);
+      drawVeeIcon(canvas.getContext('2d'), size);
+      canvases[size] = canvas;
+    }
+
+    function downloadCanvas(canvas, name) {
+      const a = document.createElement('a');
+      a.href = canvas.toDataURL('image/png');
+      a.download = name;
+      document.body.append(a);
+      a.click();
+      a.remove();
+    }
+
+    document.getElementById('download').onclick = () =&gt; {
+      for (const size of SIZES) downloadCanvas(canvases[size], `icon${size}.png`);
+    };
+  &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+<ul><li>☐ <strong>Step 2: Verify live (open in Chrome)</strong></li></ul>
+<p>Open <code>file:///Users/clubpenguin/Documents/clubP/repolens/tools/make-icons.html</code> in Chrome. Expected: four canvases render a dark rounded tile with a light ring, a blue aperture ring, and a light center dot, at 16/32/48/128. The "Download all" button saves four PNGs.</p>
+<blockquote>Playwright-automated alternative (if a human browser pass is not possible): navigate to the harness, then for each size run <code>canvas.toDataURL('image/png')</code> in the page, strip the <code>data:image/png;base64,</code> prefix, and write the decoded bytes to <code>icons/iconNN.png</code>. This is exactly what Task A3 consumes.</blockquote>
+<ul><li>☐ <strong>Step 3: Commit</strong></li></ul>
+<pre><code>git add tools/make-icons.html
+git commit -m "feat(brand): tools/make-icons.html — export icon PNGs from icon-draw.js"</code></pre>
+<h2>Task A3: Generate the real PNGs and wire the manifest (adds size 32)</h2>
+<p>Replace the four icon files (16/32/48/128) with real renders, then point the manifest at all four. Size 32 is new — it gives a crisp Windows/HiDPI toolbar icon and matches the animation sizes.</p>
+<p><strong>Files:</strong></p>
+<ul><li>Create/overwrite: <code>icons/icon16.png</code>, <code>icons/icon32.png</code>, <code>icons/icon48.png</code>, <code>icons/icon128.png</code></li><li>Modify: <code>manifest.json</code> (lines 64-68 <code>action.default_icon</code>, lines 74-78 <code>icons</code>)</li></ul>
+<ul><li>☐ <strong>Step 1: Generate the PNGs</strong></li></ul>
+<p>Using the harness from Task A2, produce the four files and place them in <code>icons/</code>. Confirm they are real images, not stubs:</p>
+<p>Run: <code>cd /Users/clubpenguin/Documents/clubP/repolens &amp;&amp; file icons/icon16.png icons/icon32.png icons/icon48.png icons/icon128.png &amp;&amp; ls -l icons/</code> Expected: each reports <code>PNG image data, NN x NN</code> with the matching dimensions (16x16, 32x32, 48x48, 128x128), and each file is well over the old 70-byte stub size.</p>
+<ul><li>☐ <strong>Step 2: Wire <code>action.default_icon</code> to include 32</strong></li></ul>
+<p>In <code>manifest.json</code>, replace the <code>action.default_icon</code> block (currently lines 64-68):</p>
+<pre><code>    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }</code></pre>
+<p>with:</p>
+<pre><code>    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }</code></pre>
+<ul><li>☐ <strong>Step 3: Wire top-level <code>icons</code> to include 32</strong></li></ul>
+<p>In <code>manifest.json</code>, replace the <code>icons</code> block (currently lines 74-78):</p>
+<pre><code>  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }</code></pre>
+<p>with:</p>
+<pre><code>  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }</code></pre>
+<ul><li>☐ <strong>Step 4: Verify the manifest parses</strong></li></ul>
+<p>Run: <code>node -e "JSON.parse(require('fs').readFileSync('manifest.json','utf8')); console.log('manifest ok')"</code> Expected: <code>manifest ok</code>.</p>
+<ul><li>☐ <strong>Step 5: Verify live (load unpacked)</strong></li></ul>
+<p>Load the unpacked extension at <code>chrome://extensions</code> (Developer mode → Load unpacked → repo root). The toolbar icon shows the dark-tile lens, legible on both a light and a dark toolbar. Take a screenshot at the default size for the record.</p>
+<ul><li>☐ <strong>Step 6: Commit</strong></li></ul>
+<pre><code>git add icons/icon16.png icons/icon32.png icons/icon48.png icons/icon128.png manifest.json
+git commit -m "feat(brand): real Mono Ink icon PNGs at 16/32/48/128, wired into manifest (+32)"</code></pre>
+<h2>Task A4: <code>icon-anim.js</code> — scan-state animation (timer + frame params)</h2>
+<p>Two responsibilities, one split out for testing: a <strong>pure</strong> <code>scanFrameParams(elapsedMs)</code> computing the per-frame draw opts, and the <strong>impure</strong> timer (<code>startScanAnim</code> / <code>stopScanAnim</code>) that renders frames onto <code>OffscreenCanvas</code>es and pushes them via <code>chrome.action.setIcon</code>. No <code>requestAnimationFrame</code> (unavailable in a worker) — a <code>setTimeout</code> loop at ~90ms.</p>
+<p>The animation: aperture grows once on start (scale ~0.5 → 1.1 with a slight overshoot over the first ~600ms), then spins (rotation accelerates slow → fast, dashed); the barrel ring breathes (ringScale 1.0 ↔ ~1.08) and shifts color grey → blue on a gentle loop. Pupil stays fixed (drawn by <code>icon-draw.js</code>).</p>
+<p><strong>Files:</strong></p>
+<ul><li>Create: <code>icon-anim.js</code></li><li>Test: <code>tests/icon-anim.test.js</code></li></ul>
+<ul><li>☐ <strong>Step 1: Write the failing test</strong></li></ul>
+<p>Create <code>tests/icon-anim.test.js</code>:</p>
+<pre><code>import { describe, it, expect } from 'vitest';
+import { scanFrameParams, ANIM_SIZES, RING_GREY, RING_BLUE } from '../icon-anim.js';
+
+describe('scanFrameParams', () =&gt; {
+  it('starts the aperture small and grown-in by the end of the grow phase', () =&gt; {
+    const t0 = scanFrameParams(0);
+    const tGrown = scanFrameParams(600); // end of grow phase
+    expect(t0.apertureScale).toBeLessThan(0.7);
+    expect(tGrown.apertureScale).toBeGreaterThan(1.0);
+    // dashed so the spin reads
+    expect(t0.dashed).toBe(true);
+  });
+
+  it('rotation increases monotonically and accelerates (slow → fast)', () =&gt; {
+    const a = scanFrameParams(800).apertureRotation;
+    const b = scanFrameParams(1700).apertureRotation;
+    const c = scanFrameParams(2600).apertureRotation;
+    expect(b).toBeGreaterThan(a);
+    expect(c).toBeGreaterThan(b);
+    // second 900ms window covers more rotation than the first (acceleration)
+    expect(c - b).toBeGreaterThan(b - a);
+  });
+
+  it('ring breathes within bounds and stays between grey and blue', () =&gt; {
+    for (const t of [0, 250, 700, 1500, 3000]) {
+      const p = scanFrameParams(t);
+      expect(p.ringScale).toBeGreaterThanOrEqual(1.0);
+      expect(p.ringScale).toBeLessThanOrEqual(1.1);
+      expect([RING_GREY, RING_BLUE].includes(p.ringColor) || p.ringColor.startsWith('rgb')).toBe(true);
+    }
+  });
+
+  it('renders at the toolbar sizes 16, 32, 48', () =&gt; {
+    expect(ANIM_SIZES).toEqual([16, 32, 48]);
+  });
+});</code></pre>
+<ul><li>☐ <strong>Step 2: Run test to verify it fails</strong></li></ul>
+<p>Run: <code>npx vitest run tests/icon-anim.test.js</code> Expected: FAIL — <code>Failed to resolve import "../icon-anim.js"</code>.</p>
+<ul><li>☐ <strong>Step 3: Write <code>icon-anim.js</code></strong></li></ul>
+<p>Create <code>icon-anim.js</code>:</p>
+<pre><code>// icon-anim.js — toolbar icon animation, for the active-scan state only.
+//
+// The installed icon is a static PNG (manifest). While a scan runs, the service
+// worker pushes animated frames via chrome.action.setIcon({ tabId, imageData }),
+// then resets to the static path icon when the scan finishes or errors.
+//
+// No requestAnimationFrame in a worker — a setTimeout loop ticks ~every TICK_MS.
+// The per-frame math (scanFrameParams) is pure and unit-tested; the timer and
+// canvas/setIcon glue are verified live in the loaded extension.
+//
+// Respect: startScanAnim no-ops when animateIcon is off OR reduced motion is set
+// (both read from chrome.storage.local), and when there is no tabId.
+
+import { drawVeeIcon } from './icon-draw.js';
+
+/** Sizes Chrome needs for the action icon imageData map. */
+export const ANIM_SIZES = [16, 32, 48];
+
+const TICK_MS = 90;          // frame interval (worker-friendly)
+const GROW_MS = 600;         // aperture grow-in duration
+const MAX_RUN_MS = 90_000;   // safety cap: never animate longer than this
+const STATIC_PATH = { 16: 'icons/icon16.png', 32: 'icons/icon32.png', 48: 'icons/icon48.png', 128: 'icons/icon128.png' };
+
+export const RING_GREY = '#cbd5e1';
+export const RING_BLUE = '#3b82f6';
+
+/** Clamp helper. */
+const clamp = (n, lo, hi) =&gt; Math.min(hi, Math.max(lo, n));
+
+/** Linear blend of two hex colors → rgb() string. t in [0,1]. */
+function mixHex(a, b, t) {
+  const pa = [parseInt(a.slice(1, 3), 16), parseInt(a.slice(3, 5), 16), parseInt(a.slice(5, 7), 16)];
+  const pb = [parseInt(b.slice(1, 3), 16), parseInt(b.slice(3, 5), 16), parseInt(b.slice(5, 7), 16)];
+  const m = pa.map((v, i) =&gt; Math.round(v + (pb[i] - v) * t));
+  return `rgb(${m[0]}, ${m[1]}, ${m[2]})`;
+}
+
+/**
+ * Pure: the draw opts for a given elapsed time.
+ * @param {number} elapsedMs ms since scan start
+ * @returns {{apertureScale:number, apertureRotation:number, ringScale:number, ringColor:string, dashed:boolean}}
+ */
+export function scanFrameParams(elapsedMs) {
+  const t = Math.max(0, elapsedMs);
+
+  // Aperture grow-in with a slight overshoot, then settle at 1.0.
+  let apertureScale;
+  if (t &lt; GROW_MS) {
+    const p = t / GROW_MS;                 // 0 → 1
+    const eased = 1 - Math.pow(1 - p, 3);  // easeOutCubic
+    apertureScale = 0.5 + (1.1 - 0.5) * eased; // 0.5 → 1.1 (overshoot)
+  } else {
+    const settle = clamp((t - GROW_MS) / 200, 0, 1);
+    apertureScale = 1.1 - 0.1 * settle;    // 1.1 → 1.0
+  }
+
+  // Spin accelerates: angle grows with the square of time-after-grow.
+  const spinT = Math.max(0, t - GROW_MS) / 1000; // seconds spinning
+  const apertureRotation = 0.6 * spinT * spinT;   // rad; quadratic = slow → fast
+
+  // Ring breathe: gentle sinusoid for both scale and grey→blue blend.
+  const phase = (t % 2400) / 2400;               // 2.4s loop
+  const wave = (1 - Math.cos(phase * Math.PI * 2)) / 2; // 0 → 1 → 0
+  const ringScale = 1.0 + 0.08 * wave;
+  const ringColor = mixHex(RING_GREY, RING_BLUE, wave);
+
+  return { apertureScale, apertureRotation, ringScale, ringColor, dashed: true };
+}
+
+// ─── Impure timer + setIcon glue (verified live, not unit-tested) ─────────────
+
+const timers = new Map(); // tabId → { id, started }
+
+async function shouldAnimate() {
+  try {
+    const { animateIcon, reduceMotion } = await chrome.storage.local.get(['animateIcon', 'reduceMotion']);
+    if (animateIcon === false) return false;   // default ON
+    if (reduceMotion === true) return false;
+    return true;
+  } catch {
+    return false; // storage unavailable → stay static
+  }
+}
+
+function renderImageData(elapsedMs) {
+  const params = scanFrameParams(elapsedMs);
+  const imageData = {};
+  for (const size of ANIM_SIZES) {
+    const canvas = new OffscreenCanvas(size, size);
+    const ctx = canvas.getContext('2d');
+    drawVeeIcon(ctx, size, params);
+    imageData[size] = ctx.getImageData(0, 0, size, size);
+  }
+  return imageData;
+}
+
+/**
+ * Begin animating the toolbar icon for one tab's active scan.
+ * No-ops when disabled, under reduced motion, or without a tabId.
+ * @param {number|undefined} tabId
+ */
+export async function startScanAnim(tabId) {
+  if (typeof tabId !== 'number') return;
+  if (timers.has(tabId)) return;          // already animating this tab
+  if (!(await shouldAnimate())) return;
+
+  const started = Date.now();
+  const tick = () =&gt; {
+    const elapsed = Date.now() - started;
+    if (elapsed &gt; MAX_RUN_MS) { stopScanAnim(tabId); return; }
+    try {
+      chrome.action.setIcon({ tabId, imageData: renderImageData(elapsed) }).catch(() =&gt; {});
+    } catch { /* tab gone / OffscreenCanvas unavailable — stop quietly */ stopScanAnim(tabId); return; }
+    const id = setTimeout(tick, TICK_MS);
+    const entry = timers.get(tabId);
+    if (entry) entry.id = id; else { clearTimeout(id); }
+  };
+
+  timers.set(tabId, { id: 0, started });
+  tick();
+}
+
+/**
+ * Stop animating a tab and reset it to the static path icon.
+ * Safe to call when no animation is running.
+ * @param {number|undefined} tabId
+ */
+export function stopScanAnim(tabId) {
+  if (typeof tabId !== 'number') return;
+  const entry = timers.get(tabId);
+  if (entry) { clearTimeout(entry.id); timers.delete(tabId); }
+  try { chrome.action.setIcon({ tabId, path: STATIC_PATH }).catch(() =&gt; {}); } catch { /* tab gone */ }
+}</code></pre>
+<ul><li>☐ <strong>Step 4: Run test to verify it passes</strong></li></ul>
+<p>Run: <code>npx vitest run tests/icon-anim.test.js</code> Expected: PASS (4 tests).</p>
+<ul><li>☐ <strong>Step 5: Syntax + lint</strong></li></ul>
+<p>Run: <code>node --check icon-anim.js &amp;&amp; npx eslint icon-anim.js tests/icon-anim.test.js</code> Expected: clean exit 0. (<code>OffscreenCanvas</code> is a worker global; if eslint flags it as undefined, add <code>/<em> global OffscreenCanvas </em>/</code> at the top of <code>icon-anim.js</code> — match the project's existing global-comment style if one exists in <code>background.js</code>.)</p>
+<ul><li>☐ <strong>Step 6: Commit</strong></li></ul>
+<pre><code>git add icon-anim.js tests/icon-anim.test.js
+git commit -m "feat(brand): icon-anim.js — scan-state toolbar animation + pure frame math"</code></pre>
+<h2>Task A5: Hook the animation into the service worker</h2>
+<p>Import <code>icon-anim.js</code> and thread the scanning tab's id into <code>runAnalysis</code>, starting the animation at scan start and stopping it on <strong>both</strong> the success and error completion paths. <code>runAnalysis</code> currently takes <code>(sessionKey, detected)</code>; add an optional third <code>tabId</code>. Of the four call sites, two have a tab id: <code>chrome.action.onClicked</code> (the <code>tab</code> arg) and <code>RERUN</code> (<code>sender.tab?.id</code>). The context-menu and batch paths pass nothing (no tab to animate), and <code>startScanAnim</code> simply no-ops on a missing tabId.</p>
+<p><strong>Files:</strong></p>
+<ul><li>Modify: <code>background.js</code> (imports near top; <code>runAnalysis</code> signature at line 648; start at line 660; stop in success path before line 752; stop in catch at lines 756-758; call sites at lines 181, 202, 558)</li></ul>
+<ul><li>☐ <strong>Step 1: Import <code>icon-anim.js</code></strong></li></ul>
+<p>In <code>background.js</code>, add after the existing import on line 66 (<code>import { buildComparePrompt, parseCompareResult } from './compare-repos.js';</code>):</p>
+<pre><code>import { startScanAnim, stopScanAnim } from './icon-anim.js';</code></pre>
+<ul><li>☐ <strong>Step 2: Add the <code>tabId</code> parameter to <code>runAnalysis</code></strong></li></ul>
+<p>In <code>background.js</code>, change the signature on line 648 from:</p>
+<pre><code>async function runAnalysis(sessionKey, detected) {</code></pre>
+<p>to:</p>
+<pre><code>async function runAnalysis(sessionKey, detected, tabId) {</code></pre>
+<ul><li>☐ <strong>Step 3: Start the animation at scan start</strong></li></ul>
+<p>In <code>background.js</code>, immediately inside the <code>try {</code> (currently line 655), before the <code>prevCached</code> snapshot, add:</p>
+<pre><code>    startScanAnim(tabId); // fire-and-forget; no-ops without a tabId / when disabled / reduced motion</code></pre>
+<p>so the block reads:</p>
+<pre><code>  try {
+    startScanAnim(tabId); // fire-and-forget; no-ops without a tabId / when disabled / reduced motion
+    // Snapshot the previous cached analysis for diff comparison (before it's overwritten).
+    const prevCached = await getCached(detected.platform, detected.repoId).catch(() =&gt; null);</code></pre>
+<ul><li>☐ <strong>Step 4: Stop the animation on success</strong></li></ul>
+<p>In <code>background.js</code>, the success branch ends inside the <code>try</code> just before the closing <code>} catch (err) {</code> on line 752. The last statement there is the notification <code>try { … } catch { … }</code> ending at line 750. Add the stop immediately after that closing brace (line 750), still inside the outer <code>try</code>:</p>
+<pre><code>    } catch { /* notifications are best-effort */ }
+
+    stopScanAnim(tabId); // success: reset to the static icon</code></pre>
+<ul><li>☐ <strong>Step 5: Stop the animation on error</strong></li></ul>
+<p>In <code>background.js</code>, in the <code>catch (err)</code> block (lines 752-759), add the stop as the first line so a failed scan also resets the icon:</p>
+<pre><code>  } catch (err) {
+    stopScanAnim(tabId); // error: reset to the static icon
+    // AI failures already carry a humanized message + kind; other failures (fetch,
+    // parse) get classified here so the tab can still route the error CTA.
+    const errorKind = err.kind || categorizeError(err).kind;
+    await chrome.storage.session.set({
+      [sessionKey]: { ...detected, loading: false, error: err.message, errorKind }
+    });
+  }</code></pre>
+<ul><li>☐ <strong>Step 6: Thread <code>tabId</code> from the action click</strong></li></ul>
+<p>In <code>background.js</code>, the <code>chrome.action.onClicked</code> handler (line 523) gives a <code>tab</code>. The current line 558 is:</p>
+<pre><code>  runAnalysis(sessionKey, detected);</code></pre>
+<p>Change it to:</p>
+<pre><code>  runAnalysis(sessionKey, detected, tab.id);</code></pre>
+<ul><li>☐ <strong>Step 7: Thread <code>tabId</code> from RERUN</strong></li></ul>
+<p>In <code>background.js</code>, find the RERUN handler around line 196-202. The <code>runAnalysis</code> call there (line 202) is currently:</p>
+<pre><code>        runAnalysis(msg.sessionKey, detected); // fire and forget; tab polls the session</code></pre>
+<p>Change it to (the RERUN message comes from the output tab, so <code>sender.tab?.id</code> is that tab):</p>
+<pre><code>        runAnalysis(msg.sessionKey, detected, sender.tab?.id); // fire and forget; tab polls the session</code></pre>
+<blockquote>Leave the context-menu call (line 181) and the batch call (line 597) as <code>runAnalysis(sessionKey, detected)</code> / <code>runAnalysis(subKey, {...})</code> — those have no single foreground tab to animate, and <code>startScanAnim(undefined)</code> no-ops.</blockquote>
+<ul><li>☐ <strong>Step 8: Verify syntax + lint + full suite</strong></li></ul>
+<p>Run: <code>node --check background.js &amp;&amp; npx eslint background.js &amp;&amp; npx vitest run</code> Expected: <code>node --check</code> silent; eslint clean; the full Vitest suite passes (730+ tests, including the new <code>icon-draw</code> and <code>icon-anim</code> tests).</p>
+<ul><li>☐ <strong>Step 9: Verify live (load unpacked, run a scan)</strong></li></ul>
+<p>Load the unpacked extension. On a GitHub repo page, click the toolbar icon. Expected: the toolbar icon's aperture grows, then spins (accelerating), the ring breathes grey→blue while the scan runs, and it snaps back to the static dark-tile icon when the result tab finishes loading. Force an error (e.g. invalid key) and confirm the icon also resets on failure.</p>
+<ul><li>☐ <strong>Step 10: Commit</strong></li></ul>
+<pre><code>git add background.js
+git commit -m "feat(brand): animate the toolbar icon during an active scan"</code></pre>
+<h2>Task A6: Settings — <code>animateIcon</code> toggle + persisted reduced-motion flag</h2>
+<p>Add an <code>animateIcon</code> checkbox (default ON, mirroring <code>mascotEnabled</code>), persist a <code>reduceMotion</code> flag from the pages that already initialize, and allowlist <code>animateIcon</code> in the settings backup.</p>
+<p><strong>Files:</strong></p>
+<ul><li>Modify: <code>options.html</code> (after the mascot checkbox at line 202)</li><li>Modify: <code>options.js</code> (after the mascot block at lines 111-117; add reduceMotion persist near <code>initTheme</code>)</li><li>Modify: <code>library.js</code> (init region near line 33)</li><li>Modify: <code>output-tab.js</code> (init region near line 44)</li><li>Modify: <code>settings-backup.js</code> (<code>SAFE_SETTING_KEYS</code>, lines 14-35)</li></ul>
+<ul><li>☐ <strong>Step 1: Add the <code>animateIcon</code> checkbox to <code>options.html</code></strong></li></ul>
+<p>In <code>options.html</code>, the mascot row is line 202:</p>
+<pre><code>    &lt;label class="checkbox-row"&gt;&lt;input type="checkbox" id="mascotEnabled"&gt;&lt;span&gt;Show “Vee”, the lens mascot&lt;/span&gt;&lt;/label&gt;</code></pre>
+<p>Add directly after it:</p>
+<pre><code>    &lt;label class="checkbox-row"&gt;&lt;input type="checkbox" id="animateIcon"&gt;&lt;span&gt;Animate the toolbar icon while a scan runs&lt;/span&gt;&lt;/label&gt;</code></pre>
+<ul><li>☐ <strong>Step 2: Read/save <code>animateIcon</code> in <code>options.js</code></strong></li></ul>
+<p>In <code>options.js</code>, the mascot block is lines 111-117:</p>
+<pre><code>const mascotInput = document.getElementById('mascotEnabled');
+chrome.storage.local.get('mascotEnabled', ({ mascotEnabled }) =&gt; {
+  mascotInput.checked = mascotEnabled !== false;
+});
+mascotInput.addEventListener('change', () =&gt; {
+  chrome.storage.local.set({ mascotEnabled: mascotInput.checked });
+});</code></pre>
+<p>Add directly after it:</p>
+<pre><code>const animateIconInput = document.getElementById('animateIcon');
+chrome.storage.local.get('animateIcon', ({ animateIcon }) =&gt; {
+  animateIconInput.checked = animateIcon !== false; // default ON
+});
+animateIconInput.addEventListener('change', () =&gt; {
+  chrome.storage.local.set({ animateIcon: animateIconInput.checked });
+});</code></pre>
+<ul><li>☐ <strong>Step 3: Persist <code>reduceMotion</code> from <code>options.js</code></strong></li></ul>
+<p>In <code>options.js</code>, the theme is initialized via <code>initTheme</code> (imported line 11). Add this one-liner near the top-level init (place it right after the <code>animateIcon</code> block from Step 2, since both run on options-page load):</p>
+<pre><code>// Persist the user's OS reduced-motion preference so the service worker (which has
+// no DOM / matchMedia) can honor it before animating the toolbar icon.
+chrome.storage.local.set({ reduceMotion: matchMedia('(prefers-reduced-motion: reduce)').matches });</code></pre>
+<ul><li>☐ <strong>Step 4: Persist <code>reduceMotion</code> from <code>library.js</code></strong></li></ul>
+<p>In <code>library.js</code>, line 33 is <code>initTheme();</code> and line 37 already reads <code>matchMedia('(prefers-reduced-motion: reduce)').matches</code>. Add immediately after line 33:</p>
+<pre><code>// Mirror the OS reduced-motion preference into storage for the service worker.
+chrome.storage.local.set({ reduceMotion: typeof matchMedia === 'function' &amp;&amp; matchMedia('(prefers-reduced-motion: reduce)').matches });</code></pre>
+<ul><li>☐ <strong>Step 5: Persist <code>reduceMotion</code> from <code>output-tab.js</code></strong></li></ul>
+<p>In <code>output-tab.js</code>, line 44 is <code>initTheme();</code>. Add immediately after it:</p>
+<pre><code>// Mirror the OS reduced-motion preference into storage for the service worker.
+chrome.storage.local.set({ reduceMotion: typeof matchMedia === 'function' &amp;&amp; matchMedia('(prefers-reduced-motion: reduce)').matches });</code></pre>
+<ul><li>☐ <strong>Step 6: Allowlist <code>animateIcon</code> in the settings backup</strong></li></ul>
+<p>In <code>settings-backup.js</code>, add <code>'animateIcon'</code> to <code>SAFE_SETTING_KEYS</code>. The current entry on line 19 is:</p>
+<pre><code>  'mascotEnabled',</code></pre>
+<p>Change it to:</p>
+<pre><code>  'mascotEnabled',
+  'animateIcon',</code></pre>
+<blockquote>Do <strong>not</strong> add <code>reduceMotion</code> to the allowlist — it is a device/OS-derived flag, not a user setting, and should be recomputed per device rather than synced.</blockquote>
+<ul><li>☐ <strong>Step 7: Verify the backup allowlist test still passes</strong></li></ul>
+<p>Run: <code>npx vitest run tests/settings-backup.test.js</code> Expected: PASS. (If <code>settings-backup.test.js</code> asserts an exact <code>SAFE_SETTING_KEYS</code> list/length, update that assertion to include <code>'animateIcon'</code> in the same edit and re-run.)</p>
+<ul><li>☐ <strong>Step 8: Verify syntax + lint + full suite</strong></li></ul>
+<p>Run: <code>node --check options.js &amp;&amp; node --check library.js &amp;&amp; node --check output-tab.js &amp;&amp; node --check settings-backup.js &amp;&amp; npx eslint options.js library.js output-tab.js settings-backup.js &amp;&amp; npx vitest run</code> Expected: clean; full suite green.</p>
+<ul><li>☐ <strong>Step 9: Verify live</strong></li></ul>
+<p>Open Options → confirm the new "Animate the toolbar icon" checkbox is checked by default and toggling persists. Turn it off, run a scan, confirm the icon stays static. Turn it back on; enable OS "Reduce motion" and confirm the icon stays static (reduceMotion flag wins).</p>
+<ul><li>☐ <strong>Step 10: Commit</strong></li></ul>
+<pre><code>git add options.html options.js library.js output-tab.js settings-backup.js tests/settings-backup.test.js
+git commit -m "feat(brand): animateIcon setting + persisted reduced-motion flag for the SW"</code></pre>
+<hr>
+<h1>Phase B — Mono Ink default theme + Vee recolor</h1>
+<blockquote>Goal: add Mono Ink as a real theme, make it the engine default, confirm Vee recolors correctly, and prove the default + the other 13 themes with tests and a live check. Independently committable.</blockquote>
+<h2>Task B1: Add the <code>[data-theme="monoink"]</code> block to <code>themes.css</code></h2>
+<p>Mono Ink is a <strong>light</strong> theme: white surfaces, near-black ink, cobalt accent. Define the full per-theme token vocabulary used by the default <code>:root</code> block (lines 4-27). The shared status colors and motion tokens stay in <code>:root</code> — do <strong>not</strong> redefine them here.</p>
+<p><strong>Files:</strong></p>
+<ul><li>Modify: <code>themes.css</code> (insert a new block; suggested location: immediately after the closing <code>}</code> of the <code>:root, [data-theme="midnight"]</code> block at line 60, before <code>[data-theme="paper"]</code> on line 62)</li></ul>
+<ul><li>☐ <strong>Step 1: Add the Mono Ink block</strong></li></ul>
+<p>In <code>themes.css</code>, insert after line 60 (the <code>}</code> that closes the default block) and before line 62 (<code>[data-theme="paper"] {</code>):</p>
+<pre><code>[data-theme="monoink"] {
+  --body-bg: #f4f6f9;
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-alt: #f4f6f9;
+  --border: #d7dde6;
+  --border-2: #c4ccd8;
+
+  --text: #0f1115;
+  --text-strong: #0f1115;
+  --text-body: #1f2430;
+  --text-sub: #6b7280;
+  --text-muted: #9aa3af;
+  --text-faint: #aab2bd;
+  --text-fainter: #c4ccd8;
+
+  --accent: #2563eb;            /* cobalt — UI accent (AA on white) */
+  --accent-deep: #1d4ed8;       /* electric blue — strong/brand */
+  --accent-deep-hover: #1e40af;
+  --accent-grad: linear-gradient(135deg, #1d4ed8, #2563eb);
+
+  --font: "Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --card-shadow: 0 1px 2px rgba(15, 17, 21, 0.06), 0 8px 24px rgba(15, 17, 21, 0.06);
+}</code></pre>
+<blockquote>Contrast note: <code>--accent</code> <code>#2563eb</code> on <code>#ffffff</code> is ~4.6:1 (passes WCAG AA for text). <code>--text-sub</code> <code>#6b7280</code> on white is ~4.8:1. The electric <code>--accent-deep</code> <code>#1d4ed8</code> is reserved for the mark / strong emphasis, not body text. <code>Space Grotesk</code> is referenced as a font-family with a system fallback chain; this phase does not bundle the font file (web-font packaging is a later workstream), so the fallback renders until the site provides the face.</blockquote>
+<ul><li>☐ <strong>Step 2: Verify the stylesheet is well-formed</strong></li></ul>
+<p>Run: <code>node -e "const c=require('fs').readFileSync('themes.css','utf8'); const o=(c.match(/{/g)||[]).length, x=(c.match(/}/g)||[]).length; if(o!==x) throw new Error('brace mismatch '+o+' vs '+x); console.log('braces balanced', o)"</code> Expected: <code>braces balanced N</code> (open == close).</p>
+<ul><li>☐ <strong>Step 3: Commit</strong></li></ul>
+<pre><code>git add themes.css
+git commit -m "feat(brand): add the Mono Ink theme to themes.css"</code></pre>
+<h2>Task B2: Make Mono Ink the engine default in <code>theme.js</code></h2>
+<p>Set <code>DEFAULT_THEME='monoink'</code> and register <code>monoink</code> in the <code>THEMES</code> array. Existing users keep their stored <code>theme</code>; only fresh installs and the fallback get Mono Ink.</p>
+<p><strong>Files:</strong></p>
+<ul><li>Modify: <code>theme.js</code> (line 1; <code>THEMES</code> array lines 3-17)</li><li>Test: <code>tests/theme.test.js</code> (existing — must be updated to match)</li></ul>
+<ul><li>☐ <strong>Step 1: Update the existing theme test to expect the new default + entry (RED first)</strong></li></ul>
+<p>In <code>tests/theme.test.js</code>, the <code>THEMES</code> test (lines 27-36) asserts an exact key list and the default test (lines 37-39) asserts <code>'midnight'</code>. Update both to the new reality. Replace the key-list array (lines 28-31):</p>
+<pre><code>    expect(THEMES.map(t =&gt; t.key)).toEqual([
+      'midnight', 'paper', 'terminal', 'synthwave', 'bmw', 'xai', 'claude', 'apple',
+      'nord', 'gruvbox', 'rosepine', 'latte', 'solarized',
+    ]);</code></pre>
+<p>with (Mono Ink added at the front so it is the most prominent picker entry):</p>
+<pre><code>    expect(THEMES.map(t =&gt; t.key)).toEqual([
+      'monoink', 'midnight', 'paper', 'terminal', 'synthwave', 'bmw', 'xai', 'claude',
+      'apple', 'nord', 'gruvbox', 'rosepine', 'latte', 'solarized',
+    ]);</code></pre>
+<p>and replace the default assertion (lines 37-39):</p>
+<pre><code>  it('defaults to midnight', () =&gt; {
+    expect(DEFAULT_THEME).toBe('midnight');
+  });</code></pre>
+<p>with:</p>
+<pre><code>  it('defaults to monoink', () =&gt; {
+    expect(DEFAULT_THEME).toBe('monoink');
+  });</code></pre>
+<p>Also update the "applies midnight when nothing is stored" test (lines 60-64) so it expects the new default:</p>
+<pre><code>  it('applies the default when nothing is stored', async () =&gt; {
+    const key = await initTheme();
+    expect(key).toBe('monoink');
+    expect(document.documentElement.getAttribute('data-theme')).toBe('monoink');
+  });</code></pre>
+<blockquote>Leave the <code>applyTheme('bogus')</code> fallback test (lines 47-50) asserting <code>'midnight'</code>? No — that asserts the fallback equals the default. Update its expected value to <code>'monoink'</code>:  ``<code>javascript   it('falls back to the default for an unknown key', () =&gt; {     applyTheme('bogus');     expect(document.documentElement.getAttribute('data-theme')).toBe('monoink');   }); </code>``</blockquote>
+<ul><li>☐ <strong>Step 2: Run the theme test to verify it fails</strong></li></ul>
+<p>Run: <code>npx vitest run tests/theme.test.js</code> Expected: FAIL — default is still <code>'midnight'</code>, and <code>THEMES</code> lacks <code>monoink</code>.</p>
+<ul><li>☐ <strong>Step 3: Set the default + register the theme in <code>theme.js</code></strong></li></ul>
+<p>In <code>theme.js</code>, change line 1 from:</p>
+<pre><code>export const DEFAULT_THEME = 'midnight';</code></pre>
+<p>to:</p>
+<pre><code>export const DEFAULT_THEME = 'monoink';</code></pre>
+<p>Then add the Mono Ink entry as the first element of the <code>THEMES</code> array (line 3-4). Change:</p>
+<pre><code>export const THEMES = [
+  { key: 'midnight',  label: 'Midnight',  swatch: '#0a0a0f' },</code></pre>
+<p>to:</p>
+<pre><code>export const THEMES = [
+  { key: 'monoink',   label: 'Mono Ink',  swatch: 'linear-gradient(135deg, #0f1115 50%, #2563eb 50%)' },
+  { key: 'midnight',  label: 'Midnight',  swatch: '#0a0a0f' },</code></pre>
+<ul><li>☐ <strong>Step 4: Run the theme test to verify it passes</strong></li></ul>
+<p>Run: <code>npx vitest run tests/theme.test.js</code> Expected: PASS.</p>
+<ul><li>☐ <strong>Step 5: Syntax + lint</strong></li></ul>
+<p>Run: <code>node --check theme.js &amp;&amp; npx eslint theme.js tests/theme.test.js</code> Expected: clean.</p>
+<ul><li>☐ <strong>Step 6: Commit</strong></li></ul>
+<pre><code>git add theme.js tests/theme.test.js
+git commit -m "feat(brand): make Mono Ink the default theme"</code></pre>
+<h2>Task B3: Confirm Vee + the loading spinner recolor under Mono Ink</h2>
+<p>The mascot glyph (<code>mascot.js</code>) and the in-app loading spinner (<code>output-tab.js:300</code>, <code>renderMascot(..., 'scanning')</code>) read <code>--accent</code>, so they recolor automatically. The only thing to decide is whether the aperture/pupil should use cobalt (<code>--accent</code>) or electric (<code>--accent-deep</code>) under Mono Ink. Per the spec (§5), Vee uses the theme accent; the electric blue is reserved for the app-icon mark. So no glyph change is expected — this task verifies that live and applies a minimal <code>mascot.css</code> tweak only if the live check shows a contrast problem.</p>
+<p><strong>Files:</strong></p>
+<ul><li>Verify: <code>mascot.js</code>, <code>output-tab.js</code> (no edit expected)</li><li>Conditionally modify: <code>mascot.css</code> (only if contrast fails)</li></ul>
+<ul><li>☐ <strong>Step 1: Verify live (mascot states + loading spinner)</strong></li></ul>
+<p>Open <code>mascot-preview.html</code> in Chrome. In the page, set <code>&lt;html data-theme="monoink"&gt;</code> (via DevTools or a temporary edit) and confirm every state — idle / scanning / strong / risky / thinking / empty / error — renders with legible cobalt aperture/pupil on the white surface, and the strong/risky states still read as green/red (those use <code>--ok</code>/<code>--bad</code>, shared in <code>:root</code>, so they are unaffected). Then load the unpacked extension, run a scan, and confirm the in-app loading spinner (<code>#loading-vee</code>) shows the cobalt scanning lens, not a washed-out one.</p>
+<ul><li>☐ <strong>Step 2: Apply a minimal contrast fix only if needed</strong></li></ul>
+<p>If, and only if, the cobalt aperture/pupil reads too light on white in Step 1, scope a Mono-Ink-only override in <code>mascot.css</code> (append at the end of the file, outside the reduced-motion guard so it applies statically):</p>
+<pre><code>/* Mono Ink: lift the idle aperture/pupil to the deeper accent for contrast on white. */
+[data-theme="monoink"] .vee .vee-aperture { stroke: var(--accent-deep); }
+[data-theme="monoink"] .vee .vee-pupil    { fill: var(--accent-deep); }</code></pre>
+<p>If Step 1 looked correct, make no change and note "no mascot.css change needed" in the commit body.</p>
+<ul><li>☐ <strong>Step 3: Verify (only if mascot.css changed)</strong></li></ul>
+<p>Run: <code>npx eslint mascot.css 2&gt;/dev/null || true</code> (eslint may not lint CSS; the real check is the live re-confirm) and re-open <code>mascot-preview.html</code> under <code>data-theme="monoink"</code> to confirm the fix.</p>
+<ul><li>☐ <strong>Step 4: Commit</strong></li></ul>
+<p>If <code>mascot.css</code> changed:</p>
+<pre><code>git add mascot.css
+git commit -m "fix(brand): lift Vee aperture/pupil to deep accent under Mono Ink for contrast"</code></pre>
+<p>If nothing changed, record the verification in an empty-tree-safe note commit only if your workflow requires it; otherwise skip the commit and proceed (the live check is the deliverable here).</p>
+<h2>Task B4: Theme string-presence test (tokens + default ordering)</h2>
+<p>A node-environment test asserting <code>themes.css</code> defines the <code>monoink</code> block with the required token names. This guards against an accidental token rename that would leave Mono Ink half-styled.</p>
+<p><strong>Files:</strong></p>
+<ul><li>Test: <code>tests/theme.test.js</code> (extend the existing file)</li></ul>
+<ul><li>☐ <strong>Step 1: Write the failing test (extend <code>tests/theme.test.js</code>)</strong></li></ul>
+<p>Append a new <code>describe</code> block to <code>tests/theme.test.js</code>, after the existing <code>saveTheme</code> block (after line 74). It reads the CSS file from disk (node <code>fs</code>), matching the repo's "no jsdom" approach:</p>
+<pre><code>import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
+
+describe('themes.css Mono Ink block', () =&gt; {
+  const css = readFileSync(
+    resolve(dirname(fileURLToPath(import.meta.url)), '../themes.css'),
+    'utf8',
+  );
+
+  it('defines a [data-theme="monoink"] block', () =&gt; {
+    expect(css).toContain('[data-theme="monoink"]');
+  });
+
+  it('maps the full per-theme token vocabulary', () =&gt; {
+    const monoink = css.slice(css.indexOf('[data-theme="monoink"]'));
+    const block = monoink.slice(0, monoink.indexOf('}') + 1);
+    const REQUIRED = [
+      '--body-bg', '--bg', '--surface', '--surface-alt', '--border', '--border-2',
+      '--text', '--text-strong', '--text-body', '--text-sub', '--text-muted',
+      '--text-faint', '--text-fainter',
+      '--accent', '--accent-deep', '--accent-deep-hover', '--accent-grad',
+      '--font', '--mono', '--card-shadow',
+    ];
+    for (const token of REQUIRED) {
+      expect(block.includes(token), `monoink block is missing ${token}`).toBe(true);
+    }
+  });
+
+  it('uses the cobalt accent for monoink', () =&gt; {
+    const monoink = css.slice(css.indexOf('[data-theme="monoink"]'));
+    const block = monoink.slice(0, monoink.indexOf('}') + 1);
+    expect(block).toContain('#2563eb');
+  });
+});</code></pre>
+<ul><li>☐ <strong>Step 2: Run to verify it passes (the CSS block already exists from B1)</strong></li></ul>
+<p>Run: <code>npx vitest run tests/theme.test.js</code> Expected: PASS. (This test is written after B1 landed the block, so it goes green immediately; to see it as a genuine guard, temporarily rename <code>--accent</code> in the monoink block, re-run to see it FAIL, then restore.)</p>
+<ul><li>☐ <strong>Step 3: Lint + commit</strong></li></ul>
+<p>Run: <code>npx eslint tests/theme.test.js</code> Expected: clean.</p>
+<pre><code>git add tests/theme.test.js
+git commit -m "test(brand): assert themes.css defines the Mono Ink token vocabulary"</code></pre>
+<h2>Task B5: Full-default + all-themes live verification</h2>
+<p><strong>Files:</strong> none (verification only)</p>
+<ul><li>☐ <strong>Step 1: Fresh-profile default check</strong></li></ul>
+<p>Load the unpacked extension in a fresh Chrome profile (no stored <code>theme</code>). Open the Library and Options. Expected: Mono Ink is active (white surfaces, cobalt accent, near-black text).</p>
+<ul><li>☐ <strong>Step 2: All 14 themes switch</strong></li></ul>
+<p>In Options → theme picker, click through every swatch (Mono Ink + the original 13). Expected: each applies instantly with no broken tokens (no unstyled black-on-black or invisible text). Confirm switching back to Mono Ink restores the light look.</p>
+<ul><li>☐ <strong>Step 3: AA spot-check</strong></li></ul>
+<p>In Mono Ink, confirm body text and links are legible on white (use DevTools contrast checker on a link and a <code>--text-sub</code> label; both should report ≥ 4.5:1).</p>
+<ul><li>☐ <strong>Step 4: Full suite green</strong></li></ul>
+<p>Run: <code>npx vitest run &amp;&amp; npx eslint .</code> Expected: all tests pass; eslint 0 errors.</p>
+<blockquote>No commit — this task is the gate that closes Phase B.</blockquote>
+<hr>
+<h1>Phase C — Wordmark + tagline</h1>
+<blockquote>Goal: a shareable horizontal lockup SVG, and the tagline propagated to the manifest description and README header. Independently committable.</blockquote>
+<h2>Task C1: <code>assets/wordmark.svg</code> — the lockup</h2>
+<p>The lens mark (Mono Ink, on a dark tile to match the icon) + "RepoLens" set to its right in a Space Grotesk-style weight. Text is rendered with <code>font-family</code> (with a system fallback) rather than outlined paths, to keep it editable; the file is a brand asset, not a runtime dependency.</p>
+<p><strong>Files:</strong></p>
+<ul><li>Create: <code>assets/wordmark.svg</code></li></ul>
+<ul><li>☐ <strong>Step 1: Write <code>assets/wordmark.svg</code></strong></li></ul>
+<p>Create <code>assets/wordmark.svg</code>:</p>
+<pre><code>&lt;svg xmlns="http://www.w3.org/2000/svg" width="320" height="72" viewBox="0 0 320 72" role="img" aria-label="RepoLens"&gt;
+  &lt;title&gt;RepoLens&lt;/title&gt;
+  &lt;!-- Mark: the Vee lens on a dark Mono Ink tile (matches the app icon). --&gt;
+  &lt;g&gt;
+    &lt;rect x="4" y="4" width="64" height="64" rx="15" fill="#0f1115"/&gt;
+    &lt;g transform="translate(36 36) scale(1.0833)"&gt;
+      &lt;!-- lens drawn on the 48-grid, centered at (0,0): factor 64/48 ≈ 1.333 baked via scale + grid coords --&gt;
+      &lt;g transform="scale(1.333)"&gt;
+        &lt;circle cx="0" cy="0" r="17" fill="none" stroke="#cbd5e1" stroke-width="2"/&gt;
+        &lt;circle cx="0" cy="0" r="9" fill="none" stroke="#3b82f6" stroke-width="3"/&gt;
+        &lt;circle cx="0" cy="0" r="2.4" fill="#e5edff"/&gt;
+      &lt;/g&gt;
+    &lt;/g&gt;
+  &lt;/g&gt;
+  &lt;!-- Wordmark: Space Grotesk with a system fallback, near-black, optical-left of baseline. --&gt;
+  &lt;text x="84" y="47" fill="#0f1115"
+        font-family="'Space Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif"
+        font-size="34" font-weight="600" letter-spacing="-0.5"&gt;Repo&lt;tspan fill="#1d4ed8"&gt;Lens&lt;/tspan&gt;&lt;/text&gt;
+&lt;/svg&gt;</code></pre>
+<blockquote>The nested <code>scale</code> is intentional: the lens is authored on the same 48-unit grid as <code>icon-draw.js</code>, then scaled to sit inside the 64px tile. "Lens" is set in electric blue (<code>#1d4ed8</code>) to tie the wordmark to the mark; "Repo" stays ink.</blockquote>
+<ul><li>☐ <strong>Step 2: Verify it parses + renders</strong></li></ul>
+<p>Run: <code>node -e "const x=require('fs').readFileSync('assets/wordmark.svg','utf8'); if(!x.includes('&lt;svg')||!x.includes('&lt;/svg&gt;')) throw new Error('bad svg'); console.log('wordmark svg ok', x.length, 'bytes')"</code> Expected: <code>wordmark svg ok N bytes</code>. Then open <code>file:///Users/clubpenguin/Documents/clubP/repolens/assets/wordmark.svg</code> in Chrome. Expected: dark tile + lens on the left, "RepoLens" (with "Lens" in blue) to the right, vertically centered.</p>
+<ul><li>☐ <strong>Step 3: Commit</strong></li></ul>
+<pre><code>git add assets/wordmark.svg
+git commit -m "feat(brand): assets/wordmark.svg — lens + RepoLens lockup"</code></pre>
+<h2>Task C2: Tagline in manifest + README header</h2>
+<p>Replace the old "Powered by Claude" description with the new tagline, and update the README H1/subtitle to match (dropping the telescope emoji per §7 "no emoji on product surfaces").</p>
+<p><strong>Files:</strong></p>
+<ul><li>Modify: <code>manifest.json</code> (line 5 <code>description</code>)</li><li>Modify: <code>README.md</code> (lines 1-7 header block)</li></ul>
+<ul><li>☐ <strong>Step 1: Update the manifest description</strong></li></ul>
+<p>In <code>manifest.json</code>, change line 5 from:</p>
+<pre><code>  "description": "One-click repo explainer. Powered by Claude.",</code></pre>
+<p>to:</p>
+<pre><code>  "description": "Click any repo. Get a straight answer on whether to use it.",</code></pre>
+<ul><li>☐ <strong>Step 2: Update the README header</strong></li></ul>
+<p>In <code>README.md</code>, replace the header block (lines 1-7):</p>
+<pre><code>&lt;div align="center"&gt;
+
+# 🔭 RepoLens
+
+### One click opens the case file on any repo.
+
+**The verdict · the evidence · the red flags · how it's actually built — in plain English, before the README's pitch.**</code></pre>
+<p>with (no emoji; tagline-first; the em dash removed per stop-slop):</p>
+<pre><code>&lt;div align="center"&gt;
+
+# RepoLens
+
+### Click any repo. Get a straight answer on whether to use it.
+
+**The verdict, the evidence, the red flags, and how it's built. In plain English, before the README's pitch.**</code></pre>
+<ul><li>☐ <strong>Step 3: Verify the manifest parses</strong></li></ul>
+<p>Run: <code>node -e "JSON.parse(require('fs').readFileSync('manifest.json','utf8')); console.log('manifest ok')"</code> Expected: <code>manifest ok</code>.</p>
+<ul><li>☐ <strong>Step 4: Commit</strong></li></ul>
+<pre><code>git add manifest.json README.md
+git commit -m "feat(brand): new tagline in manifest + README header (drop emoji)"</code></pre>
+<hr>
+<h1>Phase D — Voice / de-slop</h1>
+<blockquote>Goal: vendor the stop-slop standard, re-voice Vee's onboarding copy toward warm-human (keeping the machine test green), and de-slop the README intro + Vee lines + a CHANGELOG entry. Independently committable.</blockquote>
+<h2>Task D1: Vendor the stop-slop rules into the repo</h2>
+<p>Copy the three rule files from <code>/tmp/stop-slop/</code> into <code>docs/style/stop-slop/</code>, and add a short <code>docs/style/README.md</code> declaring it the writing standard.</p>
+<p><strong>Files:</strong></p>
+<ul><li>Create: <code>docs/style/stop-slop/SKILL.md</code>, <code>docs/style/stop-slop/references/phrases.md</code>, <code>docs/style/stop-slop/references/structures.md</code></li><li>Create: <code>docs/style/README.md</code></li></ul>
+<ul><li>☐ <strong>Step 1: Copy the vendored rule files</strong></li></ul>
+<p>Run:</p>
+<pre><code>cd /Users/clubpenguin/Documents/clubP/repolens
+mkdir -p docs/style/stop-slop/references
+cp /tmp/stop-slop/SKILL.md docs/style/stop-slop/SKILL.md
+cp /tmp/stop-slop/references/phrases.md docs/style/stop-slop/references/phrases.md
+cp /tmp/stop-slop/references/structures.md docs/style/stop-slop/references/structures.md</code></pre>
+<p>Expected: no output; the three files now exist.</p>
+<ul><li>☐ <strong>Step 2: Verify the files copied</strong></li></ul>
+<p>Run: <code>ls -R docs/style/stop-slop &amp;&amp; head -1 docs/style/stop-slop/SKILL.md</code> Expected: lists <code>SKILL.md</code> and <code>references/{phrases.md,structures.md}</code>; the head shows the SKILL frontmatter <code>---</code>.</p>
+<ul><li>☐ <strong>Step 3: Write <code>docs/style/README.md</code></strong></li></ul>
+<p>Create <code>docs/style/README.md</code>:</p>
+<pre><code># Writing standard
+
+RepoLens copy follows **stop-slop** (Hardik Pandya's de-slop ruleset), vendored in
+[`stop-slop/`](stop-slop/SKILL.md). It is the standard for product copy and docs:
+Vee's onboarding lines, the README, the CHANGELOG, and any future store-listing or
+website copy.
+
+The short version: cut filler openers and adverbs, write active voice with a human
+subject, name the specific thing, vary sentence rhythm, no em dashes, no emoji on
+product surfaces. Score a draft against the rubric in
+[`stop-slop/SKILL.md`](stop-slop/SKILL.md); below 35/50, revise.</code></pre>
+<ul><li>☐ <strong>Step 4: Commit</strong></li></ul>
+<pre><code>git add docs/style/stop-slop docs/style/README.md
+git commit -m "docs(style): vendor stop-slop as the RepoLens writing standard"</code></pre>
+<h2>Task D2: Re-voice <code>onboarding-copy.js</code> (warm-human, test stays green)</h2>
+<p>Rewrite every <code>COPY</code> string toward warm, casual, human — like texting a friend — while satisfying every assertion in <code>tests/onboarding-copy.test.js</code>: no banned vocab (32 terms), no em dash, ≤ 1 <code>!</code> across the whole object, every line non-empty and ≤ 140 chars, and (per spec §7) no emoji. The banned list includes <code>"that's it"</code> and <code>"you're all set"</code>, so avoid those exact phrases.</p>
+<p><strong>Files:</strong></p>
+<ul><li>Modify: <code>onboarding-copy.js</code> (the <code>COPY</code> object, lines 4-19)</li><li>Test: <code>tests/onboarding-copy.test.js</code> (must stay green; unchanged)</li></ul>
+<ul><li>☐ <strong>Step 1: Replace the <code>COPY</code> object</strong></li></ul>
+<p>In <code>onboarding-copy.js</code>, replace the whole <code>COPY</code> export (lines 1-19, including the header comment) with:</p>
+<pre><code>// onboarding-copy.js
+// Vee's narration, in one place. Warm and human, like texting a friend: name the
+// thing, say what it does for you, keep it short. No jargon, no em dashes, no emoji,
+// at most one exclamation across the whole deck (see tests/onboarding-copy.test.js).
+export const COPY = {
+  introGreet: "Hey, I'm Vee. I read the source so you don't have to. Got two minutes?",
+  introCard: 'Every repo you scan lands here, with its fit score, its health, and your notes.',
+  introCorkboard: 'Same library, as a board. A line between two repos means they go together.',
+  introSearch: 'Find a repo by name, or just ask your library a question in plain words.',
+  introOpen: 'Click a card and I open the full read on that repo.',
+  verdict: "The honest call on whether to use it, before the README starts selling.",
+  blueprint: "How it's built, as a map you can drag around. Hit the tour button to walk it.",
+  farewell: 'You know your way around now. Everything stays in your browser, nothing phones home.',
+  milestoneOffer: "{N} scans in. You've got plenty to compare and connect now. Want me to show you how?",
+  milestoneAsk: "Ask a question across everything you've scanned, in plain words.",
+  milestoneCorkboard: 'Run Alternatives or Synergies and I draw the lines between your repos.',
+  milestoneCompare: 'Pick a few repos, then line them up side by side or wire them into a stack.',
+  milestoneOrganize: 'Library getting big? Try the radar view, auto-organize, and collections.',
+  milestoneDiscover: "Want more? I find fresh repos from the ones you've already adopted.",
+};</code></pre>
+<blockquote>Why these pass: no banned term appears (checked against the 32-item list, including <code>"that's it"</code>/<code>"you're all set"</code> which are now absent); no <code>—</code>; exactly zero <code>!</code> (under the ≤1 cap); no emoji; the longest line (<code>milestoneOffer</code>, with <code>{N}</code> literal) is 91 chars, well under 140.</blockquote>
+<ul><li>☐ <strong>Step 2: Run the onboarding-copy test</strong></li></ul>
+<p>Run: <code>npx vitest run tests/onboarding-copy.test.js</code> Expected: PASS (4 specs: banned vocab, no em dash, ≤1 <code>!</code>, length/non-empty).</p>
+<ul><li>☐ <strong>Step 3: Syntax + lint</strong></li></ul>
+<p>Run: <code>node --check onboarding-copy.js &amp;&amp; npx eslint onboarding-copy.js</code> Expected: clean.</p>
+<ul><li>☐ <strong>Step 4: Verify live (the tour reads naturally)</strong></li></ul>
+<p>Open <code>onboarding-demo.html</code> in Chrome, click "Intro tour" and "Milestone tour", and read each coachmark. Expected: the copy sounds like a person, fits the spotlight bubbles without overflow, and the <code>{N}</code> in the milestone offer renders as <code>7</code> (the demo substitutes it).</p>
+<ul><li>☐ <strong>Step 5: Commit</strong></li></ul>
+<pre><code>git add onboarding-copy.js
+git commit -m "refactor(brand): re-voice Vee's onboarding copy to warm-human"</code></pre>
+<h2>Task D3: De-slop the README intro + Vee lines, and add a CHANGELOG entry</h2>
+<p>Rewrite the README intro paragraph and the two Vee mentions in the new voice, then add an <code>[Unreleased]</code> CHANGELOG entry for the brand work. For the rest of the README/CHANGELOG, run a stop-slop pass against the vendored rules rather than rewriting every line, and finish with one human read.</p>
+<p><strong>Files:</strong></p>
+<ul><li>Modify: <code>README.md</code> (intro paragraph lines 20-22; Vee mentions ~line 44 and ~line 64)</li><li>Modify: <code>CHANGELOG.md</code> (<code>[Unreleased]</code> → <code>### Added</code>, after line 16)</li></ul>
+<ul><li>☐ <strong>Step 1: Rewrite the README intro paragraph + pull-quote</strong></li></ul>
+<p>In <code>README.md</code>, replace the intro (lines 20-22):</p>
+<pre><code>RepoLens is a **Manifest V3 Chrome extension**. Land on a GitHub, GitLab, npm, or PyPI page, click the toolbar icon, and it reads the repo, runs it past the AI provider of your choice, and opens a tab with a **verdict-first** breakdown — it opens with a straight answer (*should you use this?*) before any prose, not the README's marketing.
+
+&gt; Stars tell you a project is popular. They don't tell you whether it fits *your* problem. RepoLens answers the question you actually have: **should I use this, and what am I signing up for?**</code></pre>
+<p>with (no em dash; active voice; tighter):</p>
+<pre><code>RepoLens is a **Manifest V3 Chrome extension**. Open a GitHub, GitLab, npm, or PyPI page and click the toolbar icon. RepoLens reads the repo, runs it past the AI provider you picked, and opens a tab that leads with a straight answer: should you use this? You see the verdict before any of the README's pitch.
+
+&gt; Stars tell you a project is popular. They don't tell you whether it fits your problem. RepoLens answers the question you actually have: should I use this, and what am I signing up for?</code></pre>
+<ul><li>☐ <strong>Step 2: Rewrite the "First run" Vee line</strong></li></ul>
+<p>In <code>README.md</code>, replace the "First run" paragraph (line 44):</p>
+<pre><code>**First run:** Vee walks new users through a seeded demo repo (Library → Verdict → Blueprint) via a coachmark tour. After roughly five real scans a second "power tour" introduces the cross-library tools: Ask, Corkboard analysis, multi-select compare, Radar, and Discover.</code></pre>
+<p>with:</p>
+<pre><code>**First run:** Vee, the lens mascot, walks you through a seeded demo repo (Library, then Verdict, then Blueprint) with a short coachmark tour. After about five real scans, a second power tour shows you the cross-library tools: Ask, Corkboard, multi-select compare, Radar, and Discover.</code></pre>
+<ul><li>☐ <strong>Step 3: Rewrite the changelog-style Vee bullet in the README</strong></li></ul>
+<p>In <code>README.md</code>, replace the v1.7.0 Vee bullet (line 64):</p>
+<pre><code>- 🔭 **Meet "Vee", an optional lens mascot** that reacts to your scans (scanning, wide-open on a strong fit, eyes-narrowed on a risky one, resting on an empty library). One theme-aware SVG, reduced-motion-safe; turn it off in **Options → Interface**.</code></pre>
+<p>with (drop the emoji; this is a historical entry, so keep the version label, just de-slop the prose):</p>
+<pre><code>- **Meet Vee, an optional lens mascot** that reacts to your scans: scanning, wide-open on a strong fit, narrowed on a risky one, resting on an empty library. One theme-aware SVG, reduced-motion safe. Turn it off in **Options → Interface**.</code></pre>
+<ul><li>☐ <strong>Step 4: Add the brand CHANGELOG entry</strong></li></ul>
+<p>In <code>CHANGELOG.md</code>, the <code>[Unreleased] → ### Added</code> section starts at line 12. Add these bullets at the top of that <code>### Added</code> list (right after line 12 <code>### Added</code>, before the existing "Vee-guided first-run walkthrough" bullet):</p>
+<pre><code>- **Mono Ink identity.** RepoLens ships a new dark-tile lens icon, a "Mono Ink" default theme (cool near-black, white, and cobalt), and a wordmark lockup. The toolbar icon now animates only while a scan runs: the aperture grows and spins and the ring breathes grey to blue, then it resets to static. Turn the animation off in **Options**, and it honors your OS reduced-motion setting. The other 13 themes stay one click away.
+- **A warmer Vee.** Vee's onboarding copy reads like a person now, not a manual. The repo also vendors the stop-slop writing standard under `docs/style/` so the voice stays consistent.</code></pre>
+<ul><li>☐ <strong>Step 5: Stop-slop pass over the rest of README + CHANGELOG</strong></li></ul>
+<p>Read <code>README.md</code> and <code>CHANGELOG.md</code> against <code>docs/style/stop-slop/references/phrases.md</code> and <code>structures.md</code>. Targeted fixes only:</p>
+<ul><li>Remove any em dash you find (replace with a comma or period). Grep to find them: <code>grep -n "—" README.md CHANGELOG.md</code>.</li><li>Replace any banned business-jargon term (e.g. "deep dive" as a verb, "navigate challenges") with plain language where it appears in prose (not in proper nouns like the "Deep Dive" feature/tab name, which stays).</li><li>Do not rewrite feature tables or bullet labels wholesale; this is a slop pass, not a rewrite.</li></ul>
+<p>Run: <code>grep -n "—" README.md CHANGELOG.md</code> Expected after fixes: no matches (exit 1 / empty output) for prose em dashes. (If a code block legitimately needs one, leave it and note why.)</p>
+<ul><li>☐ <strong>Step 6: Final human read</strong></li></ul>
+<p>Read the README intro and the new CHANGELOG bullets aloud once. Confirm they sound like a person and score ≥ 35/50 on the stop-slop rubric (Directness / Rhythm / Trust / Authenticity / Density). Adjust any sentence that sounds like a template.</p>
+<ul><li>☐ <strong>Step 7: Commit</strong></li></ul>
+<pre><code>git add README.md CHANGELOG.md
+git commit -m "docs(brand): de-slop README intro + Vee lines, add Mono Ink changelog entry"</code></pre>
+<h2>Task D4: Phase-D verification gate</h2>
+<p><strong>Files:</strong> none (verification only)</p>
+<ul><li>☐ <strong>Step 1: Full suite + lint</strong></li></ul>
+<p>Run: <code>npx vitest run &amp;&amp; npx eslint .</code> Expected: all tests pass (including <code>onboarding-copy</code>, <code>theme</code>, <code>icon-draw</code>, <code>icon-anim</code>, <code>settings-backup</code>); eslint 0 errors.</p>
+<ul><li>☐ <strong>Step 2: No stray em dashes / emoji on product copy</strong></li></ul>
+<p>Run: <code>grep -nP "[\x{2014}]" onboarding-copy.js README.md CHANGELOG.md docs/style/README.md</code> Expected: no matches in prose (exit 1). (The vendored <code>docs/style/stop-slop/**</code> files keep their original content and are exempt.)</p>
+<hr>
+<h1>Final whole-project verification</h1>
+<ul><li>☐ <strong>Step 1: Full suite + lint + manifest parse</strong></li></ul>
+<p>Run:</p>
+<pre><code>cd /Users/clubpenguin/Documents/clubP/repolens
+npx vitest run &amp;&amp; npx eslint . &amp;&amp; node -e "JSON.parse(require('fs').readFileSync('manifest.json','utf8')); console.log('manifest ok')"</code></pre>
+<p>Expected: all tests pass; eslint 0 errors; <code>manifest ok</code>.</p>
+<ul><li>☐ <strong>Step 2: Load unpacked, end-to-end smoke</strong></li></ul>
+<p>Load the unpacked extension in a fresh profile. Confirm: Mono Ink is the default theme; the dark-tile icon shows in the toolbar; a scan animates the icon and resets after; the in-app loading spinner is cobalt; Options shows both the "Animate the toolbar icon" toggle (on) and the theme picker with "Mono Ink" first; the onboarding tour reads warmly.</p>
+<ul><li>☐ <strong>Step 3: Branch wrap-up</strong></li></ul>
+<p>When all phases are committed and green, use the <code>superpowers:finishing-a-development-branch</code> skill to decide between merge / PR / cleanup.</p>
+<hr>
+<h2>Spec coverage map</h2>
+<table><thead><tr><th>Spec section</th><th>Task(s)</th></tr></thead><tbody><tr><td>§1 Name &amp; positioning / tagline</td><td>C2 (manifest + README), D3 (intro)</td></tr><tr><td>§2 Palette "Mono Ink"</td><td>B1 (theme tokens), A1 (<code>ICON_COLORS</code>), C1 (wordmark colors)</td></tr><tr><td>§3 Icon &amp; mark (dark tile, single lens, all sizes, one source)</td><td>A1, A2, A3</td></tr><tr><td>§3 Lockup (icon + Space Grotesk wordmark)</td><td>C1</td></tr><tr><td>§4 Icon animation (grow → spin, ring breathe, no sweep, OffscreenCanvas + setIcon, reset on finish/error)</td><td>A4, A5</td></tr><tr><td>§4 <code>animateIcon</code> setting + reduced-motion flag</td><td>A6</td></tr><tr><td>§5 Vee Hero/Mark, glyph recolor + scanning reuse</td><td>B3 (glyph recolor verify + tweak), A4/A5 (scan anim), C1 (mark in lockup)</td></tr><tr><td>§6 Mono Ink default theme, 13 preserved</td><td>B1, B2, B4, B5</td></tr><tr><td>§7 Voice &amp; stop-slop, no emoji, plain-friendly</td><td>D1 (vendor), D2 (onboarding), D3 (README/CHANGELOG)</td></tr><tr><td>§8 Scope (extension only; website/packaging out)</td><td>Respected — no website/store/LICENSE tasks</td></tr><tr><td>§9 Deliverables 1-7</td><td>1→A3, 2→A4/A5/A6, 3→B1/B2, 4→B3, 5→C1, 6→C2, 7→D1/D2/D3</td></tr><tr><td>§10 Verification (icon legibility, anim live, theme default+AA, voice test, regression)</td><td>A3 S5, A5 S9, B5, D2 S2 + D3 S6, Final S1-2</td></tr></tbody></table>
+<pre><code></code></pre>
+</div></body></html>

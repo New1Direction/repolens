@@ -1,10 +1,10 @@
 <div align="center">
 
-# 🔭 RepoLens
+# RepoLens
 
-### One click opens the case file on any repo.
+### Click any repo. Get a straight answer on whether to use it.
 
-**The verdict · the evidence · the red flags · how it's actually built — in plain English, before the README's pitch.**
+**The verdict, the evidence, the red flags, and how it's built. In plain English, before the README's pitch.**
 
 ![Chrome Manifest V3](https://img.shields.io/badge/Chrome-Manifest_V3-1a73e8?logo=googlechrome&logoColor=white)
 ![Zero build](https://img.shields.io/badge/build-none-0e1722)
@@ -17,9 +17,9 @@
 
 ---
 
-RepoLens is a **Manifest V3 Chrome extension**. Land on a GitHub, GitLab, npm, or PyPI page, click the toolbar icon, and it reads the repo, runs it past the AI provider of your choice, and opens a tab with a **verdict-first** breakdown — it opens with a straight answer (*should you use this?*) before any prose, not the README's marketing.
+RepoLens is a **Manifest V3 Chrome extension**. Open a GitHub, GitLab, npm, or PyPI page and click the toolbar icon. RepoLens reads the repo, runs it past the AI provider you picked, and opens a tab that leads with a straight answer: should you use this? You see the verdict before any of the README's pitch.
 
-> Stars tell you a project is popular. They don't tell you whether it fits *your* problem. RepoLens answers the question you actually have: **should I use this, and what am I signing up for?**
+> Stars tell you a project is popular. They don't tell you whether it fits your problem. RepoLens answers the question you have: should I use this, and what am I signing up for?
 
 ---
 
@@ -41,7 +41,7 @@ A scan opens to a **verdict landing** and fans out into focused tabs:
 
 Plus **SKTPG** (a one-tap State / Known-pitfalls / Trajectory / Proof / Growth read), framework lenses, and capability re-tagging.
 
-**First run:** Vee walks new users through a seeded demo repo (Library → Verdict → Blueprint) via a coachmark tour. After roughly five real scans a second "power tour" introduces the cross-library tools: Ask, Corkboard analysis, multi-select compare, Radar, and Discover.
+**First run:** Vee, the lens mascot, walks you through a seeded demo repo (Library, then Verdict, then Blueprint) with a short coachmark tour. After about five real scans, a second power tour shows you the cross-library tools: Ask, Corkboard, multi-select compare, Radar, and Discover.
 
 ---
 
@@ -61,7 +61,7 @@ A correctness, security, and tooling pass from a full code audit — fixes only,
 ### v1.7.0 — Boards, Vee & a motion pass
 
 - 🗂️ **Collections ("Boards").** Group the repos you're evaluating together and filter the Library by board — with live counts, per-card membership dots, and a one-click assignment popover. Boards travel in your library export/import.
-- 🔭 **Meet "Vee", an optional lens mascot** that reacts to your scans (scanning, wide-open on a strong fit, eyes-narrowed on a risky one, resting on an empty library). One theme-aware SVG, reduced-motion-safe; turn it off in **Options → Interface**.
+- **Meet Vee, an optional lens mascot** that reacts to your scans: scanning, wide-open on a strong fit, narrowed on a risky one, resting on an empty library. One theme-aware SVG, reduced-motion safe. Turn it off in **Options → Interface**.
 - ✨ **Subtle motion, everywhere it helps** — tactile press states, a staged tab reveal, a verdict health-bar fill, a smoother toast and modal — all respecting reduced-motion.
 - 🧭 **Errors that tell you what to do** — a failed scan now offers **Open Settings** (bad key / wrong model) or **Retry** (transient), and the loading copy names the provider it's actually using.
 
@@ -119,15 +119,15 @@ No accounts. No backend. Your keys, your machine.
 
 ## Models — your keys, your call
 
-Bring your own provider. Five are **first-class** (one-click sign-in where the vendor allows it — **Grok**, **OpenRouter**, and **OpenAI/ChatGPT** — otherwise an API key; **Claude** is API-key only) and fan out across a **smart fallback chain**: RepoLens tries them in order and drops to the next if one errors, so a single key is enough to start.
+Bring your own provider. Five are **first-class** (one-click sign-in where the vendor allows it: **Grok**, **OpenRouter**, and **OpenAI/ChatGPT**; otherwise an API key; **Claude** is API-key only) and fan out across a **smart fallback chain**: RepoLens tries them in order and drops to the next if one errors, so a single key is enough to start.
 
 **Nous** (Nous Research) **→ Gemini → OpenRouter → Grok → Anthropic**
 
-On top of those, RepoLens works with **almost any other AI service** through one registry — **OpenAI, DeepSeek, Groq, NVIDIA NIM, Kimi (Moonshot), Zhipu GLM, Qwen (Aliyun), Xiaomi MiMo, Volcengine Ark, Ollama Cloud, MiniMax, Azure OpenAI**, local **Ollama** (no key needed), and a universal **Custom** endpoint. Each keeps its **own key** (switching never loses data), has a model picker, an optional **endpoint override**, and built-in **connection / function self-tests**. Connect just one and it works — it joins the fallback chain automatically.
+On top of those, RepoLens works with **almost any other AI service** through one registry: **OpenAI, DeepSeek, Groq, NVIDIA NIM, Kimi (Moonshot), Zhipu GLM, Qwen (Aliyun), Xiaomi MiMo, Volcengine Ark, Ollama Cloud, MiniMax, Azure OpenAI**, local **Ollama** (no key needed), and a universal **Custom** endpoint. Each keeps its **own key** (switching never loses data), has a model picker, an optional **endpoint override**, and built-in **connection / function self-tests**. Connect just one and it works. It joins the fallback chain automatically.
 
-> **Sign in with ChatGPT.** The OpenAI card also offers a one-click **ChatGPT login** — the same OAuth the **Codex CLI** uses — so you can connect without pasting a key (it needs API access on your ChatGPT plan; otherwise paste a key).
+> **Sign in with ChatGPT.** The OpenAI card also offers a one-click **ChatGPT login**, the same OAuth the **Codex CLI** uses, so you can connect without pasting a key (it needs API access on your ChatGPT plan; otherwise paste a key).
 
-> Local-only? Point at **Ollama** on `localhost` — no key, no cloud. (Spawning a local *CLI* binary like `claude`/`codex` still isn't possible — a browser extension is sandboxed and can't launch a program — but it can do those CLIs' **OAuth logins**, and talk to a local HTTP model server like Ollama.)
+> Local-only? Point at **Ollama** on `localhost`. No key, no cloud. (Spawning a local *CLI* binary like `claude`/`codex` still isn't possible: a browser extension is sandboxed and can't launch a program. But it can do those CLIs' **OAuth logins**, and talk to a local HTTP model server like Ollama.)
 
 Each provider has a model dropdown (★ marks the recommended pick), and you can **route each part of a scan to a different model**:
 
@@ -139,9 +139,9 @@ Any per-part pick still falls back to the full chain if that provider errors or 
 
 ## Storage — nothing to install
 
-Your whole library lives **in the browser** (IndexedDB). No database, no daemon, no setup — it works the moment you load the extension, and it's Web-Store-ready.
+Your whole library lives **in the browser** (IndexedDB). No database, no daemon, no setup. It works the moment you load the extension, and it's Web-Store-ready.
 
-Because it's *your* data, you can take it with you: **Library → Export** writes your whole library — analyzed repos, the semantic graph, and the local scan cache — to one portable JSON file, and **Import** restores it (merge or replace) on any machine. Backups are validated and bounded on import, so a bad file fails safe. Your settings travel too: **Options → Back up your settings** exports your theme, voice, model picks and per-part routing — never your API keys.
+Because it's *your* data, you can take it with you: **Library → Export** writes your whole library (analyzed repos, the semantic graph, and the local scan cache) to one portable JSON file, and **Import** restores it (merge or replace) on any machine. Backups are validated and bounded on import, so a bad file fails safe. Your settings travel too: **Options → Back up your settings** exports your theme, voice, model picks and per-part routing, but never your API keys.
 
 Migrating from an old VelesDB server? **Options → Import from VelesDB** pulls your library across in one click.
 

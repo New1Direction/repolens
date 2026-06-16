@@ -4,15 +4,17 @@ Every release of RepoLens, newest first. Want the friendly highlights instead of
 the full detail? See **[What's new](README.md)** in the README.
 
 This project follows [Semantic Versioning](https://semver.org/) and groups changes
-by theme. Dates are when the release landed on `main` — 1.1.0 through 1.6.0 shipped
+by theme. Dates are when the release landed on `main`. 1.1.0 through 1.6.0 shipped
 the same day, as a rapid burst of improvements, so they share a date.
 
 ## [Unreleased]
 
 ### Added
 
+- **Mono Ink identity.** RepoLens ships a new dark-tile lens icon, a "Mono Ink" default theme (cool near-black, white, and cobalt), and a wordmark lockup. The toolbar icon now animates only while a scan runs: the aperture grows and spins and the ring breathes grey to blue, then it resets to static. Turn the animation off in **Options**, and it honors your OS reduced-motion setting. The other 13 themes stay one click away.
+- **A warmer Vee.** Vee's onboarding copy reads like a person now. The repo also vendors the stop-slop writing standard under `docs/style/` so the voice stays consistent.
 - **Vee-guided first-run walkthrough.** New users are met by Vee on their first Library open; the coachmark steps through a seeded demo repo (Library card → Verdict tab → Blueprint canvas) with plain narration and a spotlight on each target element. Implemented in `onboarding.js` / `coachmark.js`; copy lives in `onboarding-copy.js`.
-- **Milestone "power tour"** offered after approximately five real scans: a second coachmark sequence introducing the cross-library tools — Ask, Corkboard (Alternatives / Synergies), multi-select Compare, Radar / auto-organize, and Discover.
+- **Milestone "power tour"** offered after approximately five real scans: a second coachmark sequence introducing the cross-library tools: Ask, Corkboard (Alternatives / Synergies), multi-select Compare, Radar / auto-organize, and Discover.
 
 ---
 
