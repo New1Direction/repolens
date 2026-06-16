@@ -1,0 +1,15 @@
+{
+  "name": "repolens-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local MCP server exposing RepoLens repo analysis (scan_repo) as a tool.",
+  "bin": { "repolens-mcp": "./server.js" },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  }
+}
