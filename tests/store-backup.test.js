@@ -57,7 +57,7 @@ describe('store backup — importStores', () => {
     expect(await scrollPoints()).toHaveLength(0);
 
     const written = await importStores(dump, { mode: 'replace' });
-    expect(written).toEqual({ repos: 2, nodes: 1, edges: 1, collections: 0, decisions: 0 });
+    expect(written).toEqual({ repos: 2, nodes: 1, edges: 1, collections: 0, decisions: 0, snapshots: 2 });
     const points = await scrollPoints();
     expect(points.map((p) => p.payload.repoId).sort()).toEqual(['a/one', 'b/two']);
     const ego = await getEgoGraph('a/one');
@@ -106,4 +106,18 @@ describe('store backup — importStores', () => {
     const written = await importStores({ repos: [{ payload: { repoId: 'x' } }, null, { id: 5, payload: { repoId: 'ok/one' } }] });
     expect(written.repos).toBe(1);
   });
+});
+
+import { listSnapshots } from '../store.js';
+
+it('snapshots survive an export → clear → import round-trip', async () => {
+  await saveRepo({ repoId: 'rt/one', health: 70, stars: 0, red_flags: [] });
+  await saveRepo({ repoId: 'rt/one', health: 85, stars: 0, red_flags: [] });
+  const dump = await exportStores();
+  expect(dump.snapshots.length).toBe(1);
+  await clearLibrary();
+  expect(await listSnapshots('rt/one')).toEqual([]);
+  await importStores(dump, { mode: 'replace' });
+  const snaps = await listSnapshots('rt/one');
+  expect(snaps.map((s) => s.health)).toEqual([70, 85]);
 });

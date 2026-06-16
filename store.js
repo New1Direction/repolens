@@ -276,14 +276,15 @@ const validRows = (rows) => (rows || []).filter((r) => r && r.id != null);
 
 /** Gather every row from all stores for a backup envelope. */
 export async function exportStores() {
-  const [repos, nodes, edges, collections, decisions] = await Promise.all([
+  const [repos, nodes, edges, collections, decisions, snapshots] = await Promise.all([
     idbGetAll('repos'),
     idbGetAll('nodes'),
     idbGetAll('edges'),
     idbGetAll('collections'),
     idbGetAll('decisions'),
+    idbGetAll('snapshots'),
   ]);
-  return { repos: repos || [], nodes: nodes || [], edges: edges || [], collections: collections || [], decisions: decisions || [] };
+  return { repos: repos || [], nodes: nodes || [], edges: edges || [], collections: collections || [], decisions: decisions || [], snapshots: snapshots || [] };
 }
 
 /**
@@ -295,20 +296,21 @@ export async function exportStores() {
  * @param {{ repos?: object[], nodes?: object[], edges?: object[] }} rows
  * @param {{ mode?: 'merge'|'replace' }} [opts]
  */
-export async function importStores({ repos = [], nodes = [], edges = [], collections = [], decisions = [] } = {}, { mode = 'merge' } = {}) {
+export async function importStores({ repos = [], nodes = [], edges = [], collections = [], decisions = [], snapshots = [] } = {}, { mode = 'merge' } = {}) {
   if (mode === 'replace') {
-    await Promise.all([idbClear('repos'), idbClear('nodes'), idbClear('edges'), idbClear('collections'), idbClear('decisions')]);
+    await Promise.all([idbClear('repos'), idbClear('nodes'), idbClear('edges'), idbClear('collections'), idbClear('decisions'), idbClear('snapshots')]);
   }
-  const vr = validRows(repos), vn = validRows(nodes), ve = validRows(edges), vc = validRows(collections), vd = validRows(decisions);
+  const vr = validRows(repos), vn = validRows(nodes), ve = validRows(edges), vc = validRows(collections), vd = validRows(decisions), vs = validRows(snapshots);
   for (const row of vr) await idbPut('repos', row);
   for (const row of vn) await idbPut('nodes', row);
   for (const row of ve) await idbPut('edges', row);
   for (const row of vc) await idbPut('collections', row);
   for (const row of vd) await idbPut('decisions', row);
-  return { repos: vr.length, nodes: vn.length, edges: ve.length, collections: vc.length, decisions: vd.length };
+  for (const row of vs) await idbPut('snapshots', row);
+  return { repos: vr.length, nodes: vn.length, edges: ve.length, collections: vc.length, decisions: vd.length, snapshots: vs.length };
 }
 
 /** Wipe the whole library (all stores). Backs the "Clear library" action. */
 export async function clearLibrary() {
-  await Promise.all([idbClear('repos'), idbClear('nodes'), idbClear('edges'), idbClear('collections'), idbClear('decisions')]);
+  await Promise.all([idbClear('repos'), idbClear('nodes'), idbClear('edges'), idbClear('collections'), idbClear('decisions'), idbClear('snapshots')]);
 }

@@ -8,12 +8,12 @@
 // scan cache — round-trips through one human-readable JSON file.
 
 export const BACKUP_FORMAT = 'repolens-backup';
-export const BACKUP_VERSION = 1;
+export const BACKUP_VERSION = 2;
 
 // Upper bounds on how much a single import may write, so a hostile or corrupt
 // file can't pin the IndexedDB write lock or blow the storage quota. Anything
 // past these is dropped with a surfaced warning (never silently).
-export const MAX_ROWS = { repos: 5000, nodes: 20000, edges: 50000, cache: 5000, collections: 2000, decisions: 5000 };
+export const MAX_ROWS = { repos: 5000, nodes: 20000, edges: 50000, cache: 5000, collections: 2000, decisions: 5000, snapshots: 5000 };
 
 const arr = (x) => (Array.isArray(x) ? x : []);
 const rowHasRepo = (r) => !!(r && r.id != null && r.payload && r.payload.repoId);
@@ -22,10 +22,11 @@ const edgeOk = (e) => !!(e && e.id != null && e.source != null && e.target != nu
 const cacheOk = (c) => !!(c && c.repoId && c.platform);
 const collectionOk = (c) => !!(c && c.id != null && c.payload && typeof c.payload.name === 'string');
 const decisionOk = (d) => !!(d && d.id != null && d.payload && d.payload.repoId && d.payload.decision);
+const snapshotOk = (r) => !!(r && r.id != null && r.repoId && Array.isArray(r.snaps));
 
 /** Empty normalized shape — the safe fallback when a file can't be parsed. */
 function emptyValue() {
-  return { repos: [], nodes: [], edges: [], cache: [], collections: [], decisions: [] };
+  return { repos: [], nodes: [], edges: [], cache: [], collections: [], decisions: [], snapshots: [] };
 }
 
 /**
@@ -34,19 +35,14 @@ function emptyValue() {
  * @param {{ repos?: object[], nodes?: object[], edges?: object[], cache?: object[], exportedAt?: string }} [parts]
  * @returns {object}
  */
-export function buildBackup({ repos, nodes, edges, cache, collections, decisions, exportedAt } = {}) {
-  const r = arr(repos), n = arr(nodes), e = arr(edges), c = arr(cache), col = arr(collections), dec = arr(decisions);
+export function buildBackup({ repos, nodes, edges, cache, collections, decisions, snapshots, exportedAt } = {}) {
+  const r = arr(repos), n = arr(nodes), e = arr(edges), c = arr(cache), col = arr(collections), dec = arr(decisions), snap = arr(snapshots);
   return {
     format: BACKUP_FORMAT,
     version: BACKUP_VERSION,
     exportedAt: exportedAt || new Date().toISOString(),
-    counts: { repos: r.length, nodes: n.length, edges: e.length, cache: c.length, collections: col.length, decisions: dec.length },
-    repos: r,
-    nodes: n,
-    edges: e,
-    cache: c,
-    collections: col,
-    decisions: dec,
+    counts: { repos: r.length, nodes: n.length, edges: e.length, cache: c.length, collections: col.length, decisions: dec.length, snapshots: snap.length },
+    repos: r, nodes: n, edges: e, cache: c, collections: col, decisions: dec, snapshots: snap,
   };
 }
 
@@ -87,6 +83,7 @@ export function validateBackup(obj) {
     cache: clamp('cache', arr(obj.cache).filter(cacheOk)),
     collections: clamp('collections', arr(obj.collections).filter(collectionOk)),
     decisions: clamp('decisions', arr(obj.decisions).filter(decisionOk)),
+    snapshots: clamp('snapshots', arr(obj.snapshots).filter(snapshotOk)),
   };
   return { ok: errors.length === 0, errors, warnings, value };
 }
@@ -99,7 +96,7 @@ export function validateBackup(obj) {
  */
 export function summarizeBackup(obj) {
   const { value } = validateBackup(obj);
-  return { repos: value.repos.length, nodes: value.nodes.length, edges: value.edges.length, cache: value.cache.length, collections: value.collections.length, decisions: value.decisions.length };
+  return { repos: value.repos.length, nodes: value.nodes.length, edges: value.edges.length, cache: value.cache.length, collections: value.collections.length, decisions: value.decisions.length, snapshots: value.snapshots.length };
 }
 
 /**
