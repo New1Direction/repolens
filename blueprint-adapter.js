@@ -26,10 +26,10 @@ export function buildBlueprintScene({ deepDive, repoId, title, scanAt = null, la
     edges: links,
   });
 
-  // mark lineage roots (load-bearing) so the engine can highlight them
-  for (const n of nodes) n.ref = { ...(n.ref || {}), root: roots.has(n.id) };
+  // mark lineage roots (load-bearing) so the engine can highlight them (immutably)
+  const marked = nodes.map((n) => ({ ...n, ref: { ...(n.ref || {}), root: roots.has(n.id) } }));
 
-  const placed = layoutBlueprint(nodes, edges);
+  const placed = layoutBlueprint(marked, edges);
 
   const scene = createScene({ scope: 'blueprint', repoId, title });
   scene.nodes = placed;

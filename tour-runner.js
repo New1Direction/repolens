@@ -34,7 +34,7 @@ export function startTour({ host, engine, steps, autoplay = false }) {
   function go(n) { i = Math.max(0, Math.min(steps.length - 1, n)); render(); }
   function next() { go(i + 1); }
   function prev() { go(i - 1); }
-  function exit() { clearTimeout(timer); engine.clearSpotlight(); card.remove(); }
+  function exit() { clearTimeout(timer); engine.clearSpotlight(); card.remove(); host.removeEventListener('keydown', onKey); }
 
   const onKey = (ev) => { if (ev.key === 'ArrowRight') next(); else if (ev.key === 'ArrowLeft') prev(); else if (ev.key === 'Escape') exit(); };
   host.addEventListener('keydown', onKey);

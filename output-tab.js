@@ -559,11 +559,15 @@ async function renderCanvas(d) {
   const bar = document.createElement('div');
   bar.className = 'canvas-export-bar';
   const tourBtn = document.createElement('button'); tourBtn.textContent = '▶ Guided Tour';
-  tourBtn.onclick = () => startTour({ host: hostWrap, engine: api, steps: buildTour(api.getScene(), { roots: (dd.lineage && dd.lineage.roots) || [] }), autoplay: false });
+  let activeTour = null;
+  tourBtn.onclick = () => {
+    if (activeTour) activeTour.exit();   // tear down a prior tour first — don't stack cards/listeners on re-launch
+    activeTour = startTour({ host: hostWrap, engine: api, steps: buildTour(api.getScene(), { roots: (dd.lineage && dd.lineage.roots) || [] }), autoplay: false });
+  };
   const exEx = document.createElement('button'); exEx.textContent = '.excalidraw';
-  exEx.onclick = () => download(`${d.repoId.replace('/', '-')}.excalidraw`, 'application/json', toExcalidraw(api.getScene()));
+  exEx.onclick = () => download(`${slugify(d.repoId)}.excalidraw`, 'application/json', toExcalidraw(api.getScene()));
   const exSvg = document.createElement('button'); exSvg.textContent = 'SVG';
-  exSvg.onclick = () => download(`${d.repoId.replace('/', '-')}.svg`, 'image/svg+xml', toCanvasSvg(api.getScene()));
+  exSvg.onclick = () => download(`${slugify(d.repoId)}.svg`, 'image/svg+xml', toCanvasSvg(api.getScene()));
   bar.append(tourBtn, exEx, exSvg);
   hostWrap.appendChild(bar);
 
