@@ -3,12 +3,13 @@
 // show), and each card manages its repo: click to reopen the saved analysis, hover for
 // re-scan / source / remove actions.
 
-import { scrollPoints, deleteRepo, exportStores, importStores, clearLibrary, listCollections, saveCollection, deleteCollection, listDecisions, saveDecision } from './store.js';
+import { scrollPoints, deleteRepo, exportStores, importStores, clearLibrary, listCollections, saveCollection, deleteCollection, listDecisions, saveDecision, listAllSnapshots } from './store.js';
 import { rankRepos } from './store/search.js';
 import { DECISION_META } from './decision-log.js';
 import { makeCollection, validateCollectionName, addRepoToCollection, toggleRepoInCollection, collectionContains, sortedCollections, repoCollections, removeRepoFromCollection, nextColor, COLLECTION_COLORS } from './collections.js';
 import { listCached, removeCached, openCachedAnalysis, importCache, clearCache } from './cache.js';
 import { libraryRow, sortRows, filterRows, allCapabilities, relativeTime, sourceUrl, mergeRows, libraryStats } from './library-data.js';
+import { snapshotTrend, sparkline } from './snapshots.js';
 import { buildBackup, validateBackup, summarizeBackup, backupFilename } from './backup.js';
 import { detectPlatform } from './url-detector.js';
 import { html, escapeHtml as esc } from './safe-html.js';
@@ -42,6 +43,7 @@ function hilite(text, q) {
 }
 
 let allRows = [];
+let snapsByRepo = new Map(); // repoId → snaps[] (batch-loaded once in init)
 let cacheByRepo = new Map(); // repoId → full cached analysis (instant reopen)
 let decisionMap = new Map(); // repoId → decision payload
 const state = { query: '', sort: 'fit', capability: '', collection: '', decision: '', lang: '', view: 'list' };
@@ -153,6 +155,15 @@ function card(r) {
       ${isToday ? `<span class="lc-today" title="Scanned ${esc(when)}">Today</span>` : when ? `<span class="lc-when" title="Last scanned ${esc(r.savedAt)}">scanned ${esc(when)}</span>` : ''}
       ${isStale ? `<span class="lc-stale" title="Analysis is over 30 days old — consider re-scanning" data-act="rescan">⟳ stale</span>` : ''}
     </div>
+    ${(() => {
+      const trend = snapshotTrend(snapsByRepo.get(r.repoId) || []);
+      if (!trend) return '';
+      const svg = sparkline(trend.series, { metric: 'health', width: 96, height: 22 });
+      if (!svg) return '';
+      const sign = trend.healthDelta > 0 ? '+' : '';
+      const delta = trend.healthDelta != null ? `${sign}${trend.healthDelta}` : '';
+      return `<div class="lc-spark fit-${trend.fitTo}">${svg}<span class="lc-spark-cap">${delta ? `<b>${delta}</b> · ` : ''}${trend.count} scans${trend.daysSpan ? ` · ${trend.daysSpan}d` : ''}</span></div>`;
+    })()}
     ${tags || boardDots ? `<div class="lc-tags">${tags}${boardDots}</div>` : ''}
     <div class="lc-actions">
       <button class="lc-act${isPinned ? ' lc-act-pin-on' : ''}" data-act="pin" title="${isPinned ? 'Unpin' : 'Pin to top'}">📌</button>
@@ -2346,6 +2357,7 @@ async function init() {
 
   // Saved-library rows win (richer capabilities); local cache fills the gaps (repos
   // scanned with auto-save off) and supplies a blurb for older payloads.
+  snapsByRepo = await listAllSnapshots();
   const savedRows = points.map((p) => libraryRow(p.payload));
   const cacheRows = cachedList.filter((c) => c && c.repoId).map((c) => libraryRow(c));
   allRows = mergeRows(savedRows, cacheRows).map((r) => {

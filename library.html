@@ -489,6 +489,15 @@
   .qdec-vee-why { font: 400 10px/1 var(--mono); color: var(--muted, #6b7794); margin-left: 2px; }
   .qdec-btn.qdec-suggested { box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--accent, #8b7cff) 40%, transparent); }
   .qdec-sug-mark { font-size: 9px; color: var(--accent, #8b7cff); opacity: .8; }
+  .lc-spark { display: flex; align-items: center; gap: 8px; margin-top: 8px; color: var(--text-faint); }
+  .lc-spark.fit-strong { color: var(--ok-ink, #2f7d34); }
+  .lc-spark.fit-solid  { color: var(--accent, #2f5fae); }
+  .lc-spark.fit-care   { color: var(--warn-ink, #b8902a); }
+  .lc-spark.fit-risky  { color: var(--bad-ink, #b4322a); }
+  .lc-spark .rl-spark { flex-shrink: 0; }
+  .lc-spark-cap { font-size: 11px; color: var(--text-faint); }
+  .lc-spark-cap b { color: var(--text); }
+  @media (prefers-reduced-motion: reduce) { .lc-spark .rl-spark { transition: none; } }
 </style>
 </head>
 <body>
