@@ -2491,11 +2491,20 @@ function initLibraryPalette() {
 const INTRO_PENDING = 'rl_intro_pending';
 
 async function seedDemo() {
-  await saveRepo(DEMO_REPO);
-  try { await saveScene(demoScene()); } catch { /* scene is best-effort; the tour still runs */ }
+  // Never clobber a real scan that happens to share the demo's id (honojs/hono).
+  if (allRows.some((r) => r.repoId === DEMO_REPO.repoId && !isDemo(r))) return false;
+  try {
+    await saveRepo(DEMO_REPO);
+    await saveScene(demoScene());
+    return true;
+  } catch {
+    return false; // store failure → caller shows the normal empty state instead of a dead blank page
+  }
 }
 
 // Explicit replay (empty-state chip / palette): seed + reload into the tour.
+// seedDemo() no-ops if a real honojs/hono exists or the store fails; either way
+// we reload — the tour runs against whatever grid is present.
 async function startIntro() {
   if (sessionStorage.getItem(INTRO_PENDING)) return; // a run is already queued
   await seedDemo();
@@ -2521,6 +2530,9 @@ function runIntroTour() {
 function offerMilestone(realCount) {
   const veil = document.createElement('div'); veil.className = 'cm-veil';
   const cardEl = document.createElement('div'); cardEl.className = 'cm-card';
+  cardEl.setAttribute('role', 'dialog');
+  cardEl.setAttribute('aria-modal', 'true');
+  cardEl.setAttribute('aria-label', 'Take the milestone tour?');
   const textEl = document.createElement('p'); textEl.className = 'cm-text';
   textEl.textContent = (COPY.milestoneOffer || '').replace('{N}', String(realCount));
   const ctl = document.createElement('div'); ctl.className = 'cm-ctl';
@@ -2530,12 +2542,15 @@ function offerMilestone(realCount) {
   ctl.append(never, later, show);
   cardEl.append(textEl, ctl);
   veil.append(cardEl);
-  const close = () => { veil.remove(); };
   const persist = (patch) => chrome.storage.local.set(patch).catch(() => {});
+  const onKeydown = (e) => { if (e.key === 'Escape') { e.preventDefault(); later.click(); } };
+  const close = () => { document.removeEventListener('keydown', onKeydown); veil.remove(); };
   show.onclick = () => { close(); persist({ milestoneTourSeen: true }); startCoachmark({ steps: milestoneSteps(), copy: COPY }); };
-  later.onclick = () => { close(); persist({ milestoneSnoozeAt10: true }); };
+  later.onclick = () => { close(); persist({ milestoneSnoozeAt10: true }); }; // Escape maps here (snooze)
   never.onclick = () => { close(); persist({ milestoneTourSeen: true }); };
+  document.addEventListener('keydown', onKeydown);
   document.body.append(veil);
+  show.focus(); // move focus to the primary action on mount
 }
 
 // Run after the grid is rendered (init's non-empty path). Resumes a pending intro
@@ -2645,16 +2660,19 @@ async function init() {
     // a normal card (init then skips this branch and checkOnboarding resumes the tour).
     const { onboardingSeen } = await chrome.storage.local.get('onboardingSeen').catch(() => ({}));
     if (!onboardingSeen && !sessionStorage.getItem(INTRO_PENDING)) {
-      await seedDemo();
-      sessionStorage.setItem(INTRO_PENDING, '1');
-      location.reload();
-      return;
+      // Only queue the tour if the demo actually seeded; otherwise (real honojs/hono
+      // present or store failed) fall through to the normal empty state below.
+      if (await seedDemo()) {
+        sessionStorage.setItem(INTRO_PENDING, '1');
+        location.reload();
+        return;
+      }
     }
     // veeSvg() and EMPTY_GLYPH are static, code-owned strings — safe for the
     // STATIC-only showEmpty (no user data ever reaches innerHTML here).
     const vee = mascotOn ? `<div class="vee is-empty" aria-hidden="true" style="margin-bottom:14px">${veeSvg()}</div>` : EMPTY_GLYPH;
     showEmpty(
-      `${vee}<h2>No repos yet</h2><p>Open any <b>GitHub / GitLab / npm / PyPI</b> page and click the RepoLens icon —<br>every scan lands here automatically.</p><button id="lib-tour-chip" class="lib-tour-chip" type="button">👋 New here? Take the tour</button>`
+      `${vee}<h2>No repos yet</h2><p>Open any <b>GitHub / GitLab / npm / PyPI</b> page and click the RepoLens icon —<br>every scan lands here automatically.</p><button id="lib-tour-chip" class="lib-tour-chip" type="button">✦ New here? Take the tour</button>`
     );
     document.getElementById('lib-tour-chip')?.addEventListener('click', startIntro);
     return;

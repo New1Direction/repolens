@@ -56,8 +56,14 @@ export function isDemo(repo) {
  */
 export async function clearDemoEverywhere() {
   try {
-    const { deleteRepo, deleteScene } = await import('./store.js');
-    await deleteRepo(DEMO_REPO.repoId);
-    await deleteScene(demoScene().id);
+    const { deleteRepo, deleteScene, scrollPoints } = await import('./store.js');
+    // Only tear down when the stored honojs/hono row is actually the demo —
+    // never delete a real scan that happens to share the demo's id.
+    const points = await scrollPoints();
+    const row = points.find((p) => p?.payload?.repoId === DEMO_REPO.repoId);
+    if (row?.payload?.__demo__ === true) {
+      await deleteRepo(DEMO_REPO.repoId);
+      await deleteScene(demoScene().id);
+    }
   } catch { /* best-effort teardown */ }
 }
