@@ -486,3 +486,18 @@
 .corkboard-panel .rl-COMPARED_TO { stroke: #b3372f; }
 .corkboard-panel .rl-COMBINES { stroke: #c2691c; stroke-dasharray: 5 4; }
 .corkboard-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; color: #4a3f28; font: 13px ui-monospace, monospace; padding: 24px; }
+
+/* ── Stack Studio (canvas view of a tech-stack) ── */
+.stack-canvas { position: relative; height: 60vh; min-height: 420px; border: 1px solid var(--border, #b9a273); border-radius: 14px; overflow: hidden; background: var(--bg, #fbf6ea); }
+.stack-canvas.hidden { display: none; }
+.stack-canvas .rl-canvas { height: 100%; }
+.stack-canvas .rl-kind-repo rect { fill: var(--surface, #fffdf6); stroke: var(--text, #211c14); }
+.stack-canvas .rl-layer-frontend rect { stroke: #3b6ea5; stroke-width: 2.5; }
+.stack-canvas .rl-layer-backend  rect { stroke: #2f7d34; stroke-width: 2.5; }
+.stack-canvas .rl-layer-data     rect { stroke: #c2691c; stroke-width: 2.5; }
+.stack-canvas .rl-layer-infra    rect { stroke: #7a5bb0; stroke-width: 2.5; }
+.stack-canvas .rl-layer-testing  rect { stroke: #b3372f; stroke-width: 2.5; }
+.stack-canvas .rl-layer-tooling  rect { stroke: #6b5a36; stroke-width: 2.5; }
+.stack-canvas .rl-kind-gap rect { fill: #fbeae6; stroke: #b3372f; stroke-dasharray: 5 3; }
+.stack-canvas .rl-kind-gap text { fill: #8a2f25; }
+.stack-canvas .rl-integrates { stroke: #3b6ea5; stroke-width: 1.8; }

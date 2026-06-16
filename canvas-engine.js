@@ -21,11 +21,12 @@ export function edgeBezier(a, b) {
   return `M${sx},${sy} C${mx},${sy} ${mx},${ty} ${tx},${ty}`;
 }
 
-/** Pure: the class string for a node element (kind + optional root/fit). */
+/** Pure: the class string for a node element (kind + optional root/fit/layer). */
 export function nodeClass(n) {
   let c = `rl-node rl-kind-${n.kind}`;
   if (n.ref && n.ref.root) c += ' is-root';
   if (n.ref && n.ref.fit) c += ` rl-fit-${n.ref.fit}`;
+  if (n.layer) c += ` rl-layer-${n.layer}`;
   return c;
 }
 

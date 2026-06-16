@@ -24,4 +24,7 @@ describe('nodeClass', () => {
     expect(nodeClass({ kind: 'module', ref: { root: true } })).toBe('rl-node rl-kind-module is-root');
     expect(nodeClass({ kind: 'data', ref: {} })).toBe('rl-node rl-kind-data');
   });
+  it('includes a layer class when node.layer is set', () => {
+    expect(nodeClass({ kind: 'repo', layer: 'backend', ref: {} })).toBe('rl-node rl-kind-repo rl-layer-backend');
+  });
 });
