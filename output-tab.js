@@ -2153,6 +2153,9 @@ const SLUG_TO_TAB = Object.fromEntries(Object.entries(TAB_SLUGS).map(([k, v]) =>
 function show(n, { updateHash = true } = {}) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', Number(b.dataset.tab) === n));
   document.querySelectorAll('.tab-content').forEach((c, idx) => c.classList.toggle('active', idx === n));
+  // Blueprint canvas mounts lazily on every activation path (click, #hash deep-link, per-repo restore).
+  // renderCanvas is idempotent (dataset.mounted guard) and null-safe, so calling it on each show(27) is cheap.
+  if (n === 27) renderCanvas(lastData).catch((err) => console.error('[canvas] render failed', err));
   // Reflect the active tab on its parent menu button + close any open menus.
   document.querySelectorAll('.tab-menu').forEach(m => {
     const owns = [...m.querySelectorAll('.tab-btn')].some(b => Number(b.dataset.tab) === n);
@@ -2183,7 +2186,7 @@ document.querySelector('.tab-nav')?.addEventListener('click', e => {
     const n = Number(btn.dataset.tab);
     show(n);
     if (n === 19) renderConnections(lastData); // network tab — pull fresh on each open (like Similar)
-    if (n === 27) renderCanvas(lastData);      // blueprint canvas — mount lazily once Deep Dive atoms exist
+    // (canvas, tab 27, is dispatched inside show() so deep-link/restore paths render it too)
   }
 });
 

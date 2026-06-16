@@ -245,15 +245,23 @@ export async function saveScene(scene) {
   await idbPut('scenes', scene);
 }
 
-/** Get a single scene by id. Returns null if not found. */
+/** Get a single scene by id. Returns null if not found or on store error. */
 export async function getScene(id) {
-  return (await idbGet('scenes', String(id))) || null;
+  try {
+    return (await idbGet('scenes', String(id))) || null;
+  } catch {
+    return null;
+  }
 }
 
 /** All scenes, optionally filtered by repoId. Best-effort — [] on failure. */
 export async function listScenes(repoId) {
-  const all = (await idbGetAll('scenes')) || [];
-  return repoId == null ? all : all.filter((s) => s.repoId === repoId);
+  try {
+    const all = (await idbGetAll('scenes')) || [];
+    return repoId == null ? all : all.filter((s) => s.repoId === repoId);
+  } catch {
+    return [];
+  }
 }
 
 /** Delete a scene by id. Best-effort — never throws. */
