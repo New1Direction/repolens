@@ -15,6 +15,7 @@ the same day, as a rapid burst of improvements, so they share a date.
 - **Guided Tour.** Spotlights the architecture node-by-node in dependency order with plain-English narration drawn from the Deep Dive. Navigate with **Back / Next**, auto-play, or keyboard **← → Esc**; fully reduced-motion safe.
 - **Export to `.excalidraw` and SVG.** Download the canvas as an `.excalidraw` file (opens hand-drawn in excalidraw.com, Obsidian, or VS Code) or as a clean SVG for docs and slides.
 - **Persistent arrangements.** Node positions and canvas state are stored in a new `scenes` IndexedDB store and round-trip through the library backup/export envelope, so layouts travel with your library.
+- **Corkboard (Library-wide canvas).** A toggle in the Library page switches your whole collection into a red-string board: every scanned repo is a draggable manila card, and related repos are joined by colored string keyed to relationship type (alternatives, synergies, head-to-heads, combined ideas) and shaded by fit score. Filter by Collection to focus a board, and the arrangement is saved so it's exactly where you left it next session. Reuses the same canvas engine as Blueprint — zero new dependencies, theme-aware, reduced-motion safe.
 - **Zero-build, zero dependencies.** Plain ES modules only — no bundler, no new npm packages. Theme-aware across all 13 themes and reduced-motion safe throughout.
 
 ## [3.0.1] — 2026-06-15 · _Audit hardening_
