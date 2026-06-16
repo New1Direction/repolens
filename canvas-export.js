@@ -5,6 +5,10 @@ import { escapeHtml as esc } from './safe-html.js';
 
 const NW = 132, NH = 44;
 const seedFrom = (s) => { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) & 0xffffffff; return Math.abs(h) || 1; };
+// Coerce any coordinate to a finite number before it reaches an SVG attribute or
+// Excalidraw field. Guards against non-numeric values (e.g. strings from untrusted
+// JSON) breaking out of an attribute context. Non-finite → 0.
+const num = (v) => (Number.isFinite(+v) ? +v : 0);
 
 /** Standalone, themeable SVG snapshot of the scene. */
 export function toCanvasSvg(scene) {
@@ -12,27 +16,29 @@ export function toCanvasSvg(scene) {
   const edges = scene.edges || [];
   const ann = scene.annotations || [];
   const pos = Object.fromEntries(nodes.map((n) => [n.id, n]));
-  const minX = Math.min(0, ...nodes.map((n) => n.x)) - 20;
-  const minY = Math.min(0, ...nodes.map((n) => n.y)) - 20;
-  const maxX = Math.max(...nodes.map((n) => n.x + NW), 200) + 20;
-  const maxY = Math.max(...nodes.map((n) => n.y + NH), 200) + 60;
+  const minX = Math.min(0, ...nodes.map((n) => num(n.x))) - 20;
+  const minY = Math.min(0, ...nodes.map((n) => num(n.y))) - 20;
+  const maxX = Math.max(...nodes.map((n) => num(n.x) + NW), 200) + 20;
+  const maxY = Math.max(...nodes.map((n) => num(n.y) + NH), 200) + 60;
 
   const edgeSvg = edges.map((e) => {
     const a = pos[e.from], b = pos[e.to];
     if (!a || !b) return '';
-    const x1 = a.x + NW, y1 = a.y + NH / 2, x2 = b.x, y2 = b.y + NH / 2, mx = (x1 + x2) / 2;
+    const x1 = num(a.x) + NW, y1 = num(a.y) + NH / 2, x2 = num(b.x), y2 = num(b.y) + NH / 2, mx = (x1 + x2) / 2;
     return `<path class="ce-edge ce-${esc(e.rel)}" d="M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}" fill="none"/>`;
   }).join('');
 
-  const nodeSvg = nodes.map((n) =>
-    `<g class="ce-node ce-kind-${esc(n.kind)}"><rect x="${n.x}" y="${n.y}" width="${NW}" height="${NH}" rx="8"/>` +
-    `<text x="${n.x + NW / 2}" y="${n.y + NH / 2}" text-anchor="middle" dominant-baseline="central">${esc(n.label)}</text></g>`
-  ).join('');
+  const nodeSvg = nodes.map((n) => {
+    const x = num(n.x), y = num(n.y);
+    return `<g class="ce-node ce-kind-${esc(n.kind)}"><rect x="${x}" y="${y}" width="${NW}" height="${NH}" rx="8"/>` +
+      `<text x="${x + NW / 2}" y="${y + NH / 2}" text-anchor="middle" dominant-baseline="central">${esc(n.label)}</text></g>`;
+  }).join('');
 
-  const annSvg = ann.map((a) =>
-    `<g class="ce-note ce-${esc(a.tone)}"><rect x="${a.x}" y="${a.y}" width="150" height="48" rx="4"/>` +
-    `<text x="${a.x + 8}" y="${a.y + 20}">${esc(a.text)}</text></g>`
-  ).join('');
+  const annSvg = ann.map((a) => {
+    const x = num(a.x), y = num(a.y);
+    return `<g class="ce-note ce-${esc(a.tone)}"><rect x="${x}" y="${y}" width="150" height="48" rx="4"/>` +
+      `<text x="${x + 8}" y="${y + 20}">${esc(a.text)}</text></g>`;
+  }).join('');
 
   return `<svg class="canvas-export" viewBox="${minX} ${minY} ${maxX - minX} ${maxY - minY}" xmlns="http://www.w3.org/2000/svg">${edgeSvg}${nodeSvg}${annSvg}</svg>`;
 }
@@ -49,13 +55,14 @@ export function toExcalidraw(scene) {
 
   for (const n of scene.nodes || []) {
     const rid = `rect-${n.id}`, tid = `txt-${n.id}`;
+    const x = num(n.x), y = num(n.y);
     elements.push(base(rid, {
-      type: 'rectangle', x: n.x, y: n.y, width: 132, height: 44,
+      type: 'rectangle', x, y, width: 132, height: 44,
       backgroundColor: n.kind === 'subsystem' ? '#c2691c' : '#fffdf6',
       boundElements: [{ type: 'text', id: tid }],
     }));
     elements.push(base(tid, {
-      type: 'text', x: n.x + 8, y: n.y + 14, width: 116, height: 20, text: String(n.label),
+      type: 'text', x: x + 8, y: y + 14, width: 116, height: 20, text: String(n.label),
       fontSize: 16, fontFamily: 1, textAlign: 'center', verticalAlign: 'middle', containerId: rid,
       originalText: String(n.label), lineHeight: 1.25,
     }));
@@ -65,7 +72,7 @@ export function toExcalidraw(scene) {
   for (const e of scene.edges || []) {
     const a = pos[e.from], b = pos[e.to];
     if (!a || !b) continue;
-    const x1 = a.x + 132, y1 = a.y + 22, x2 = b.x, y2 = b.y + 22;
+    const x1 = num(a.x) + 132, y1 = num(a.y) + 22, x2 = num(b.x), y2 = num(b.y) + 22;
     elements.push(base(`arrow-${e.id}`, {
       type: 'arrow', x: x1, y: y1, width: x2 - x1, height: y2 - y1,
       points: [[0, 0], [x2 - x1, y2 - y1]],
@@ -76,8 +83,9 @@ export function toExcalidraw(scene) {
   }
 
   for (const a of scene.annotations || []) {
+    const x = num(a.x), y = num(a.y);
     elements.push(base(`note-${a.id}`, {
-      type: 'text', x: a.x, y: a.y, width: 150, height: 40, text: String(a.text),
+      type: 'text', x, y, width: 150, height: 40, text: String(a.text),
       fontSize: 14, fontFamily: 1, textAlign: 'left', verticalAlign: 'top',
       originalText: String(a.text), lineHeight: 1.25, strokeColor: a.tone === 'warn' ? '#8a480f' : '#1e1a14',
     }));

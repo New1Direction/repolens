@@ -20,6 +20,17 @@ describe('toCanvasSvg', () => {
     expect(svg).toContain('check this &lt;b&gt;');
     expect(svg).not.toContain('check this <b>');
   });
+
+  it('coerces non-numeric coordinates so they cannot inject into SVG attributes', () => {
+    const evil = {
+      nodes: [{ id: 'x', label: 'X', kind: 'module', layer: null, x: '40" onload="alert(1)', y: 0, pinned: false, ref: {} }],
+      edges: [],
+      annotations: [{ id: 'a', x: '0"><script>bad', y: 0, text: 'n', tone: 'note' }],
+    };
+    const svg = toCanvasSvg(evil);
+    expect(svg).not.toContain('onload');
+    expect(svg).not.toContain('<script>bad');
+  });
 });
 
 describe('toExcalidraw', () => {
