@@ -57,19 +57,27 @@ import { describe, it, expect } from 'vitest';
 import { toSnapshot, appendSnapshot, snapshotTrend, sparkline, SNAPSHOT_CAP } from '../snapshots.js';
 
 describe('toSnapshot', () => {
-  it('trims a payload to the snapshot shape, normalizing health and flags', () => {
+  it('trims a payload to the snapshot shape (health, flag titles, fit via deriveFit)', () => {
+    // Real red_flags carry a `severity`; deriveFit counts non-'ok' flags as warnings,
+    // so health 88 with 2 warning flags derives to 'care' — and the ledger's fit must
+    // match what the app shows (deriveFit on the same payload), so toSnapshot passes the
+    // real red_flags through unfiltered.
     const snap = toSnapshot(
-      { repoId: 'a/b', health: 88, stars: 1200, red_flags: [{ title: 'No tests' }, { title: '' }], saved_at: '2026-06-01T00:00:00.000Z' },
+      { repoId: 'a/b', health: 88, stars: 1200, red_flags: [{ title: 'No tests', severity: 'warn' }, { title: '', severity: 'warn' }], saved_at: '2026-06-01T00:00:00.000Z' },
       '2026-06-01T00:00:00.000Z'
     );
     expect(snap).toEqual({
       ts: '2026-06-01T00:00:00.000Z',
       health: 88,
-      fit: 'strong',
+      fit: 'care',
       stars: 1200,
-      flags: ['No tests'],
+      flags: ['No tests'], // empty title dropped; titles kept regardless of severity
       version: null,
     });
+  });
+  it('derives a strong fit for a healthy, flag-free repo', () => {
+    const snap = toSnapshot({ repoId: 'a/b', health: 90, stars: 0, red_flags: [] }, '2026-06-01T00:00:00.000Z');
+    expect(snap.fit).toBe('strong');
   });
   it('accepts health as a { score } object and defaults ts to saved_at', () => {
     const snap = toSnapshot({ repoId: 'a/b', health: { score: 60 }, stars: 0, red_flags: [], saved_at: '2026-06-02T00:00:00.000Z' });
@@ -237,7 +245,12 @@ export function snapshotTrend(snaps) {
  */
 export function sparkline(series, { metric = 'health', width = 120, height = 32, stroke = 'currentColor' } = {}) {
   const all = Array.isArray(series) ? series : [];
-  const pts = all.map((s, i) => ({ i, v: Number(s && s[metric]) })).filter((p) => Number.isFinite(p.v));
+  const pts = all
+    .map((s, i) => {
+      const raw = s ? s[metric] : undefined;
+      return { i, v: raw == null ? NaN : Number(raw) }; // null/undefined are not plottable (Number(null)===0)
+    })
+    .filter((p) => Number.isFinite(p.v));
   if (pts.length < 2) return null;
   const n = all.length;
   const vals = pts.map((p) => p.v);
