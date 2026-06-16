@@ -47,6 +47,9 @@ export async function saveRepo(analysis) {
     languages: analysis.languages ?? [],
     // Fit delta: snapshot the previous fit so the library can show ↑/↓ after re-scan.
     prevFitLevel,
+    // Carry the onboarding demo marker through so the seeded sample survives the
+    // round-trip and can be excluded from stats / torn down. Absent for real repos.
+    ...(analysis.__demo__ === true ? { __demo__: true } : {}),
   };
   await idbPut('repos', { id: hashRepoId(analysis.repoId), payload });
   await appendScanSnapshot(payload, existing?.payload);
