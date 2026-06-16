@@ -18,7 +18,7 @@ export function buildLibraryScene({ graph, repos = [], only = null }) {
   const rawNodes = (graph?.nodes || []).filter((n) => {
     const id = idOf(n);
     if (!id) return false;
-    if (keep && n.kind === 'idea') return (n.sources || []).every((s) => keep.has(s));
+    if (keep && n.kind === 'idea') { const src = n.sources || []; return src.length > 0 && src.every((s) => keep.has(s)); }
     if (keep) return keep.has(id);
     return true;
   });

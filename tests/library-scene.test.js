@@ -31,4 +31,10 @@ describe('buildLibraryScene', () => {
     expect(s.nodes.map((n) => n.id)).toEqual(['evanw/esbuild']);
     expect(s.edges).toHaveLength(0);
   });
+  it('excludes an idea node with empty/absent sources under a collection filter', () => {
+    const g = { nodes: [{ repoId: 'a/b', name: 'b', analyzed: true, kind: 'repo' }, { title: 'orphan idea', kind: 'idea', sources: [] }], edges: [] };
+    const s = buildLibraryScene({ graph: g, repos: [], only: ['a/b'] });
+    expect(s.nodes.some((n) => n.kind === 'idea')).toBe(false);
+    expect(s.nodes.map((n) => n.id)).toEqual(['a/b']);
+  });
 });
