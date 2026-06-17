@@ -2438,8 +2438,18 @@ document.getElementById('copy-url')?.addEventListener('click', async () => {
   await copyWithFlash(document.getElementById('copy-url'), url);
 });
 
-document.getElementById('open-library')?.addEventListener('click', () => {
-  chrome.tabs.create({ url: chrome.runtime.getURL('library.html') });
+// Return path (output → library): focus an existing Library tab if one is open,
+// otherwise open a fresh one. Mirrors background.js's focus-or-create idiom so the
+// library ↔ output round-trip never orphans duplicate Library tabs.
+document.getElementById('open-library')?.addEventListener('click', async () => {
+  const libUrl = chrome.runtime.getURL('library.html');
+  const [existing] = await chrome.tabs.query({ url: libUrl });
+  if (existing) {
+    await chrome.tabs.update(existing.id, { active: true });
+    await chrome.windows.update(existing.windowId, { focused: true });
+  } else {
+    chrome.tabs.create({ url: libUrl });
+  }
 });
 
 const CURRENT_VERSION = '3.0.0';
