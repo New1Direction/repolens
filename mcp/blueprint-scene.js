@@ -12,6 +12,7 @@ import { fetchSource, buildAtomsPrompt, parseAtoms, buildLineagePrompt, parseLin
 import { buildBlueprintScene } from '../blueprint-adapter.js';
 import { parseRepoInput } from './repo-input.js';
 import { callAnthropic } from './anthropic.js';
+import { ghOpts } from './github-auth.js';
 
 export const BLUEPRINT_TOOL = {
   name: 'blueprint_scene',
@@ -25,6 +26,8 @@ export const BLUEPRINT_TOOL = {
     required: ['repo'],
     additionalProperties: false,
   },
+  // Mirrors the real scene object returned by buildBlueprintScene (scene.js +
+  // repair-graph.js): engine-shaped nodes/edges, not a {source,target} graph.
   outputSchema: {
     type: 'object',
     properties: {
@@ -39,10 +42,22 @@ export const BLUEPRINT_TOOL = {
           properties: {
             id: { type: 'string' },
             label: { type: 'string' },
-            kind: { type: 'string' },
+            kind: { type: 'string', description: 'subsystem|module|concept|entrypoint|data' },
+            layer: { type: ['string', 'null'] },
             x: { type: 'number' },
             y: { type: 'number' },
+            pinned: { type: 'boolean' },
+            ref: {
+              type: 'object',
+              description: 'root = lineage root (load-bearing); plus purpose + files',
+              properties: {
+                root: { type: 'boolean' },
+                purpose: { type: ['string', 'null'] },
+                files: { type: 'array', items: { type: 'string' } },
+              },
+            },
           },
+          required: ['id', 'label', 'kind', 'x', 'y'],
         },
       },
       edges: {
@@ -50,22 +65,32 @@ export const BLUEPRINT_TOOL = {
         items: {
           type: 'object',
           properties: {
-            source: { type: 'string' },
-            target: { type: 'string' },
-            label: { type: 'string' },
+            id: { type: 'string' },
+            from: { type: 'string' },
+            to: { type: 'string' },
+            rel: { type: 'string', description: 'depends-on|enables|triggers|derives-from' },
+            note: { type: ['string', 'null'] },
+            userDrawn: { type: 'boolean' },
           },
+          required: ['id', 'from', 'to', 'rel'],
         },
       },
-      camera: { type: 'object' },
+      annotations: { type: 'array' },
+      camera: {
+        type: 'object',
+        properties: { x: { type: 'number' }, y: { type: 'number' }, zoom: { type: 'number' } },
+      },
+      source: { type: 'object', description: 'lens + timestamps' },
     },
-    required: ['nodes', 'edges'],
+    required: ['id', 'nodes', 'edges'],
   },
 };
 
 export async function runBlueprintScene(args) {
   const { platform, repoId } = parseRepoInput(args?.repo);
-  const repoData = await fetchRepoData(platform, repoId);
-  const source = await fetchSource(platform, repoId);
+  const opts = ghOpts();
+  const repoData = await fetchRepoData(platform, repoId, opts);
+  const source = await fetchSource(platform, repoId, opts);
   const { atoms } = parseAtoms(await callAnthropic(buildAtomsPrompt(repoData, source, null)));
   const lineage = parseLineage(await callAnthropic(buildLineagePrompt(atoms)));
   return buildBlueprintScene({ deepDive: { atoms, lineage }, repoId, title: repoId });
