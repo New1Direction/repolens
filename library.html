@@ -252,6 +252,7 @@
   .ls-pill.risky  { background: var(--fit-risky);  color: #250a08; }
   .ls-pill.unrated{ background: color-mix(in srgb, var(--text-muted) 18%, var(--surface)); color: var(--sub); }
   .ls-health { margin-left: auto; font: 600 12px var(--mono); color: var(--sub); }
+  .ls-mastery { font: 600 12px var(--mono); color: var(--sub); }
   .ls-bar { display: flex; height: 6px; border-radius: 999px; overflow: hidden; width: 80px; flex-shrink: 0; gap: 1px; }
   .ls-bar-seg { border-radius: 999px; }
   .ls-bar-strong { background: var(--fit-strong); }
@@ -614,6 +615,12 @@
       </select>
       <select class="lib-sort" id="lang-filter" title="Filter by primary language">
         <option value="">Language: All</option>
+      </select>
+      <select class="lib-sort" id="mastery-filter" title="Filter by how well you understand each repo">
+        <option value="">Mastery: All</option>
+        <option value="understood">Understood</option>
+        <option value="explored">Explored</option>
+        <option value="new">New</option>
       </select>
     </div>
     <form class="lib-ask" id="ask-bar" autocomplete="off" onsubmit="return false">
