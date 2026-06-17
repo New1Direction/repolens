@@ -365,6 +365,8 @@ async function init() {
   initOutputPalette(data);
 
   // Restore tab: URL hash takes priority (explicit intent), then per-repo memory.
+  // Default landing (no hash, no stored tab) = Decide, with its act-tab marked
+  // active so routing state is consistent on first view.
   const hashTab = SLUG_TO_TAB[location.hash.slice(1)];
   if (hashTab != null) {
     show(hashTab, { updateHash: false });
@@ -372,7 +374,10 @@ async function init() {
     chrome.storage.local.get(`repolens_tab_${data.repoId}`).then((res) => {
       const stored = res[`repolens_tab_${data.repoId}`];
       if (stored != null && stored !== 9) show(stored, { updateHash: true });
-    }).catch(() => {});
+      else show(9, { updateHash: false });
+    }).catch(() => show(9, { updateHash: false }));
+  } else {
+    show(9, { updateHash: false });
   }
 
   // Header logo becomes Vee, reacting to the verdict (one-shot pop/squint on mount).
@@ -2235,7 +2240,7 @@ function renderSubNav(actId) {
   // A single-tab act (Decide) needs no secondary row.
   sub.innerHTML = tabs.length <= 1
     ? ''
-    : tabs.map((n) => `<button class="tab-btn" data-tab="${n}">${TAB_LABELS[n]}</button>`).join('');
+    : tabs.map((n) => `<button class="tab-btn"${n === 14 ? ' id="tab-sktpg"' : ''} data-tab="${n}">${TAB_LABELS[n]}</button>`).join('');
 
   if (actId === 'deeper') {
     sub.insertAdjacentHTML('afterbegin',
@@ -2254,6 +2259,10 @@ function renderSubNav(actId) {
       btn.appendChild(i);
     }
   });
+
+  // The Go-Deeper subnav owns the SKTPG button; re-apply its visibility setting
+  // now that #tab-sktpg has just been (re)rendered, so an off-toggle still hides it.
+  if (actId === 'deeper' && typeof applySktpgVisibility === 'function') applySktpgVisibility();
 }
 
 function show(n, { updateHash = true } = {}) {
