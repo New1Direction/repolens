@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Concept Substrate — Implementation Plan</title>
+  <style>
+    :root { --ink:#0f1115; --surface:#fff; --paper:#f6f7f9; --grey:#6b7280; --line:#e5e7eb; --cobalt:#2563eb; --electric:#1d4ed8; --good:#15803d; --warn:#b45309; --radius:12px; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--paper); color:var(--ink); font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+    .wrap { max-width:880px; margin:0 auto; padding:56px 24px 96px; }
+    header.doc { border-left:4px solid var(--cobalt); padding:4px 0 4px 20px; margin-bottom:28px; }
+    header.doc h1 { font-size:1.9rem; line-height:1.15; margin:0 0 10px; letter-spacing:-0.02em; }
+    .meta { color:var(--grey); font-size:0.92rem; } .meta strong { color:var(--ink); }
+    .callout { background:var(--surface); border:1px solid var(--line); border-left:4px solid var(--cobalt); border-radius:8px; padding:12px 18px; margin:16px 0; font-size:0.94rem; }
+    .callout.warn { border-left-color:var(--warn); }
+    h2 { font-size:1.3rem; margin:36px 0 12px; padding-bottom:8px; border-bottom:1px solid var(--line); letter-spacing:-0.01em; }
+    p { margin:10px 0; } ul { padding-left:22px; } li { margin:5px 0; }
+    code { background:var(--paper); border:1px solid var(--line); border-radius:5px; padding:1px 6px; font-size:0.84em; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+    .phase { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:6px 22px 16px; margin:16px 0; }
+    .phase .ph-tag { display:inline-block; margin:16px 0 2px; font-weight:700; letter-spacing:.03em; color:var(--electric); }
+    .task { border-top:1px solid var(--line); padding:11px 0; } .task:first-of-type { border-top:none; }
+    .task .t-name { font-weight:650; } .task .files { color:var(--grey); font-size:.84rem; margin-top:3px; } .task .what { margin-top:4px; font-size:.94rem; }
+    .pill { display:inline-block; font-size:.72rem; font-weight:700; padding:2px 8px; border-radius:999px; border:1px solid var(--line); color:var(--grey); margin-right:6px; }
+    .pill.new { color:var(--good); border-color:#bbf7d0; background:#f0fdf4; } .pill.mod { color:var(--warn); border-color:#fde68a; background:#fffbeb; }
+    footer { margin-top:48px; color:var(--grey); font-size:.85rem; border-top:1px solid var(--line); padding-top:16px; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="doc">
+    <h1>Concept Substrate</h1>
+    <div class="meta">
+      <strong>Implementation plan</strong> &middot; Pillar 3 / Spec 2a &middot; 2026-06-16 &middot; branch <code>feat/concept-substrate</code><br>
+      Overview for review. Full step-by-step code (TDD steps, commands, commits) lives in the companion <code>.md</code>.
+    </div>
+  </header>
+
+  <div class="callout">
+    <strong>Goal.</strong> Persist deep-dive atoms per repo and link repos by shared concepts — lexical everywhere, embeddings where the provider supports them — exposing a link/index API for the later UI (2b) and anchor explanations (2c). No user-visible surface in 2a; no hosted backend.
+  </div>
+
+  <h2>Build order (two phases, one plan)</h2>
+  <ul>
+    <li><strong>Phase 1 (Tasks 1–3) — lexical substrate.</strong> <code>concepts.js</code> (incl. cosine/embedding math as pure fns), the <code>concepts</code> store, atom persistence (<code>vectors: null</code>). No AI / provider-call changes. Ships a working lexical concept graph + the hybrid's fallback path.</li>
+    <li><strong>Phase 2 (Tasks 4–5) — embeddings path.</strong> <code>providers.js</code> capability + <code>callEmbeddings</code> + embed-on-deep-dive, caching vectors when supported.</li>
+  </ul>
+
+  <div class="callout warn">
+    <strong>v1 embeddings scope:</strong> OpenAI-protocol compat providers (OpenAI is in <code>COMPAT_PROVIDERS</code>; plus any tagged with an embeddings model). The 5 first-class providers (Anthropic/Google/OpenRouter/xAI/Nous) use a separate call path and fall back to lexical in v1 — <strong>Google embeddings is a deliberate follow-up</strong> (the spec mentioned it; narrowed to stay bounded).
+  </div>
+
+  <div class="phase">
+    <span class="ph-tag">Phase 1 — Lexical substrate</span>
+    <div class="task">
+      <div class="t-name">Task 1 &middot; <code>concepts.js</code> + tests <span class="pill new">create</span></div>
+      <div class="files"><code>concepts.js</code>, <code>tests/concepts.test.js</code></div>
+      <div class="what">Full TDD: <code>normalizeConcept</code>, <code>cosineSimilarity</code>, <code>conceptIndex</code> (lexical), <code>lexicalMatcher</code>, <code>bestEmbeddingMatch</code>, <code>deriveConceptLinks</code> (per-pair hybrid: both-have-vectors → embedding, else lexical).</div>
+    </div>
+    <div class="task">
+      <div class="t-name">Task 2 &middot; <code>concepts</code> IDB store + CRUD <span class="pill mod">modify</span></div>
+      <div class="files"><code>store/idb.js</code> (v6→v7), <code>store.js</code>, <code>tests/store-concepts.test.js</code></div>
+      <div class="what"><code>getConcepts</code> / <code>getAllConcepts</code> / <code>setConcepts</code>, mirroring <code>mastery</code>; round-trip tested with fake-indexeddb.</div>
+    </div>
+    <div class="task">
+      <div class="t-name">Task 3 &middot; Persist atoms on deep-dive completion <span class="pill mod">modify</span></div>
+      <div class="files"><code>background.js</code> (<code>runDeepDive</code>, ~L806)</div>
+      <div class="what">Best-effort <code>setConcepts(repoId, {atoms, vectors:null, …})</code> before <code>status:'done'</code>. Never fails the dive.</div>
+    </div>
+  </div>
+
+  <div class="phase">
+    <span class="ph-tag">Phase 2 — Embeddings path</span>
+    <div class="task">
+      <div class="t-name">Task 4 &middot; Provider embeddings capability <span class="pill mod">modify</span></div>
+      <div class="files"><code>providers.js</code>, <code>tests/concepts-embeddings.test.js</code></div>
+      <div class="what"><code>embeddingsModel</code> on OpenAI's entry + <code>providerSupportsEmbeddings</code>, <code>compatEmbeddingsEndpoint</code> (derive <code>/embeddings</code> from the chat URL), <code>embeddingsModelFor</code>, <code>pickEmbeddingsProvider</code>.</div>
+    </div>
+    <div class="task">
+      <div class="t-name">Task 5 &middot; <code>callEmbeddings</code> + embed-on-deep-dive <span class="pill mod">modify</span></div>
+      <div class="files"><code>background.js</code>, <code>providers.js</code> (pure body/parse), tests</div>
+      <div class="what">Pure <code>embeddingsBody</code>/<code>parseEmbeddings</code> in providers.js (testable); <code>callEmbeddings</code> wraps <code>fetchWithTimeout</code> (errors → null → lexical); <code>runDeepDive</code> embeds atom text when a provider supports it.</div>
+    </div>
+  </div>
+
+  <div class="phase">
+    <span class="ph-tag">Phase 3 — Verification</span>
+    <div class="task">
+      <div class="t-name">Task 6 &middot; Full pass</div>
+      <div class="what"><code>vitest run</code> (prior + 3 new test files) &middot; <code>eslint .</code> 0 errors &middot; <code>check:html</code> &middot; <code>node --check</code> &middot; manual note (OpenAI key → vectors cached; Anthropic → null → lexical; no user surface yet).</div>
+    </div>
+  </div>
+
+  <h2>Spec coverage</h2>
+  <ul>
+    <li>Persist atoms to a new store: Tasks 2, 3. Pure concept/cosine/matcher logic: Task 1.</li>
+    <li>Provider-gated embeddings + error→null→lexical fallback: Tasks 4, 5.</li>
+    <li>No backend; embeddings the only new provider call; existing contracts unchanged (additive, best-effort).</li>
+    <li>Pure module fully tested; persistence via fake-indexeddb; embeddings body/parse + capability tested; the <code>callEmbeddings</code> fetch wrapper verified by <code>node --check</code> + review (SW module can't import under vitest).</li>
+  </ul>
+
+  <h2>Out of scope (per spec)</h2>
+  <p>UI (2b), anchor-to-library (2c), embeddings for first-class providers incl. Google (v1 = OpenAI-protocol compat providers).</p>
+
+  <footer>RepoLens &middot; Pillar 3 / Spec 2a plan &middot; review, then execute task-by-task (subagent-driven).</footer>
+
+</div>
+</body>
+</html>
