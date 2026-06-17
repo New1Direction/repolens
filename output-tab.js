@@ -2237,6 +2237,12 @@ function renderSubNav(actId) {
     ? ''
     : tabs.map((n) => `<button class="tab-btn" data-tab="${n}">${TAB_LABELS[n]}</button>`).join('');
 
+  if (actId === 'deeper') {
+    sub.insertAdjacentHTML('afterbegin',
+      `<button class="tab-menu-run" id="run-all-lenses">▸ Run all lenses ` +
+      `<span id="lens-progress" style="font:500 10px/1 ui-monospace,monospace;opacity:.7;margin-left:4px"></span></button>`);
+  }
+
   // Mark scan buttons that have an explainer with a subtle ⓘ (per-render, so
   // freshly-rendered subnav buttons get one; the tip listeners in initScanTips
   // delegate from #act-subnav and survive this re-render).
