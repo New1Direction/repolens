@@ -1959,6 +1959,7 @@ function verdictDashboard(d) {
     <p class="v-what">${what}</p>
     <div class="v-fit fit-${fit.level}"><span class="v-chip">${esc(fit.label)}</span><span class="v-why">${esc(fit.why)}</span></div>
     ${line}
+    <div id="vd-decision-anchor"></div>
     <div class="v-facts">${cells}</div>
     ${flags}
     ${entries}
@@ -2109,7 +2110,10 @@ async function renderDecisionControl(d) {
       <span class="dl-saved-msg" id="dl-saved-msg"></span>
     </div>
   `;
-  host.appendChild(block);
+  // Anchor near the top of Decide (after fit + bottom line); fall back to host end.
+  const anchor = host.querySelector('#vd-decision-anchor');
+  if (anchor) anchor.appendChild(block);
+  else host.appendChild(block);
 
   let selected = existing?.decision || null;
 
