@@ -812,7 +812,12 @@ function renderHighlights(d) {
   }
 
   host.querySelectorAll('.hl-row.clickable').forEach(row => {
-    row.addEventListener('click', () => show(Number(row.dataset.jump)));
+    row.addEventListener('click', () => {
+      const n = Number(row.dataset.jump);
+      show(n);
+      const behavior = matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+      document.getElementById('t' + n)?.scrollIntoView({ behavior, block: 'start' });
+    });
   });
 }
 
