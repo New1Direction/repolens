@@ -2,7 +2,7 @@ import { detectPlatform } from './url-detector.js';
 import { fetchRepoData } from './fetcher.js';
 import { buildPrompt } from './prompt.js';
 import { parseClaudeResponse } from './parser.js';
-import { saveAnalysis, searchLibrary, upsertNode, addEdge, scrollLibrary, scrollPoints, saveRepo } from './store.js';
+import { saveAnalysis, searchLibrary, upsertNode, addEdge, scrollLibrary, scrollPoints, saveRepo, setConcepts } from './store.js';
 import { buildAttemptPlan } from './routing.js';
 import {
   COMPAT_PROVIDERS,
@@ -802,6 +802,18 @@ async function runDeepDive(sessionKey, detected) {
     await setDeep({ status: 'feynman' });
     const feynman = parseFeynman(await callAI(keys, withTone(keys.tone, buildFeynmanPrompt(repoData, atoms, lineage)), 'deepdive'));
     await setDeep({ feynman });
+
+    // Persist atoms for the Knowledge-Graph concept substrate (best-effort —
+    // a substrate write must never fail the dive). Vectors are added in Phase 2.
+    try {
+      await setConcepts(detected.repoId, {
+        repoId: detected.repoId,
+        atoms,
+        vectors: null,
+        embedModel: null,
+        computedAt: new Date().toISOString(),
+      });
+    } catch { /* substrate is additive; ignore */ }
 
     await setDeep({ status: 'done' });
   } catch (err) {
