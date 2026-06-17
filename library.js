@@ -3,7 +3,8 @@
 // show), and each card manages its repo: click to reopen the saved analysis, hover for
 // re-scan / source / remove actions.
 
-import { scrollPoints, deleteRepo, deleteSnapshots, exportStores, importStores, clearLibrary, listCollections, saveCollection, deleteCollection, listDecisions, saveDecision, listAllSnapshots, getLibraryGraph, getScene, saveScene, saveRepo, deleteScene } from './store.js';
+import { scrollPoints, deleteRepo, deleteSnapshots, exportStores, importStores, clearLibrary, listCollections, saveCollection, deleteCollection, listDecisions, saveDecision, listAllSnapshots, getLibraryGraph, getScene, saveScene, saveRepo, deleteScene, getAllMastery } from './store.js';
+import { levelLabel } from './mastery.js';
 import { introStageA, shouldOfferMilestone, milestoneSteps, COPY } from './onboarding.js';
 import { startCoachmark } from './coachmark.js';
 import { DEMO_REPO, demoScene, isDemo } from './demo-repo.js';
@@ -189,10 +190,13 @@ function card(r, i = 0) {
   const evalBadge = evalScore !== null
     ? `<button class="lc-eval-badge" data-act="eval" title="Evaluation: ${evalScore.toFixed(1)}/5 — click to edit">▣ ${evalScore.toFixed(1)}</button>`
     : `<button class="lc-eval-badge lc-eval-empty" data-act="eval" title="Add evaluation scores">▣</button>`;
+  const M_GLYPH = { new: '○', explored: '◐', understood: '●' };
+  const mLevel = r.masteryLevel || 'new';
+  const masteryDot = `<span class="lib-mastery m-${mLevel}" title="${esc(levelLabel(mLevel))}">${M_GLYPH[mLevel]}</span>`;
   return `<div class="lib-card${sel ? ' is-selected' : ''}${isPinned ? ' is-pinned' : ''}" style="animation-delay:${revealDelay}ms" data-repo="${esc(r.repoId)}" title="${r.hasCache ? 'Open the saved analysis (instant, no AI call)' : 'Open the project page'}">
     <div class="lc-top">
       <input type="checkbox" class="lc-check"${sel ? ' checked' : ''} aria-label="Select ${esc(r.name)} for removal" title="Select for bulk removal">
-      <span class="lc-name">${hilite(r.name, hq)}</span>
+      ${masteryDot}<span class="lc-name">${hilite(r.name, hq)}</span>
       ${isDemo(r) ? '<span class="cm-badge-demo" title="A sample repo Vee seeded for the tour">DEMO</span>' : ''}
       ${owner ? `<span class="lc-owner">${hilite(owner, hq)}</span>` : ''}
       ${platformBadge}
@@ -2630,12 +2634,13 @@ async function init() {
   document.getElementById('lib-btn-corkboard')?.addEventListener('click', toggleCorkboardView);
   wireToolbar(); // before the empty-state return, so Import works on an empty library
 
-  const [points, cachedList, prefs, savedCollections, savedDecisions] = await Promise.all([
+  const [points, cachedList, prefs, savedCollections, savedDecisions, masteryMap] = await Promise.all([
     scrollPoints(),
     listCached().catch(() => []),
     chrome.storage.local.get(['librarySort', 'mascotEnabled', 'repolens_pinned', SAVED_FILTERS_KEY]).catch(() => ({})),
     listCollections().catch(() => []),
     listDecisions().catch(() => []),
+    getAllMastery(),
   ]);
   decisionMap = new Map(savedDecisions.map((d) => [d.repoId, d]));
   pinned = new Set(Array.isArray(prefs?.repolens_pinned) ? prefs.repolens_pinned : []);
@@ -2685,6 +2690,7 @@ async function init() {
       hasCache: !!cached,
       blurb: r.blurb || cached?.description || '',
       searchText: searchParts.join(' '),
+      masteryLevel: masteryMap[r.repoId]?.level || 'new',
     };
   });
 
