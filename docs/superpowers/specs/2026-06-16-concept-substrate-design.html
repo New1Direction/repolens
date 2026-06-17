@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Concept Substrate — Pillar 3, Spec 2a</title>
+  <style>
+    :root { --ink:#0f1115; --surface:#fff; --paper:#f6f7f9; --grey:#6b7280; --line:#e5e7eb; --cobalt:#2563eb; --electric:#1d4ed8; --good:#15803d; --warn:#b45309; --radius:12px; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--paper); color:var(--ink); font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+    .wrap { max-width:860px; margin:0 auto; padding:56px 24px 96px; }
+    header.doc { border-left:4px solid var(--cobalt); padding:4px 0 4px 20px; margin-bottom:28px; }
+    header.doc h1 { font-size:1.95rem; line-height:1.15; margin:0 0 10px; letter-spacing:-0.02em; }
+    .meta { color:var(--grey); font-size:0.92rem; } .meta strong { color:var(--ink); }
+    .pillars { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:14px 20px; margin:16px 0 0; font-size:.92rem; }
+    .pillars .now { color:var(--electric); font-weight:600; }
+    h2 { font-size:1.3rem; margin:38px 0 12px; padding-bottom:8px; border-bottom:1px solid var(--line); letter-spacing:-0.01em; }
+    p { margin:10px 0; } ul { padding-left:22px; } li { margin:5px 0; }
+    code { background:var(--paper); border:1px solid var(--line); border-radius:5px; padding:1px 6px; font-size:0.84em; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+    pre { background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--cobalt); border-radius:8px; padding:12px 16px; overflow:auto; font-size:0.84rem; line-height:1.5; }
+    .comp { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:6px 22px 16px; margin:14px 0; }
+    .comp .tag { display:inline-block; margin:14px 0 2px; font-weight:700; color:var(--electric); }
+    .flag { background:var(--surface); border:1px solid var(--line); border-left:4px solid var(--warn); border-radius:8px; padding:12px 18px; margin:14px 0; font-size:.94rem; }
+    .note { background:var(--surface); border:1px solid var(--line); border-left:4px solid var(--cobalt); border-radius:8px; padding:12px 18px; margin:16px 0; font-size:0.94rem; }
+    footer { margin-top:48px; color:var(--grey); font-size:.85rem; border-top:1px solid var(--line); padding-top:16px; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="doc">
+    <h1>Concept Substrate</h1>
+    <div class="meta">
+      <strong>Pillar 3 &middot; Spec 2a</strong> (the Knowledge Graph) &middot; 2026-06-16 &middot; Status: <strong>Approved (design)</strong> — pending plan<br>
+      Surface: the deep-dive pipeline + a new pure concept module + the local graph store. <strong>No user-facing UI in 2a.</strong>
+    </div>
+    <div class="pillars">
+      Spec 2 decomposition:
+      <div><span class="now">2a — Concept substrate</span> &larr; this (persist atoms, index concepts, link repos by shared concepts)</div>
+      <div>2b — Concept connections in the UI (corkboard / ego-graph + mastery annotation)</div>
+      <div>2c — Anchor-to-library explanation (explain a new repo against repos you know)</div>
+    </div>
+  </header>
+
+  <h2>The gap</h2>
+  <p>RepoLens already has a persistent graph (the <code>nodes</code>/<code>edges</code> stores) shown as the <strong>Corkboard</strong> and the per-repo <strong>Connections</strong> ego-graph — but repos are linked only by <em>relationships</em> (<code>ALTERNATIVE_TO</code>, <code>SYNERGIZES_WITH</code>, <code>COMPARED_TO</code>, <code>COMBINES</code>), <strong>never by shared concepts</strong>. The deep dive produces rich per-repo <strong>atoms</strong> (<code>{id,name,kind,purpose,files}</code>), uses them for the blueprint, then <strong>discards them</strong>. So nothing answers "which repos touch event-sourcing?" That substrate is the missing foundation for "plug pieces together, think in new ways."</p>
+
+  <h2>Goals</h2>
+  <ul>
+    <li><strong>Persist</strong> each repo's deep-dive atoms locally (already produced — no new call for the atoms).</li>
+    <li><strong>Link repos by shared concepts</strong> via a pluggable matcher: embeddings where the provider supports them, lexical fallback otherwise.</li>
+    <li>Expose a clean link/index API (<code>deriveConceptLinks</code>, <code>conceptIndex</code>) for 2b and 2c.</li>
+  </ul>
+
+  <h2>Non-goals</h2>
+  <ul>
+    <li><strong>No user-facing UI in 2a</strong> (that's 2b) — data + API, validated by tests.</li>
+    <li>No hosted backend (embeddings via BYO provider; vectors in IDB; cosine local JS).</li>
+    <li>No changes to existing relationship edges / Corkboard / Connections rendering.</li>
+  </ul>
+
+  <div class="flag">
+    <strong>Two departures to call out.</strong>
+    <ol>
+      <li><strong>2a touches <code>background.js</code> and adds a new AI call</strong> (the embeddings request) — a deliberate departure from the Mastery Loop's "no background/AI changes," the direct consequence of choosing embeddings. Still <strong>no hosted backend</strong>: the call goes to the BYO provider, vectors cache in IDB, cosine is local.</li>
+      <li><strong>2a ships nothing the user sees</strong> — the visible payoff (concept links on the Corkboard) is 2b. Output here = persisted data + the link API, validated by unit tests. Build order within 2a: lexical substrate first (the fallback), then embeddings layered on.</li>
+    </ol>
+  </div>
+
+  <h2>Components</h2>
+
+  <div class="comp">
+    <span class="tag">&#9312; Persist atoms — new <code>concepts</code> IDB store (v6&rarr;v7)</span>
+    <p>On deep-dive completion, persist atoms (best-effort — never fails the scan), keyed by raw repoId (mirrors <code>decisions</code>/<code>mastery</code>):</p>
+    <pre>concepts[repoId] = {
+  repoId,
+  atoms: [{ id, name, kind, purpose, files }],   // from parseAtoms
+  vectors: number[][] | null,                     // per-atom embedding (aligned), null when none
+  embedModel: string | null,
+  computedAt,
+}</pre>
+    <p><code>store.js</code> CRUD (no compute in the store): <code>getConcepts</code>, <code>getAllConcepts</code>, <code>setConcepts</code>.</p>
+  </div>
+
+  <div class="comp">
+    <span class="tag">&#9313; Pure logic — <code>concepts.js</code> (no DOM/network/AI)</span>
+    <ul>
+      <li><code>normalizeConcept(atom)</code> &rarr; canonical lexical key (lowercase/strip/stopwords).</li>
+      <li><code>cosineSimilarity(a, b)</code> &rarr; number in [-1, 1] (0 for zero / length-mismatched vectors).</li>
+      <li>Matchers behind one interface: <strong>lexical</strong> (concept&rarr;repos index over normalized keys + light token-overlap merge via <code>store/search.js</code>) and <strong>embedding</strong> (links repos with a cross-repo atom pair at cosine &ge; threshold, tunable ~0.82).</li>
+      <li><code>deriveConceptLinks(records, { matcher })</code> &rarr; <code>[{ a, b, shared:[labels], score }]</code>. Per-repo hybrid: embeddings only when <strong>both</strong> repos have vectors, else lexical for that pair. <code>shared</code> = shared normalized keys (lexical) or matched atom names (embedding).</li>
+      <li><code>conceptIndex(records)</code> &rarr; <code>{ conceptLabel: repoId[] }</code> over the <strong>lexical</strong> concepts (named concept &rarr; repos; what 2b/2c read). Lexical-only — embeddings link repo pairs without discrete labels, so this takes no matcher.</li>
+    </ul>
+  </div>
+
+  <div class="comp">
+    <span class="tag">&#9314; Embeddings path — provider-gated</span>
+    <ul>
+      <li><strong>Capability:</strong> <code>providers.js</code> gains per-provider embeddings metadata (OpenAI &rarr; <code>text-embedding-3-small</code>, Google &rarr; <code>text-embedding-004</code>, most OpenAI-compatible &rarr; their <code>/embeddings</code>; none for Anthropic) + <code>providerSupportsEmbeddings(id)</code>.</li>
+      <li><strong>Call:</strong> new <code>callEmbeddings(texts)</code> in <code>background.js</code> (OpenAI-compatible <code>/embeddings</code>, BYO-key, same hard timeout as <code>callAI</code>) &rarr; <code>number[][]</code>. Errors degrade to <code>null</code> vectors (&rarr; lexical), never breaking the deep dive.</li>
+      <li><strong>When:</strong> on deep-dive completion, if the provider supports embeddings, embed each atom's <code>name + purpose</code> and cache vectors; else <code>vectors: null</code>.</li>
+    </ul>
+  </div>
+
+  <h2>Architecture (files)</h2>
+  <ul>
+    <li><strong>Create</strong> <code>concepts.js</code> (pure) + <code>tests/concepts.test.js</code>.</li>
+    <li><strong>Modify</strong> <code>store/idb.js</code> (v6&rarr;v7 + <code>'concepts'</code>), <code>store.js</code> (concepts CRUD) + <code>tests/store-concepts.test.js</code>.</li>
+    <li><strong>Modify</strong> <code>providers.js</code> (embeddings capability) and <code>background.js</code> (persist atoms + <code>callEmbeddings</code> + embed-on-deep-dive).</li>
+  </ul>
+
+  <h2>Testing</h2>
+  <ul>
+    <li><strong>vitest (pure):</strong> cosine (orthogonal=0, identical=1, length-mismatch=0), normalize, lexical matcher (shared-key + near-dup merge), embedding matcher (hand-built vectors over threshold), <code>deriveConceptLinks</code> hybrid selection, <code>conceptIndex</code> shape.</li>
+    <li><strong>vitest + fake-indexeddb:</strong> concepts CRUD round-trip; v7 store creation.</li>
+    <li><strong>Mocked fetch:</strong> <code>callEmbeddings</code> incl. error&rarr;null; <code>providerSupportsEmbeddings</code> table tests.</li>
+    <li>Existing suite green; <code>eslint .</code> 0 errors; HTML gate; <code>node --check</code>.</li>
+  </ul>
+
+  <h2>Acceptance criteria</h2>
+  <ul>
+    <li>After a deep dive, atoms persist to the <code>concepts</code> store (best-effort; failure never breaks the scan).</li>
+    <li>Embeddings-capable provider &rarr; vectors cached; Anthropic / no endpoint &rarr; <code>vectors: null</code> + lexical matcher.</li>
+    <li><code>deriveConceptLinks</code> links repos by shared concepts with labels; hybrid uses embeddings only when both repos have vectors, else lexical.</li>
+    <li><code>concepts.js</code> fully unit-tested; persistence via fake-indexeddb; <code>callEmbeddings</code> mocked incl. error&rarr;null.</li>
+    <li>No hosted backend; embeddings is the only new provider call; existing scan/lens contracts unchanged.</li>
+    <li>All existing tests pass + new; <code>eslint .</code> 0 errors; HTML gate passes.</li>
+  </ul>
+
+  <div class="note">
+    <strong>Resolved decisions:</strong> slice = 2a substrate; matcher = hybrid (embeddings + lexical, per-repo); build lexical-first then embeddings; atoms &rarr; new <code>concepts</code> IDB store (v7), CRUD-only; embeddings via an OpenAI-compatible <code>/embeddings</code> call in <code>background.js</code>, provider-gated, vectors + cosine local; no UI in 2a.
+  </div>
+
+  <footer>RepoLens &middot; Pillar 3 / Spec 2a design &middot; review, then it becomes an implementation plan.</footer>
+
+</div>
+</body>
+</html>
