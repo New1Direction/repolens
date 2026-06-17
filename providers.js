@@ -330,3 +330,17 @@ export function parseAnthropicText(json) {
   if (!t) throw new Error('Provider returned no text content');
   return t;
 }
+
+/** Request body for an OpenAI-compatible /embeddings POST. */
+export function embeddingsBody(model, input) {
+  return { model, input };
+}
+
+/** Parse embedding vectors from an OpenAI-compatible /embeddings response, ordered by index. */
+export function parseEmbeddings(json) {
+  const data = Array.isArray(json?.data) ? json.data : [];
+  return data
+    .slice()
+    .sort((x, y) => (x.index ?? 0) - (y.index ?? 0))
+    .map((d) => (Array.isArray(d.embedding) ? d.embedding : []));
+}

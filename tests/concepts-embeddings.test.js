@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { providerSupportsEmbeddings, compatEmbeddingsEndpoint, embeddingsModelFor } from '../providers.js';
+import { embeddingsBody, parseEmbeddings } from '../providers.js';
 
 describe('embeddings capability', () => {
   it('openai supports embeddings when connected (has a key)', () => {
@@ -15,5 +16,15 @@ describe('embeddings capability', () => {
   it('embeddingsModelFor prefers an override then the default', () => {
     expect(embeddingsModelFor('openai', {})).toBe('text-embedding-3-small');
     expect(embeddingsModelFor('openai', { openaiEmbedModel: 'text-embedding-3-large' })).toBe('text-embedding-3-large');
+  });
+});
+
+describe('embeddings body + parse', () => {
+  it('builds the request body', () => {
+    expect(embeddingsBody('text-embedding-3-small', ['a', 'b'])).toEqual({ model: 'text-embedding-3-small', input: ['a', 'b'] });
+  });
+  it('parses vectors ordered by index', () => {
+    const json = { data: [{ index: 1, embedding: [3, 4] }, { index: 0, embedding: [1, 2] }] };
+    expect(parseEmbeddings(json)).toEqual([[1, 2], [3, 4]]);
   });
 });

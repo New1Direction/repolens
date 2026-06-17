@@ -17,6 +17,9 @@ import {
   parseOpenAiText,
   parseAnthropicText,
   compatStorageKeys,
+  embeddingsBody,
+  parseEmbeddings,
+  pickEmbeddingsProvider,
 } from './providers.js';
 import { withRetry } from './retry.js';
 import { categorizeError, rankErrors } from './errors.js';
@@ -803,14 +806,16 @@ async function runDeepDive(sessionKey, detected) {
     const feynman = parseFeynman(await callAI(keys, withTone(keys.tone, buildFeynmanPrompt(repoData, atoms, lineage)), 'deepdive'));
     await setDeep({ feynman });
 
-    // Persist atoms for the Knowledge-Graph concept substrate (best-effort —
-    // a substrate write must never fail the dive). Vectors are added in Phase 2.
+    // Knowledge-Graph substrate: persist atoms, with embeddings when the configured
+    // provider supports them (else vectors stay null → lexical matching). Best-effort.
     try {
+      const texts = atoms.map((a) => `${a.name} — ${a.purpose || ''}`.trim());
+      const emb = await callEmbeddings(keys, texts);
       await setConcepts(detected.repoId, {
         repoId: detected.repoId,
         atoms,
-        vectors: null,
-        embedModel: null,
+        vectors: emb ? emb.vectors : null,
+        embedModel: emb ? emb.model : null,
         computedAt: new Date().toISOString(),
       });
     } catch { /* substrate is additive; ignore */ }
@@ -1312,6 +1317,26 @@ async function callOpenAICompatible({ endpoint, key, model, prompt, label = 'Pro
     throw new Error(err.error?.message ?? err.message ?? `${label} API error ${res.status}`);
   }
   return parseOpenAiText(await res.json());
+}
+
+// Embeddings via the configured OpenAI-protocol provider (BYO-key). Returns
+// number[][] aligned to `texts`, or null if no capable provider / on any error
+// (callers fall back to lexical matching). Never throws.
+async function callEmbeddings(keys, texts) {
+  const p = pickEmbeddingsProvider(keys);
+  if (!p || !p.endpoint || !p.key || !texts.length) return null;
+  try {
+    const res = await fetchWithTimeout(p.endpoint, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', Authorization: `Bearer ${p.key}` },
+      body: JSON.stringify(embeddingsBody(p.model, texts)),
+    });
+    if (!res.ok) return null;
+    const vectors = parseEmbeddings(await res.json());
+    return vectors.length === texts.length ? { vectors, model: p.model } : null;
+  } catch {
+    return null;
+  }
 }
 
 // OpenAI via "Sign in with ChatGPT" (the Codex CLI OAuth flow). The OAuth session is
