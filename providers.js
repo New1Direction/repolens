@@ -211,6 +211,7 @@ export function compatStorageKeys() {
     if (p.keyless) out.push(provEnabledName(p.id));
     if (p.custom) out.push(provProtoName(p.id));
     if (p.needsVersion) out.push(provVerName(p.id));
+    if (p.embeddingsModel) out.push(provEmbedModelName(p.id)); // so the embeddings-model override actually loads
   }
   return out;
 }

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { providerSupportsEmbeddings, compatEmbeddingsEndpoint, embeddingsModelFor } from '../providers.js';
-import { embeddingsBody, parseEmbeddings } from '../providers.js';
+import { embeddingsBody, parseEmbeddings, compatStorageKeys } from '../providers.js';
 
 describe('embeddings capability', () => {
   it('openai supports embeddings when connected (has a key)', () => {
@@ -16,6 +16,10 @@ describe('embeddings capability', () => {
   it('embeddingsModelFor prefers an override then the default', () => {
     expect(embeddingsModelFor('openai', {})).toBe('text-embedding-3-small');
     expect(embeddingsModelFor('openai', { openaiEmbedModel: 'text-embedding-3-large' })).toBe('text-embedding-3-large');
+  });
+  it('exposes the embeddings-model override slot so it actually loads at runtime', () => {
+    // Without this, keys[`${id}EmbedModel`] is never read and the override is a no-op.
+    expect(compatStorageKeys()).toContain('openaiEmbedModel');
   });
 });
 
