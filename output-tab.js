@@ -2227,6 +2227,18 @@ function renderSubNav(actId) {
   sub.innerHTML = tabs.length <= 1
     ? ''
     : tabs.map((n) => `<button class="tab-btn" data-tab="${n}">${TAB_LABELS[n]}</button>`).join('');
+
+  // Mark scan buttons that have an explainer with a subtle ⓘ (per-render, so
+  // freshly-rendered subnav buttons get one; the tip listeners in initScanTips
+  // delegate from #act-subnav and survive this re-render).
+  sub.querySelectorAll('.tab-btn[data-tab]').forEach((btn) => {
+    if (explainerFor(btn.dataset.tab) && !btn.querySelector('.tip-i')) {
+      const i = document.createElement('span');
+      i.className = 'tip-i';
+      i.textContent = 'ⓘ';
+      btn.appendChild(i);
+    }
+  });
 }
 
 function show(n, { updateHash = true } = {}) {
@@ -2257,47 +2269,34 @@ function show(n, { updateHash = true } = {}) {
   }
 }
 
-// Nav clicks: open/close a grouped menu, run-all, or switch tab.
-document.querySelector('.tab-nav')?.addEventListener('click', e => {
-  const menuBtn = e.target.closest('.tab-menu-btn');
-  if (menuBtn) {
-    const menu = menuBtn.closest('.tab-menu');
-    const wasOpen = menu.classList.contains('open');
-    document.querySelectorAll('.tab-menu').forEach(m => m.classList.remove('open'));
-    if (!wasOpen) menu.classList.add('open');
-    return;
-  }
-  if (e.target.closest('#run-all-lenses')) { runAllLenses(); return; }
-  const btn = e.target.closest('[data-tab]');
-  if (btn) {
-    const n = Number(btn.dataset.tab);
-    show(n);
-    if (n === 19) renderConnections(lastData); // network tab — pull fresh on each open (like Similar)
-    // (canvas, tab 27, is dispatched inside show() so deep-link/restore paths render it too)
-  }
+// Primary act row: clicking an act shows its first tab.
+document.getElementById('act-nav')?.addEventListener('click', (e) => {
+  const btn = e.target.closest('.act-tab');
+  if (!btn) return;
+  const first = tabsForAct(btn.dataset.act)[0];
+  if (first != null) show(first);
 });
 
-// Close menus on an outside click.
-document.addEventListener('click', e => {
-  if (!e.target.closest('.tab-nav')) document.querySelectorAll('.tab-menu').forEach(m => m.classList.remove('open'));
+// Secondary row: clicking a tab switches panels (same contract as before).
+document.getElementById('act-subnav')?.addEventListener('click', (e) => {
+  if (e.target.closest('#run-all-lenses')) { runAllLenses(); return; }
+  const btn = e.target.closest('[data-tab]');
+  if (!btn) return;
+  const n = Number(btn.dataset.tab);
+  show(n);
+  if (n === 19) renderConnections(lastData); // Connections: pull fresh on each open
 });
 
 // Scan explainers: a styled "when to use / skip" tooltip on each on-demand scan
 // button, shown on hover OR keyboard focus. Static copy lives in explainers.js.
 function initScanTips() {
   const tip = document.getElementById('scan-tip');
-  const nav = document.querySelector('.tab-nav');
+  const nav = document.getElementById('act-subnav');
   if (!tip || !nav) return;
 
-  // Mark scan buttons that have an explainer with a subtle ⓘ.
-  nav.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
-    if (explainerFor(btn.dataset.tab) && !btn.querySelector('.tip-i')) {
-      const i = document.createElement('span');
-      i.className = 'tip-i';
-      i.textContent = 'ⓘ';
-      btn.appendChild(i);
-    }
-  });
+  // ⓘ markers are added per-render in renderSubNav() so freshly-rendered
+  // subnav buttons get one; the listeners below delegate from the persistent
+  // #act-subnav element, so they survive each subnav re-render.
 
   const showFor = (btn) => {
     const e = explainerFor(btn.dataset.tab);
