@@ -39,6 +39,7 @@ import { snapshotTrend, sparkline } from './snapshots.js';
 import { introStageB, COPY } from './onboarding.js';
 import { startCoachmark } from './coachmark.js';
 import { clearDemoEverywhere, isDemo } from './demo-repo.js';
+import { ACTS, TAB_LABELS, actForTab, tabsForAct } from './output-acts.js';
 
 // Apply the saved theme ASAP (before render) to minimise flash.
 initTheme();
@@ -2207,6 +2208,27 @@ const TAB_SLUGS = {
 };
 const SLUG_TO_TAB = Object.fromEntries(Object.entries(TAB_SLUGS).map(([k, v]) => [v, Number(k)]));
 
+// Two-tier act nav: a primary row of acts, and a secondary row of the active
+// act's tabs. Both are generated from the act model so the grouping has one
+// source of truth. Buttons keep `data-tab` so the existing show() path is reused.
+function renderActNav() {
+  const nav = document.getElementById('act-nav');
+  if (!nav) return;
+  nav.innerHTML = ACTS.map(
+    (a) => `<button class="act-tab" data-act="${a.id}">${a.label}</button>`,
+  ).join('');
+}
+
+function renderSubNav(actId) {
+  const sub = document.getElementById('act-subnav');
+  if (!sub) return;
+  const tabs = tabsForAct(actId);
+  // A single-tab act (Decide) needs no secondary row.
+  sub.innerHTML = tabs.length <= 1
+    ? ''
+    : tabs.map((n) => `<button class="tab-btn" data-tab="${n}">${TAB_LABELS[n]}</button>`).join('');
+}
+
 function show(n, { updateHash = true } = {}) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', Number(b.dataset.tab) === n));
   document.querySelectorAll('.tab-content').forEach((c, idx) => c.classList.toggle('active', idx === n));
@@ -2297,6 +2319,7 @@ function initScanTips() {
   nav.addEventListener('focusout', hide);
 }
 initScanTips();
+renderActNav();
 
 // ─── "?" Guide overlay — feature discovery on demand ──────────────────────────
 // One small button; the overlay explains scanning, the tabs, every lens (from
