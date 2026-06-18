@@ -56,13 +56,13 @@ RepoLens never ships a key. You bring a model, and there are three shapes that f
 
 | Way | What it means | Best when… |
 |---|---|---|
-| **Sign-in (OAuth)** | One click; you approve it on the vendor's site, no key to copy. Available for **Grok**, **OpenRouter**, and **OpenAI (Sign in with ChatGPT)**. | The vendor supports third-party OAuth and you'd rather not handle a key. |
-| **API key** | Paste a key from the vendor's console. Works for **every** provider — Claude, Gemini, OpenAI, DeepSeek, Groq, and ~20 more. | You already have a key, or the vendor doesn't offer OAuth (e.g. **Claude is API-key only**). |
+| **Sign-in (OAuth)** | One click; you approve it on the vendor's site, no key to copy. Available for **Claude**, **Grok**, **OpenRouter**, and **OpenAI (Sign in with ChatGPT)**. | The vendor or CLI flow supports OAuth and you'd rather not handle a key. |
+| **API key** | Paste a key from the vendor's console. Works for **every** provider — Claude, Gemini, OpenAI, DeepSeek, Groq, and ~20 more. | You already have a key, or your plan does not expose API access through OAuth. |
 | **Local** | Point at **Ollama** on `localhost`. No key, no cloud, no cost. | You want it **free and private** — the AI step never leaves your machine. |
 
-> **Why is Claude API-key only?** Anthropic binds Claude Pro/Max subscription logins to its own Claude Code app (and, as of 2026, prohibits subscription sign-in in third-party tools). The only way to "fix" that would be to impersonate Claude Code — which violates Anthropic's terms and can get **your** account banned. So RepoLens connects Claude with a Console API key (`sk-ant-api…`) and leaves the spoofing alone. OpenAI, by contrast, *offers* a supported sign-in — which is why the ChatGPT login exists.
+> **Claude has two paths.** Use **Sign in with Claude** for the Claude Code / Pi-style flow, or paste a Console API key (`sk-ant-api…`). Either way the credential stays in this browser and is excluded from settings exports.
 
-Pick **one** and you're scanning. See [Models](/docs/models) for the full provider list and per-vendor recommendations.
+Pick **one** and you're scanning. See [Models](/docs/models) for the full provider list, live catalog notes, and per-vendor recommendations.
 
 ## One key is enough: the smart fallback chain
 
@@ -97,7 +97,7 @@ Want finer control? A scan is really **eight parts** (core scan, Deep Dive, Vers
 Two genuinely-free paths, both first-class:
 
 - **Local Ollama** — install Ollama, run a model, and RepoLens does the AI step on your own machine. No key, no bill, fully private.
-- **Gemini's free tier** — paste a free Google AI Studio key.
+- **Gemini's free tier** — paste a free Google AI Studio key. RepoLens then loads the Gemini models that key can actually call.
 
 (Only the *AI step* is local with Ollama — RepoLens still reads the public repo page over the network.)
 

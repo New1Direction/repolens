@@ -19,13 +19,13 @@ Whichever is highest in that order *and* connected is your primary; the rest are
 
 | Provider | Sign-in | ★ Recommended |
 |---|---|---|
-| Anthropic | API key *(Console)* | Claude Sonnet 4.6 (Opus 4.8 for max) |
-| Gemini | API key | Gemini 2.5 Pro |
-| OpenRouter | OAuth | Grok 4.3 |
+| Anthropic | Claude OAuth or Console API key | Claude Sonnet 4.6 (Opus 4.8 for max) |
+| Gemini | API key | Live from your Google key; defaults toward Gemini 3.x when available |
+| OpenRouter | OAuth | Live from OpenRouter; Grok 4.3 by default |
 | xAI Grok | OAuth or API key | Grok 4.3 |
-| Nous | API key | Hermes 4 405B |
+| Nous | API key | Live from Nous Portal; Step 3.7 / Hermes entries when available |
 
-> **Why no "Sign in with Claude"?** Anthropic locks Claude Pro/Max subscription tokens to its own Claude Code app and, as of 2026, prohibits subscription sign-in in third-party tools — so RepoLens connects Claude with a **Console API key** (`sk-ant-api…`) only. (The OpenAI card *does* offer ChatGPT sign-in, because OpenAI supports it — see below.)
+> **Claude sign-in:** RepoLens uses the same Claude Code / Pi OAuth shape. Click **Sign in with Claude**, approve it on Claude's site, paste the returned code, and RepoLens stores the token only in this browser. If OAuth is not available for your plan, paste a Console API key (`sk-ant-api…`) instead.
 
 ## Bring any model
 
@@ -37,7 +37,7 @@ Under **Options → More model providers**, RepoLens speaks **any OpenAI- or Ant
 - **Ollama (Local)** — runs on `localhost`, **no key needed**. The simplest way to scan fully offline.
 - **Custom** — any other OpenAI- or Anthropic-compatible server. Paste the URL, pick the protocol, done.
 
-Every provider keeps its **own key**, so switching between them never loses your other settings. Each card has:
+Every provider keeps its **own key**, so switching between them never loses your other settings. Gemini, OpenRouter, and Nous load their live model catalogs when Settings opens, so renamed slugs and newly exposed Ultra / portal models appear without waiting for a RepoLens release. Each card has:
 
 - a **model picker** (plus a free-form *Custom…* for any model id),
 - an optional **endpoint override** (handy for a proxy or a regional gateway),
@@ -45,7 +45,7 @@ Every provider keeps its **own key**, so switching between them never loses your
 
 **Connect just one and you're done.** Any provider you connect — first-class or compatible — joins the fallback chain automatically, so a single key (or a local Ollama) is enough to start scanning.
 
-> **What about the Claude Code / Codex / Grok CLIs?** RepoLens can't *run* those binaries — a browser extension is sandboxed and can't launch a local process. But it **does perform the same OAuth logins they use**: Anthropic's sign-in is the Claude Code login, *Sign in with ChatGPT* on the OpenAI card is the Codex login, and xAI's is the Grok CLI login. So you get the CLIs' sign-in convenience without the binary. For a truly local, keyless model, point at **Ollama** over plain HTTP.
+> **What about the Claude Code / Codex / Grok CLIs?** RepoLens can't *run* those binaries — a browser extension is sandboxed and can't launch a local process. But it **does perform the same OAuth-style logins they use**: Anthropic's sign-in follows the Claude Code / Pi flow, *Sign in with ChatGPT* on the OpenAI card is the Codex login, and xAI's is the Grok CLI login. So you get the sign-in convenience without the binary. For a truly local, keyless model, point at **Ollama** over plain HTTP.
 
 ## Models per scan part
 

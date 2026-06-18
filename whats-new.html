@@ -867,7 +867,7 @@
             </div>
             <div class="chg">
               <span class="ci">🧪</span>
-              <div><b>712 tests, all green.</b> <span>No regressions across 60 test files.</span></div>
+              <div><b>900 tests, all green.</b> <span>No regressions across 97 test files.</span></div>
             </div>
           </div>
         </div>
@@ -884,6 +884,21 @@
         </div>
 
         <div class="timeline">
+          <div class="rel reveal">
+            <div class="rel-head">
+              <span class="rel-v">Next</span><span class="rel-theme">Provider model refresh.</span
+              ><span class="rel-date">Jun 18</span>
+            </div>
+            <div class="rel-body">
+              Settings now pulls live model catalogs for Gemini, OpenRouter, and Nous, and Anthropic supports
+              the Claude Code / Pi sign-in flow again alongside Console API keys.
+            </div>
+            <ul class="rel-list">
+              <li><b>Live model pickers</b> — no stale Gemini / OpenRouter / Nous slugs.</li>
+              <li><b>Claude OAuth</b> — sign in with Claude or paste <code>sk-ant-api…</code>.</li>
+              <li><b>Safer routing</b> — legacy saved model IDs are normalized before provider calls.</li>
+            </ul>
+          </div>
           <div class="rel reveal">
             <div class="rel-head">
               <span class="rel-v">v2.9.0</span><span class="rel-theme">Evaluate.</span
@@ -1046,15 +1061,15 @@
 
           <div class="rel reveal">
             <div class="rel-head">
-              <span class="rel-v">v1.6.0</span><span class="rel-theme">Claude is API-key only</span
+              <span class="rel-v">v1.6.0</span><span class="rel-theme">Claude key fallback</span
               ><span class="rel-date">Jun 13</span>
             </div>
             <div class="rel-body">
-              Removed the Claude subscription sign-in — Anthropic prohibits third-party use of those tokens,
-              so we shipped the clean path instead.
+              Added the reliable Console API key path for Claude. Current builds also support the Claude Code
+              / Pi sign-in flow again.
             </div>
             <ul class="rel-list">
-              <li><b>Console API key only</b> for Claude (<code>sk-ant-api…</code>).</li>
+              <li><b>Console API key support</b> for Claude (<code>sk-ant-api…</code>).</li>
               <li>Grok, OpenRouter &amp; ChatGPT sign-ins are <b>unaffected</b>.</li>
               <li>$0 still easy: local <b>Ollama</b> or <b>Gemini</b>'s free tier.</li>
             </ul>

@@ -9,7 +9,7 @@
 ![Chrome Manifest V3](https://img.shields.io/badge/Chrome-Manifest_V3-1a73e8?logo=googlechrome&logoColor=white)
 ![Zero build](https://img.shields.io/badge/build-none-0e1722)
 ![Vanilla ES modules](https://img.shields.io/badge/vanilla-ES_modules-f7df1e?logo=javascript&logoColor=black)
-![Tests](https://img.shields.io/badge/tests-890%2B_passing-2f7d34)
+![Tests](https://img.shields.io/badge/tests-900%2B_passing-2f7d34)
 ![Version](https://img.shields.io/badge/version-3.1.0-c2691c)
 ![Storage](https://img.shields.io/badge/storage-in--browser_IndexedDB-38bdf8)
 
@@ -49,6 +49,13 @@ Plus **SKTPG** (a one-tap State / Known-pitfalls / Trajectory / Proof / Growth r
 
 Newest first — the highlights. Full, detailed notes live in the **[changelog](CHANGELOG.md)**.
 
+### Unreleased — Provider model refresh
+
+- 🔄 **Live model lists.** Gemini, OpenRouter, and Nous load their current provider catalogs in Settings, so new models and renamed slugs show up without another hand edit.
+- 🧠 **Gemini Ultra-ready.** The Google picker uses your API key to show the Gemini models your account can actually call, with a Custom field for brand-new IDs.
+- 🔓 **Sign in with Claude.** Anthropic now supports the same Claude Code / Pi OAuth flow, while still accepting a Console API key.
+- 🧭 **Safer routing.** Legacy saved model IDs are normalized before calls, and per-part routing uses the refreshed catalogs.
+
 ### v3.1.0 — Interactive Canvas
 
 - 🗺️ **Blueprint Canvas.** Turn a Deep Dive into a draggable, pannable architecture map with dependency-order Guided Tour.
@@ -72,9 +79,9 @@ A correctness, security, and tooling pass from a full code audit — fixes only,
 - ✨ **Subtle motion, everywhere it helps** — tactile press states, a staged tab reveal, a verdict health-bar fill, a smoother toast and modal — all respecting reduced-motion.
 - 🧭 **Errors that tell you what to do** — a failed scan now offers **Open Settings** (bad key / wrong model) or **Retry** (transient), and the loading copy names the provider it's actually using.
 
-### v1.6.0 — Claude is API-key only
+### v1.6.0 — Claude key fallback
 
-- 🔑 **Removed the Claude _subscription_ sign-in.** Anthropic locks Claude Pro/Max tokens to their own Claude Code app and, as of 2026, prohibits subscription sign-in in third-party tools — so that login could never work here without impersonating Claude Code (which risks getting **your** account banned). Connect Claude with a **Console API key** instead.
+- 🔑 **Console API key support for Claude.** This release made the reliable `sk-ant-api…` path explicit. Current builds also support the Claude Code / Pi OAuth flow again, so you can choose sign-in or a key.
 - 🆓 **Want $0?** Use **local Ollama** (no key) or **Gemini's free tier** — both already supported. See the [How models & sign-in work](website/content/docs/how-it-works.mdx) guide.
 
 ### v1.5.0 — Sign in with ChatGPT
@@ -126,13 +133,13 @@ No accounts. No backend. Your keys, your machine.
 
 ## Models — your keys, your call
 
-Bring your own provider. Five are **first-class** (one-click sign-in where the vendor allows it: **Grok**, **OpenRouter**, and **OpenAI/ChatGPT**; otherwise an API key; **Claude** is API-key only) and fan out across a **smart fallback chain**: RepoLens tries them in order and drops to the next if one errors, so a single key is enough to start.
+Bring your own provider. Five are **first-class**: **Claude** (Claude Code / Pi OAuth or Console API key), **Grok** (OAuth or key), **OpenRouter** (OAuth), **Gemini** (API key with live model list), and **Nous** (API key with live model list). They fan out across a **smart fallback chain**: RepoLens tries them in order and drops to the next if one errors, so a single key is enough to start.
 
 **Nous** (Nous Research) **→ Gemini → OpenRouter → Grok → Anthropic**
 
-On top of those, RepoLens works with **almost any other AI service** through one registry: **OpenAI, DeepSeek, Groq, NVIDIA NIM, Kimi (Moonshot), Zhipu GLM, Qwen (Aliyun), Xiaomi MiMo, Volcengine Ark, Ollama Cloud, MiniMax, Azure OpenAI**, local **Ollama** (no key needed), and a universal **Custom** endpoint. Each keeps its **own key** (switching never loses data), has a model picker, an optional **endpoint override**, and built-in **connection / function self-tests**. Connect just one and it works. It joins the fallback chain automatically.
+On top of those, RepoLens works with **almost any other AI service** through one registry: **OpenAI, DeepSeek, Groq, NVIDIA NIM, Kimi (Moonshot), Zhipu GLM, Qwen (Aliyun), Xiaomi MiMo, Volcengine Ark, Ollama Cloud, MiniMax, Azure OpenAI**, local **Ollama** (no key needed), and a universal **Custom** endpoint. Each keeps its **own key** (switching never loses data), has a model picker, an optional **endpoint override**, and built-in **connection / function self-tests**. Gemini, OpenRouter, and Nous refresh their model pickers from the provider APIs, and every picker still has **Custom…** for a brand-new model ID. Connect just one and it works. It joins the fallback chain automatically.
 
-> **Sign in with ChatGPT.** The OpenAI card also offers a one-click **ChatGPT login**, the same OAuth the **Codex CLI** uses, so you can connect without pasting a key (it needs API access on your ChatGPT plan; otherwise paste a key).
+> **CLI-style sign-ins.** Anthropic uses the same Claude Code / Pi OAuth flow, OpenAI offers the Codex-style **Sign in with ChatGPT**, and xAI uses the Grok device flow. If a plan does not expose API access through OAuth, paste that provider's API key instead.
 
 > Local-only? Point at **Ollama** on `localhost`. No key, no cloud. (Spawning a local _CLI_ binary like `claude`/`codex` still isn't possible: a browser extension is sandboxed and can't launch a program. But it can do those CLIs' **OAuth logins**, and talk to a local HTTP model server like Ollama.)
 

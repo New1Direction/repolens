@@ -11,10 +11,18 @@ the same day, as a rapid burst of improvements, so they share a date.
 
 ### Added
 
+- **Live first-class model catalogs.** Google Gemini, OpenRouter, and Nous now load their live model lists in **Options** instead of relying on stale hard-coded dropdowns. RepoLens filters those catalogs to text-capable models, preserves a **Custom…** escape hatch, and reuses the live list in **Models per scan part**.
+- **Claude sign-in is back, using the Claude Code / Pi OAuth flow.** The Anthropic card now supports **Sign in with Claude** for Claude Pro/Max-style accounts and still supports a Console API key (`sk-ant-api…`). OAuth tokens are stored only in this browser, refreshed automatically, and excluded from settings export.
+- **Gemini Ultra-ready defaults.** The Google card now defaults toward newer Gemini 3.x entries when your API key exposes them, while still supporting Gemini 2.5 and custom model IDs.
 - **Mono Ink identity.** RepoLens ships a new dark-tile lens icon, a "Mono Ink" default theme (cool near-black, white, and cobalt), and a wordmark lockup. The toolbar icon now animates only while a scan runs: the aperture grows and spins and the ring breathes grey to blue, then it resets to static. Turn the animation off in **Options**, and it honors your OS reduced-motion setting. The other 13 themes stay one click away.
 - **A warmer Vee.** Vee's onboarding copy reads like a person now. The repo also vendors the stop-slop writing standard under `docs/style/` so the voice stays consistent.
 - **Vee-guided first-run walkthrough.** New users are met by Vee on their first Library open; the coachmark steps through a seeded demo repo (Library card → Verdict tab → Blueprint canvas) with plain narration and a spotlight on each target element. Implemented in `onboarding.js` / `coachmark.js`; copy lives in `onboarding-copy.js`.
 - **Milestone "power tour"** offered after approximately five real scans: a second coachmark sequence introducing the cross-library tools: Ask, Corkboard (Alternatives / Synergies), multi-select Compare, Radar / auto-organize, and Discover.
+
+### Changed
+
+- **Model IDs are canonicalized before calls.** Legacy saved values such as `Hermes-4-405B`, `anthropic/claude-opus-4-8`, or Google `models/...` IDs are normalized to the IDs the provider APIs expect.
+- **Provider docs and settings copy now match reality.** Claude can use OAuth or a key, Gemini model options come from your key, and OpenRouter/Nous names reflect their `/models` catalogs.
 
 ---
 
@@ -102,24 +110,18 @@ behavioural changes to features, just fixes and guardrails.
 - Still 100% client-side: Collections live in your in-browser IndexedDB and round-trip
   through the library backup; no server, no accounts, no telemetry.
 
-## [1.6.0] — 2026-06-13 · _Claude is API-key only_
+## [1.6.0] — 2026-06-13 · _Claude API-key fallback_
+
+> Superseded by the current Unreleased provider refresh: Claude OAuth is available again via the Claude Code / Pi flow, with Console API keys still supported.
 
 ### Removed
 
-- **The Claude _subscription_ sign-in ("Sign in with Claude").** It never reliably
-  worked, and it can't: Anthropic binds Claude Pro/Max OAuth tokens to their own
-  **Claude Code** client (validated server-side via an identity system prompt + beta
-  flags) and, as of 2026, its terms **prohibit using subscription authentication in
-  third-party products**. The only way to make it "work" is to impersonate Claude
-  Code — which is a terms violation that risks getting **the user's own Anthropic
-  account banned** and breaks whenever Anthropic rotates a flag. So we took it out
-  rather than ship spoofing.
+- **The earlier Claude _subscription_ sign-in ("Sign in with Claude").** That implementation was removed because it did not match the Claude Code flow closely enough to be reliable. Current builds restore Claude sign-in using the same shape Pi uses, while keeping the Console API key path as a fallback.
 
 ### Changed
 
-- **Claude now connects with a Console API key only** (`sk-ant-api…` from
-  console.anthropic.com). The Anthropic card's _Connect_ opens the key field directly;
-  `callAnthropic` is a clean `x-api-key` request with no OAuth/exchange branches.
+- **Claude gained an explicit Console API key path** (`sk-ant-api…` from
+  console.anthropic.com). At the time, the Anthropic card's _Connect_ opened the key field directly and `callAnthropic` used a clean `x-api-key` request with no OAuth/exchange branches.
 - Dropped the now-unused `claude.ai`, `platform.claude.com`, and
   `console.anthropic.com` host permissions (kept `api.anthropic.com` for inference).
 - Deleted the dead `oauth-anthropic.js` module and its callback interception.
