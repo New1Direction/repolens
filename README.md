@@ -51,6 +51,8 @@ Newest first — the highlights. Full, detailed notes live in the **[changelog](
 
 ### Unreleased — Theme pack, provider refresh, stability
 
+- ✨ **Smoother app feel.** Scan tabs preserve scroll, transition more softly, avoid loading-card flicker, and large Library grids scroll more cheaply.
+- 🧭 **Structured scan schema.** Scans now include a mental model, risk register, adoption simulation, and learning path, with fallbacks for old results.
 - ✅ **Decision-grade Verdict.** Scans now produce a best next action, confidence, evidence, and a 30-minute trial plan.
 - 🎨 **DESIGN.md theme pack.** Six new CSS-only looks: Command Blue, Aubergine Trace, Emerald DB, Paperline, Toybox Red, and Gradient Aurora.
 - 🫧 **Liquid Glass theme.** A CSS-only theme inspired by `liquid-dom`'s glassy WebGPU look, without adding its runtime, flags, or dependencies.

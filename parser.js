@@ -4,6 +4,18 @@ const HL_SEVERITIES = new Set(['risk', 'insight', 'opportunity']);
 const REC_ACTIONS = new Set(['adopt', 'trial', 'compare', 'hold', 'avoid']);
 const CONFIDENCE_LEVELS = new Set(['high', 'medium', 'low']);
 const EVIDENCE_TYPES = new Set(['strength', 'risk', 'fit', 'health']);
+const MODEL_KINDS = new Set([
+  'framework',
+  'library',
+  'protocol',
+  'platform',
+  'app',
+  'cli',
+  'service',
+  'data-store',
+  'other',
+]);
+const RISK_LEVELS = new Set(['low', 'medium', 'high']);
 const HL_SECTIONS = new Set([
   'eli5',
   'technical',
@@ -62,6 +74,14 @@ function normalizeEvidence(raw) {
     }));
 }
 
+const strings = (xs, max) =>
+  Array.isArray(xs)
+    ? xs
+        .map(String)
+        .filter((s) => s.trim())
+        .slice(0, max)
+    : [];
+
 function normalizeActionPlan(raw) {
   const p = raw && typeof raw === 'object' ? raw : {};
   const steps = Array.isArray(p.steps)
@@ -75,19 +95,63 @@ function normalizeActionPlan(raw) {
           success: String(s.success ?? ''),
         }))
     : [];
-  const strings = (xs, max) =>
-    Array.isArray(xs)
-      ? xs
-          .map(String)
-          .filter((s) => s.trim())
-          .slice(0, max)
-      : [];
   return {
     goal: String(p.goal ?? ''),
     steps,
     validation_checklist: strings(p.validation_checklist, 6),
     questions: strings(p.questions, 5),
   };
+}
+
+function normalizeMentalModel(raw) {
+  const m = raw && typeof raw === 'object' ? raw : {};
+  return {
+    kind: MODEL_KINDS.has(m.kind) ? m.kind : '',
+    stack_role: String(m.stack_role ?? ''),
+    inputs: strings(m.inputs, 5),
+    outputs: strings(m.outputs, 5),
+    core_abstractions: strings(m.core_abstractions, 6),
+    extension_points: strings(m.extension_points, 6),
+    hidden_assumptions: strings(m.hidden_assumptions, 6),
+    failure_boundaries: strings(m.failure_boundaries, 6),
+  };
+}
+
+function normalizeRiskRegister(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((r) => r && typeof r === 'object' && String(r.risk || '').trim())
+    .slice(0, 6)
+    .map((r) => ({
+      risk: String(r.risk),
+      probability: RISK_LEVELS.has(r.probability) ? r.probability : 'medium',
+      impact: RISK_LEVELS.has(r.impact) ? r.impact : 'medium',
+      evidence: String(r.evidence ?? ''),
+      mitigation: String(r.mitigation ?? ''),
+      validate: String(r.validate ?? ''),
+    }));
+}
+
+function normalizeAdoptionSimulation(raw) {
+  const s = raw && typeof raw === 'object' ? raw : {};
+  return {
+    day_1: String(s.day_1 ?? ''),
+    week_1: String(s.week_1 ?? ''),
+    month_1: String(s.month_1 ?? ''),
+    exit_cost: String(s.exit_cost ?? ''),
+  };
+}
+
+function normalizeLearningPath(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((x) => x && typeof x === 'object' && String(x.concept || '').trim())
+    .slice(0, 6)
+    .map((x) => ({
+      concept: String(x.concept),
+      why: String(x.why ?? ''),
+      exercise: String(x.exercise ?? ''),
+    }));
 }
 
 export function parseClaudeResponse(rawText) {
@@ -110,6 +174,10 @@ export function parseClaudeResponse(rawText) {
     confidence: normalizeConfidence(data.confidence),
     evidence: normalizeEvidence(data.evidence),
     action_plan: normalizeActionPlan(data.action_plan),
+    mental_model: normalizeMentalModel(data.mental_model),
+    risk_register: normalizeRiskRegister(data.risk_register),
+    adoption_simulation: normalizeAdoptionSimulation(data.adoption_simulation),
+    learning_path: normalizeLearningPath(data.learning_path),
     technical: data.technical ?? '',
     use_cases: data.use_cases ?? { core_fit: '', good_fit: '', works_well: '', long_term: '' },
     skip_if: data.skip_if ?? { overkill: '', wrong_tool: '', needs_care: '', consider: '' },

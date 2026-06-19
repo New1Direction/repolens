@@ -11,6 +11,8 @@ the same day, as a rapid burst of improvements, so they share a date.
 
 ### Added
 
+- **Smoother navigation.** Scan tabs now use reduced-motion-safe view transitions, restore per-tab scroll position, avoid quick-verdict re-renders while loading, and make large Library grids cheaper to scroll.
+- **Structured scan schema.** Core scans now ask for a mental model, risk register, adoption simulation, and learning path — with parser fallbacks so older scans still render useful structured sections.
 - **Decision-grade Verdict tab.** The Verdict view now leads with a best next action, confidence, evidence, and a 30-minute trial plan so every scan tells you what to do next — not just what the repo is.
 - **DESIGN.md-inspired theme pack.** Added six more CSS-only themes researched from DESIGN.md catalogs: **Command Blue**, **Aubergine Trace**, **Emerald DB**, **Paperline**, **Toybox Red**, and **Gradient Aurora**.
 - **Liquid Glass theme.** Inspired by `liquid-dom`'s liquid-glass direction without adding its WebGPU/React runtime, RepoLens now has a CSS-only **Liquid Glass** theme: translucent surfaces, icy blue highlights, glassy panels, and no new dependency or browser flag.

@@ -555,11 +555,14 @@
       #grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+        align-items: start;
         gap: 14px;
       }
       .lib-card {
         position: relative;
         overflow: hidden;
+        content-visibility: auto;
+        contain-intrinsic-size: 260px;
         background: var(--panel);
         border: 1px solid var(--border);
         border-radius: 13px;
@@ -596,6 +599,7 @@
         transform: translateY(-3px);
         border-color: var(--border-2);
         box-shadow: 0 16px 34px -18px rgba(0, 0, 0, 0.45);
+        will-change: transform;
       }
       .lib-card:hover::before {
         opacity: 1;

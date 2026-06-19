@@ -50,9 +50,11 @@ import { setMastery } from './store.js';
 
 // Apply the saved theme ASAP (before render) to minimise flash.
 initTheme();
+const reduceMotionQuery =
+  typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
 // Mirror the OS reduced-motion preference into storage for the service worker.
 chrome.storage.local.set({
-  reduceMotion: typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches,
+  reduceMotion: reduceMotionQuery.matches,
 });
 
 function renderThemeSwitcher() {
@@ -170,14 +172,22 @@ function thinkPhrases(provider) {
   return [`Asking ${provider || 'the model'} to read this…`, ...THINK_PHRASES];
 }
 
+let loadingMsgTimer = null;
+let currentLoadingMsg = '';
 function setLoadingMsg(msg) {
   const el = document.getElementById('loading-msg');
-  if (!el) return;
+  if (!el || msg === currentLoadingMsg) return;
+  currentLoadingMsg = msg;
+  if (loadingMsgTimer) clearTimeout(loadingMsgTimer);
   el.style.opacity = '0';
-  setTimeout(() => {
-    el.textContent = msg;
-    el.style.opacity = '1';
-  }, 150);
+  loadingMsgTimer = setTimeout(
+    () => {
+      el.textContent = msg;
+      el.style.opacity = '1';
+      loadingMsgTimer = null;
+    },
+    reduceMotionQuery.matches ? 0 : 150
+  );
 }
 
 function setLoadingName(name) {
@@ -261,9 +271,19 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+let lastQuickVerdictKey = '';
 function renderQuickVerdict(qd) {
   const host = document.getElementById('quick-verdict');
   if (!host || !qd?.repoId) return;
+  const renderKey = JSON.stringify({
+    repoId: qd.repoId,
+    description: qd.description,
+    language: qd.language,
+    stars: qd.stars,
+    license: qd.license,
+  });
+  if (renderKey === lastQuickVerdictKey) return;
+  lastQuickVerdictKey = renderKey;
   const fmtStars = (n) =>
     n >= 1_000_000
       ? (n / 1_000_000).toFixed(1) + 'M'
@@ -2919,13 +2939,175 @@ function verdictDashboard(d) {
     <div class="v-ask-cta"><span>Have a specific question?</span><button class="v-jump" data-jump="26">Ask This Repo <span class="arr">→</span></button></div>`;
 }
 
+function mentalModelFallback(d) {
+  const m = d.mental_model || {};
+  const has =
+    m.kind ||
+    m.stack_role ||
+    m.inputs?.length ||
+    m.outputs?.length ||
+    m.core_abstractions?.length ||
+    m.extension_points?.length ||
+    m.hidden_assumptions?.length ||
+    m.failure_boundaries?.length;
+  if (has) return m;
+  return {
+    kind: d.category ? 'library' : '',
+    stack_role: d.use_cases?.core_fit || d.description || '',
+    inputs: (d.tech_stack?.key_dependencies || [])
+      .slice(0, 3)
+      .map((x) => x.name)
+      .filter(Boolean),
+    outputs: d.enables ? [firstSentence(d.enables)] : [],
+    core_abstractions: (d.tech_stack?.built_with || []).slice(0, 4),
+    extension_points:
+      d.start_here
+        ?.slice(0, 2)
+        .map((x) => x.title)
+        .filter(Boolean) || [],
+    hidden_assumptions: [d.skip_if?.needs_care, d.skip_if?.overkill].filter(Boolean).slice(0, 3),
+    failure_boundaries: (d.red_flags || [])
+      .filter((x) => x?.severity !== 'ok')
+      .slice(0, 3)
+      .map((x) => x.title || x.text),
+  };
+}
+
+function riskRegisterFallback(d) {
+  if (d.risk_register?.length) return d.risk_register;
+  const flags = (d.red_flags || []).filter((x) => x?.severity !== 'ok');
+  const fromFlags = flags.map((f) => ({
+    risk: f.title || 'Adoption risk',
+    probability: 'medium',
+    impact: f.severity === 'critical' ? 'high' : 'medium',
+    evidence: f.text || '',
+    mitigation: 'Validate this during the trial before putting it on a critical path.',
+    validate: 'Reproduce the concern in a scratch project or inspect the relevant docs/issues.',
+  }));
+  const fromCons = (d.cons || []).slice(0, Math.max(0, 4 - fromFlags.length)).map((c) => ({
+    risk: c,
+    probability: 'medium',
+    impact: 'medium',
+    evidence: 'Derived from the scan cons.',
+    mitigation: 'Decide whether this cost is acceptable for your team and stack.',
+    validate: 'Test the affected workflow in the 30-minute trial.',
+  }));
+  return [...fromFlags, ...fromCons].slice(0, 6);
+}
+
+function adoptionSimulationFallback(d) {
+  const s = d.adoption_simulation || {};
+  if (s.day_1 || s.week_1 || s.month_1 || s.exit_cost) return s;
+  return {
+    day_1:
+      d.action_plan?.steps?.[0]?.action ||
+      d.start_here?.[0]?.desc ||
+      'Install it and run the smallest documented example.',
+    week_1:
+      d.skip_if?.needs_care ||
+      d.use_cases?.works_well ||
+      'Validate the real integration path and discover edge cases.',
+    month_1:
+      d.use_cases?.long_term ||
+      d.health?.summary ||
+      'Own updates, debugging, and any operational sharp edges.',
+    exit_cost: d.alternatives?.[0]?.name
+      ? `Compare early with ${d.alternatives[0].name} to keep migration optional.`
+      : d.skip_if?.consider || 'Keep the first integration narrow so it remains replaceable.',
+  };
+}
+
+function learningPathFallback(d) {
+  if (d.learning_path?.length) return d.learning_path;
+  const fromStart = (d.start_here || []).slice(0, 3).map((x) => ({
+    concept: x.title,
+    why: x.desc,
+    exercise: `Use this ${x.tag || 'entry point'} to explain the repo in your own words.`,
+  }));
+  const fromStack = (d.tech_stack?.built_with || []).slice(0, 3).map((x) => ({
+    concept: x,
+    why: 'Part of the detected implementation stack.',
+    exercise: `Find where ${x} appears in the docs or source structure.`,
+  }));
+  return [...fromStart, ...fromStack].slice(0, 6);
+}
+
+function listItems(items) {
+  return (items || []).map((x) => `<li>${esc(x)}</li>`).join('');
+}
+
+function renderMentalModel(d) {
+  const m = mentalModelFallback(d);
+  const has = m.stack_role || m.inputs?.length || m.outputs?.length || m.core_abstractions?.length;
+  if (!has) return '';
+  const cell = (label, items) =>
+    items?.length
+      ? `<div class="schema-cell"><div class="schema-k">${label}</div><ul>${listItems(items)}</ul></div>`
+      : '';
+  return `<div class="schema-panel">
+    <div class="schema-head"><span>System model</span>${m.kind ? `<b>${esc(m.kind)}</b>` : ''}</div>
+    ${m.stack_role ? `<p class="schema-role">${esc(m.stack_role)}</p>` : ''}
+    <div class="schema-grid">
+      ${cell('Inputs', m.inputs)}
+      ${cell('Outputs', m.outputs)}
+      ${cell('Core abstractions', m.core_abstractions)}
+      ${cell('Extension points', m.extension_points)}
+      ${cell('Hidden assumptions', m.hidden_assumptions)}
+      ${cell('Failure boundaries', m.failure_boundaries)}
+    </div>
+  </div>`;
+}
+
+function renderAdoptionSimulation(d) {
+  const s = adoptionSimulationFallback(d);
+  const rows = [
+    ['Day 1', s.day_1],
+    ['Week 1', s.week_1],
+    ['Month 1', s.month_1],
+    ['Exit cost', s.exit_cost],
+  ].filter(([, text]) => text);
+  if (!rows.length) return '';
+  return `<div class="schema-panel"><div class="schema-head"><span>Adoption simulation</span></div>
+    <div class="sim-grid">${rows.map(([k, v]) => `<div class="sim-row"><b>${esc(k)}</b><span>${esc(v)}</span></div>`).join('')}</div>
+  </div>`;
+}
+
+function renderLearningPath(d) {
+  const rows = learningPathFallback(d);
+  if (!rows.length) return '';
+  return `<div class="schema-panel"><div class="schema-head"><span>Learning path</span></div>
+    <div class="learn-grid">${rows
+      .map(
+        (x) =>
+          `<div class="learn-card"><b>${esc(x.concept)}</b>${x.why ? `<span>${esc(x.why)}</span>` : ''}${x.exercise ? `<em>${esc(x.exercise)}</em>` : ''}</div>`
+      )
+      .join('')}</div>
+  </div>`;
+}
+
+function renderRiskRegister(d) {
+  const rows = riskRegisterFallback(d);
+  if (!rows.length) return '';
+  return `<div class="schema-panel"><div class="schema-head"><span>Risk register</span></div>
+    <div class="risk-table">${rows
+      .map(
+        (r) =>
+          `<div class="risk-row"><div><b>${esc(r.risk)}</b><span>${esc(r.evidence)}</span></div><div class="risk-badges"><i class="risk-${esc(r.probability)}">P: ${esc(r.probability)}</i><i class="risk-${esc(r.impact)}">I: ${esc(r.impact)}</i></div>${r.mitigation ? `<p><strong>Mitigate:</strong> ${esc(r.mitigation)}</p>` : ''}${r.validate ? `<p><strong>Validate:</strong> ${esc(r.validate)}</p>` : ''}</div>`
+      )
+      .join('')}</div>
+  </div>`;
+}
+
 function renderTabs(d) {
   const analogies = (d.analogies || []).length
     ? `<div class="section-title" style="margin-top:24px">Think of it like…</div>${d.analogies.map((a) => `<div class="analogy">${esc(a)}</div>`).join('')}`
     : '';
   setTabContent(0, `${paras(d.eli5, 'big-text')}${analogies}<div id="library-block"></div>`);
 
-  setTabContent(1, paras(d.technical, 'body-text'));
+  setTabContent(
+    1,
+    `${paras(d.technical, 'body-text')}${renderMentalModel(d)}${renderAdoptionSimulation(d)}${renderLearningPath(d)}`
+  );
 
   setTabContent(
     2,
@@ -3027,7 +3209,7 @@ function renderTabs(d) {
 
   setTabContent(
     8,
-    (d.red_flags ?? [])
+    `${(d.red_flags ?? [])
       .map(
         (f) => `
     <div class="flag ${f.severity === 'ok' ? 'ok' : ''}">
@@ -3036,7 +3218,7 @@ function renderTabs(d) {
     </div>
   `
       )
-      .join('')
+      .join('')}${renderRiskRegister(d)}`
   );
 
   setTabContent(9, verdictDashboard(d));
@@ -3280,7 +3462,48 @@ function renderSubNav(actId) {
   if (actId === 'deeper' && typeof applySktpgVisibility === 'function') applySktpgVisibility();
 }
 
-function show(n, { updateHash = true } = {}) {
+let activeTab = null;
+const tabScrollPositions = new Map();
+let scrollSaveRaf = 0;
+let restoringTabScroll = false;
+
+window.addEventListener(
+  'scroll',
+  () => {
+    if (activeTab == null || restoringTabScroll || scrollSaveRaf) return;
+    scrollSaveRaf = requestAnimationFrame(() => {
+      scrollSaveRaf = 0;
+      if (activeTab != null && !restoringTabScroll) tabScrollPositions.set(activeTab, window.scrollY);
+    });
+  },
+  { passive: true }
+);
+
+function restoreTabScroll(n) {
+  if (!tabScrollPositions.has(n)) return;
+  const y = tabScrollPositions.get(n) || 0;
+  restoringTabScroll = true;
+  requestAnimationFrame(() => {
+    const maxY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+    window.scrollTo({ top: Math.min(y, maxY), left: 0, behavior: 'instant' });
+    requestAnimationFrame(() => {
+      restoringTabScroll = false;
+    });
+  });
+}
+
+function nudgeActiveTabIntoView() {
+  requestAnimationFrame(() => {
+    const btn = document.querySelector('#act-subnav .tab-btn.active, #act-nav .act-tab.active');
+    btn?.scrollIntoView({
+      block: 'nearest',
+      inline: 'nearest',
+      behavior: reduceMotionQuery.matches ? 'auto' : 'smooth',
+    });
+  });
+}
+
+function applyShow(n, updateHash) {
   // Active tab button (in the secondary row) + active panel (by id, not DOM order).
   document
     .querySelectorAll('.tab-btn')
@@ -3301,6 +3524,10 @@ function show(n, { updateHash = true } = {}) {
     .querySelectorAll('#act-subnav .tab-btn')
     .forEach((b) => b.classList.toggle('active', Number(b.dataset.tab) === n));
 
+  activeTab = n;
+  restoreTabScroll(n);
+  nudgeActiveTabIntoView();
+
   // Blueprint canvas mounts lazily on every activation path (idempotent + null-safe).
   if (n === 27) renderCanvas(lastData).catch((err) => console.error('[canvas] render failed', err));
 
@@ -3309,6 +3536,20 @@ function show(n, { updateHash = true } = {}) {
   }
   if (updateHash && lastData?.repoId) {
     chrome.storage.local.set({ [`repolens_tab_${lastData.repoId}`]: n }).catch(() => {});
+  }
+}
+
+function show(n, { updateHash = true } = {}) {
+  if (activeTab != null) tabScrollPositions.set(activeTab, window.scrollY);
+  const canTransition =
+    activeTab != null &&
+    activeTab !== n &&
+    !reduceMotionQuery.matches &&
+    typeof document.startViewTransition === 'function';
+  if (canTransition) {
+    document.startViewTransition(() => applyShow(n, updateHash));
+  } else {
+    applyShow(n, updateHash);
   }
 }
 

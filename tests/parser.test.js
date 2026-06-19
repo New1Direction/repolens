@@ -109,6 +109,51 @@ describe('parseClaudeResponse', () => {
     expect(bad.confidence.level).toBe('');
     expect(bad.action_plan.steps).toEqual([]);
   });
+  it('parses structured judgment fields with safe defaults', () => {
+    const withStructured = {
+      ...validResponse,
+      mental_model: {
+        kind: 'library',
+        stack_role: 'Runtime UI primitive',
+        inputs: ['component props'],
+        outputs: ['rendered DOM'],
+        core_abstractions: ['component', 'state'],
+        extension_points: ['plugins'],
+        hidden_assumptions: ['browser runtime'],
+        failure_boundaries: ['hydration'],
+      },
+      risk_register: [
+        {
+          risk: 'Weak maintenance',
+          probability: 'high',
+          impact: 'medium',
+          evidence: 'Few commits',
+          mitigation: 'Pin version',
+          validate: 'Check release cadence',
+        },
+        { risk: 'Unknown ecosystem', probability: 'certain', impact: 'catastrophic' },
+      ],
+      adoption_simulation: {
+        day_1: 'Install',
+        week_1: 'Debug edges',
+        month_1: 'Own upgrades',
+        exit_cost: 'Moderate',
+      },
+      learning_path: [{ concept: 'State machine', why: 'Core model', exercise: 'Trace one transition' }],
+    };
+    const out = parseClaudeResponse(JSON.stringify(withStructured));
+    expect(out.mental_model.kind).toBe('library');
+    expect(out.mental_model.core_abstractions).toEqual(['component', 'state']);
+    expect(out.risk_register[0]).toMatchObject({ risk: 'Weak maintenance', probability: 'high' });
+    expect(out.risk_register[1]).toMatchObject({ probability: 'medium', impact: 'medium' });
+    expect(out.adoption_simulation.exit_cost).toBe('Moderate');
+    expect(out.learning_path[0].exercise).toBe('Trace one transition');
+
+    const defaults = parseClaudeResponse(JSON.stringify(validResponse));
+    expect(defaults.mental_model.core_abstractions).toEqual([]);
+    expect(defaults.risk_register).toEqual([]);
+    expect(defaults.learning_path).toEqual([]);
+  });
   it('parses tech_stack and defaults it when missing', () => {
     const withTs = {
       ...validResponse,
