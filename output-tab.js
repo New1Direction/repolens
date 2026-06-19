@@ -94,6 +94,42 @@ function initHeaderActions() {
 const params = new URLSearchParams(location.search);
 const sessionKey = params.get('key');
 
+let keepalivePort = null;
+let keepaliveTimer = null;
+function startScanKeepalive() {
+  if (!sessionKey || keepalivePort) return;
+  try {
+    keepalivePort = chrome.runtime.connect({ name: 'repolens-scan-keepalive' });
+    const ping = () => {
+      try {
+        keepalivePort?.postMessage({ type: 'PING', sessionKey, at: Date.now() });
+      } catch {
+        /* the worker may be restarting; the next scan/reload reconnects */
+      }
+    };
+    ping();
+    keepaliveTimer = setInterval(ping, 10_000);
+    keepalivePort.onDisconnect.addListener(() => {
+      keepalivePort = null;
+      if (keepaliveTimer) clearInterval(keepaliveTimer);
+      keepaliveTimer = null;
+    });
+  } catch {
+    /* keepalive is best-effort; polling still works without it */
+  }
+}
+
+function stopScanKeepalive() {
+  if (keepaliveTimer) clearInterval(keepaliveTimer);
+  keepaliveTimer = null;
+  try {
+    keepalivePort?.disconnect();
+  } catch {
+    /* already disconnected */
+  }
+  keepalivePort = null;
+}
+
 const loading = document.getElementById('loading-state');
 const errorState = document.getElementById('error-state');
 const errorMsg = document.getElementById('error-msg');
@@ -468,8 +504,39 @@ async function init() {
     errorState.style.display = 'flex';
     return;
   }
-  const data = await waitForData();
+  startScanKeepalive();
+  let data;
+  try {
+    data = await waitForData();
+  } catch (err) {
+    loading.style.display = 'none';
+    stopScanKeepalive();
+    try {
+      const stored = await chrome.storage.session.get(sessionKey);
+      const stale = stored[sessionKey];
+      if (stale?.platform && stale?.repoId) retryContext = { platform: stale.platform, repoId: stale.repoId };
+    } catch {
+      /* no retry context available */
+    }
+    errorMsg.textContent = err?.message || 'Analysis timed out — please try again.';
+    let hintEl = document.getElementById('error-hint');
+    if (!hintEl) {
+      hintEl = document.createElement('div');
+      hintEl.id = 'error-hint';
+      hintEl.style.cssText =
+        'font-size:12px;color:var(--text-muted);text-align:center;max-width:360px;line-height:1.6;margin-top:-4px';
+      errorMsg.insertAdjacentElement('afterend', hintEl);
+    }
+    hintEl.textContent =
+      'The background scan stopped responding. Reload the extension, then retry this repo.';
+    if (settingsBtn) settingsBtn.style.display = 'none';
+    if (retryBtn) retryBtn.style.display = retryContext ? '' : 'none';
+    if (mascotOn) renderMascot(document.getElementById('error-vee'), 'error');
+    errorState.style.display = 'flex';
+    return;
+  }
   loading.style.display = 'none';
+  stopScanKeepalive();
 
   if (data.error) {
     errorMsg.textContent = data.error;

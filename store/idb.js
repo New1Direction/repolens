@@ -24,6 +24,15 @@ let dbPromise = null;
 function openDb() {
   if (dbPromise) return dbPromise;
   dbPromise = new Promise((resolve, reject) => {
+    let settled = false;
+    let blockedTimer = null;
+    const fail = (err) => {
+      if (settled) return;
+      settled = true;
+      if (blockedTimer) clearTimeout(blockedTimer);
+      dbPromise = null;
+      reject(err);
+    };
     const req = indexedDB.open(DB_NAME, DB_VERSION);
     req.onupgradeneeded = () => {
       const db = req.result;
@@ -31,8 +40,27 @@ function openDb() {
         if (!db.objectStoreNames.contains(s)) db.createObjectStore(s, { keyPath: 'id' });
       }
     };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+    req.onsuccess = () => {
+      if (settled) return;
+      settled = true;
+      if (blockedTimer) clearTimeout(blockedTimer);
+      const db = req.result;
+      // If a future build bumps DB_VERSION while this page is open, release the
+      // old connection immediately. Without this, IndexedDB upgrades can be
+      // blocked by stale output/library tabs, making saves and library loads hang.
+      db.onversionchange = () => {
+        db.close();
+        dbPromise = null;
+      };
+      resolve(db);
+    };
+    req.onblocked = () => {
+      blockedTimer = setTimeout(
+        () => fail(new Error('IndexedDB upgrade blocked by another open RepoLens tab')),
+        3000
+      );
+    };
+    req.onerror = () => fail(req.error || new Error('Could not open IndexedDB'));
   });
   return dbPromise;
 }

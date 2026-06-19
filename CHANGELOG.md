@@ -11,10 +11,12 @@ the same day, as a rapid burst of improvements, so they share a date.
 
 ### Added
 
+- **DESIGN.md-inspired theme pack.** Added six more CSS-only themes researched from DESIGN.md catalogs: **Command Blue**, **Aubergine Trace**, **Emerald DB**, **Paperline**, **Toybox Red**, and **Gradient Aurora**.
+- **Liquid Glass theme.** Inspired by `liquid-dom`'s liquid-glass direction without adding its WebGPU/React runtime, RepoLens now has a CSS-only **Liquid Glass** theme: translucent surfaces, icy blue highlights, glassy panels, and no new dependency or browser flag.
 - **Live first-class model catalogs.** Google Gemini, OpenRouter, and Nous now load their live model lists in **Options** instead of relying on stale hard-coded dropdowns. RepoLens filters those catalogs to text-capable models, preserves a **Custom…** escape hatch, and reuses the live list in **Models per scan part**.
 - **Claude sign-in is back, using the Claude Code / Pi OAuth flow.** The Anthropic card now supports **Sign in with Claude** for Claude Pro/Max-style accounts and still supports a Console API key (`sk-ant-api…`). OAuth tokens are stored only in this browser, refreshed automatically, and excluded from settings export.
-- **Gemini Ultra-ready defaults.** The Google card now defaults toward newer Gemini 3.x entries when your API key exposes them, while still supporting Gemini 2.5 and custom model IDs.
-- **Mono Ink identity.** RepoLens ships a new dark-tile lens icon, a "Mono Ink" default theme (cool near-black, white, and cobalt), and a wordmark lockup. The toolbar icon now animates only while a scan runs: the aperture grows and spins and the ring breathes grey to blue, then it resets to static. Turn the animation off in **Options**, and it honors your OS reduced-motion setting. The other 13 themes stay one click away.
+- **Gemini Ultra-ready picker.** The Google card loads newer Gemini entries when your API key exposes them, while the scan fallback stays on a stable Gemini 2.5 default so a fresh install does not hang on a preview model.
+- **Mono Ink identity.** RepoLens ships a new dark-tile lens icon, a "Mono Ink" default theme (cool near-black, white, and cobalt), and a wordmark lockup. The toolbar icon now animates only while a scan runs: the aperture grows and spins and the ring breathes grey to blue, then it resets to static. Turn the animation off in **Options**, and it honors your OS reduced-motion setting. The other themes stay one click away.
 - **A warmer Vee.** Vee's onboarding copy reads like a person now. The repo also vendors the stop-slop writing standard under `docs/style/` so the voice stays consistent.
 - **Vee-guided first-run walkthrough.** New users are met by Vee on their first Library open; the coachmark steps through a seeded demo repo (Library card → Verdict tab → Blueprint canvas) with plain narration and a spotlight on each target element. Implemented in `onboarding.js` / `coachmark.js`; copy lives in `onboarding-copy.js`.
 - **Milestone "power tour"** offered after approximately five real scans: a second coachmark sequence introducing the cross-library tools: Ask, Corkboard (Alternatives / Synergies), multi-select Compare, Radar / auto-organize, and Discover.
@@ -23,6 +25,11 @@ the same day, as a rapid burst of improvements, so they share a date.
 
 - **Model IDs are canonicalized before calls.** Legacy saved values such as `Hermes-4-405B`, `anthropic/claude-opus-4-8`, or Google `models/...` IDs are normalized to the IDs the provider APIs expect.
 - **Provider docs and settings copy now match reality.** Claude can use OAuth or a key, Gemini model options come from your key, and OpenRouter/Nous names reflect their `/models` catalogs.
+
+### Fixed
+
+- **Stuck scan recovery.** Output tabs now keep the MV3 service worker warm while a scan is loading, repository metadata fetches have a 20s timeout, and output pages render a timeout/retry state instead of spinning forever if the background scan stops responding.
+- **Library load/save hangs after updates.** IndexedDB connections now close on version upgrades and blocked opens reject instead of hanging forever, so stale RepoLens tabs can no longer leave the Library blank or a scan stuck on “Saving…”.
 
 ---
 
@@ -36,7 +43,7 @@ the same day, as a rapid burst of improvements, so they share a date.
 - **Persistent arrangements.** Node positions and canvas state are stored in a new `scenes` IndexedDB store and round-trip through the library backup/export envelope, so layouts travel with your library.
 - **Corkboard (Library-wide canvas).** A toggle in the Library page switches your whole collection into a red-string board: every scanned repo is a draggable manila card, and related repos are joined by colored string keyed to relationship type (alternatives, synergies, head-to-heads, combined ideas) and shaded by fit score. Filter by Collection to focus a board, and the arrangement is saved so it's exactly where you left it next session. Reuses the same canvas engine as Blueprint — zero new dependencies, theme-aware, reduced-motion safe.
 - **Stack Studio (canvas view of a tech-stack).** The Tech-Stack Builder result gains a **View on canvas** toggle: the repos you wired together render as layer-coloured cards in adoption order, joined by their integrations, with any gaps shown as dashed cards — the same engine, turning "how these fit together" into a living diagram.
-- **Zero-build, zero dependencies.** Plain ES modules only — no bundler, no new npm packages. Theme-aware across all 13 themes and reduced-motion safe throughout.
+- **Zero-build, zero dependencies.** Plain ES modules only — no bundler, no new npm packages. Theme-aware across all themes and reduced-motion safe throughout.
 
 ## [3.0.1] — 2026-06-15 · _Audit hardening_
 
@@ -88,7 +95,7 @@ behavioural changes to features, just fixes and guardrails.
 - **"Vee", a lens mascot** _(optional)_. A small telescope/aperture character that reacts
   to your scans — scanning as it reads, wide open on a **strong** fit, eyes narrowed on a
   **risky** one, thinking during a Deep Dive, resting on an empty Library. One token-aware
-  inline SVG that re-skins across all 13 themes; purely decorative (`aria-hidden`) and
+  inline SVG that re-skins across every theme; purely decorative (`aria-hidden`) and
   reduced-motion-safe. Turn it off in **Options → Interface** (`mascotEnabled`, on by
   default; it travels with your settings backup).
 - **A shared motion vocabulary** (`--dur-*` / `--ease-*` tokens in `themes.css`) and a

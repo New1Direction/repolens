@@ -226,7 +226,9 @@ chrome.contextMenus.onClicked.addListener(async (info) => {
     'googleKey',
     'openrouterKey',
     'xaiKey',
+    'xaiRefresh',
     'nousKey',
+    OPENAI_CREDENTIALS_KEY,
     ...compatStorageKeys(),
   ]);
   const hasKey =
@@ -236,7 +238,9 @@ chrome.contextMenus.onClicked.addListener(async (info) => {
     gateKeys.googleKey ||
     gateKeys.openrouterKey ||
     gateKeys.xaiKey ||
+    gateKeys.xaiRefresh ||
     gateKeys.nousKey ||
+    gateKeys[OPENAI_CREDENTIALS_KEY]?.refresh_token ||
     compatStorageKeys().some((k) => gateKeys[k]);
   const sessionKey = SESSION_KEY_PREFIX + crypto.randomUUID();
   if (!hasKey) {
@@ -256,6 +260,16 @@ chrome.contextMenus.onClicked.addListener(async (info) => {
 });
 
 // ─── Listen for content script + output-tab signals ──────────────────────────
+
+// Output tabs keep this port warm while a scan is loading. MV3 service workers can
+// otherwise be suspended during a long provider call, leaving the session entry in
+// `{ loading: true }` forever. A tiny ping every few seconds resets the idle timer.
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name !== 'repolens-scan-keepalive') return;
+  port.onMessage.addListener(() => {
+    /* ping only */
+  });
+});
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'REPO_PAGE' && sender.tab?.id) {
@@ -693,6 +707,7 @@ chrome.action.onClicked.addListener(async (tab) => {
     'xaiKey',
     'xaiRefresh',
     'nousKey',
+    OPENAI_CREDENTIALS_KEY,
     ...compatStorageKeys(),
   ]);
   const firstClass =
@@ -703,7 +718,8 @@ chrome.action.onClicked.addListener(async (tab) => {
     gateKeys.openrouterKey ||
     gateKeys.xaiKey ||
     gateKeys.xaiRefresh ||
-    gateKeys.nousKey;
+    gateKeys.nousKey ||
+    gateKeys[OPENAI_CREDENTIALS_KEY]?.refresh_token;
   const anyCompat = COMPAT_PROVIDERS.some((p) => isCompatConnected(p.id, gateKeys));
   if (!firstClass && !anyCompat) {
     chrome.runtime.openOptionsPage();
@@ -819,13 +835,27 @@ async function runBatchScan(batchKey, urls) {
 
 // Fetch → AI → parse → store. Used by the initial click and by RERUN (retry).
 async function runAnalysis(sessionKey, detected, tabId) {
-  // Load every provider credential + model + routing in one read; pass the whole
-  // object to callAI so registry (compat) providers are reachable too — not just
-  // the five first-class ones. Extra keys (autoSave/tone) are ignored downstream.
-  const settings = await chrome.storage.local.get([...PROVIDER_KEYS, 'autoSave', 'tone']);
-  const { autoSave = true, tone } = settings;
-
+  let heartbeat = null;
   try {
+    // Load every provider credential + model + routing in one read; pass the whole
+    // object to callAI so registry (compat) providers are reachable too — not just
+    // the five first-class ones. Extra keys (autoSave/tone) are ignored downstream.
+    // Keep this inside the try so any storage/runtime failure updates the output tab
+    // instead of leaving it spinning forever.
+    const settings = await chrome.storage.local.get([...PROVIDER_KEYS, 'autoSave', 'tone']);
+    const { autoSave = true, tone } = settings;
+
+    const touchSession = async () => {
+      const cur = (await chrome.storage.session.get(sessionKey))[sessionKey];
+      if (!cur?.loading) return;
+      await chrome.storage.session.set({
+        [sessionKey]: { ...cur, heartbeatAt: Date.now(), updatedAt: Date.now() },
+      });
+    };
+    heartbeat = setInterval(() => {
+      touchSession().catch(() => {});
+    }, 8_000);
+
     startScanAnim(tabId); // fire-and-forget; no-ops without a tabId / when disabled / reduced motion
     // Snapshot the previous cached analysis for diff comparison (before it's overwritten).
     const prevCached = await getCached(detected.platform, detected.repoId).catch(() => null);
@@ -942,8 +972,12 @@ async function runAnalysis(sessionKey, detected, tabId) {
       /* notifications are best-effort */
     }
 
+    if (heartbeat) clearInterval(heartbeat);
+    heartbeat = null;
     stopScanAnim(tabId); // success: reset to the static icon
   } catch (err) {
+    if (heartbeat) clearInterval(heartbeat);
+    heartbeat = null;
     stopScanAnim(tabId); // error: reset to the static icon
     // AI failures already carry a humanized message + kind; other failures (fetch,
     // parse) get classified here so the tab can still route the error CTA.
@@ -1822,7 +1856,7 @@ async function callAnthropic(model = 'claude-sonnet-4-6', prompt) {
   return text;
 }
 
-async function callGemini(key, model = 'gemini-3.1-pro-preview', prompt) {
+async function callGemini(key, model = 'gemini-2.5-flash', prompt) {
   const url =
     'https://generativelanguage.googleapis.com/v1beta/models/' +
     encodeURIComponent(model) +

@@ -293,6 +293,9 @@ export function isCompatConnected(id, keys = {}) {
   if (p.keyless) return !!keys[provEnabledName(id)];
   if (p.custom) return !!keys[provBaseName(id)]; // endpoint is the minimum; key is optional (local servers)
   if (p.protocol === 'azure') return !!(keys[provBaseName(id)] && keys[provKeyName(id)]); // resource + key
+  // ChatGPT-login OAuth stores a structured refresh token; inference mints the
+  // normal OpenAI API key lazily, so the provider is connected before openaiKey exists.
+  if (id === 'openai' && keys.openaiOauthCredentials?.refresh_token) return true;
   return !!keys[provKeyName(id)];
 }
 

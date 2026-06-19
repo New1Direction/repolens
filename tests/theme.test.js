@@ -36,6 +36,13 @@ describe('THEMES', () => {
   it('has all themes with key, label, swatch', () => {
     expect(THEMES.map((t) => t.key)).toEqual([
       'monoink',
+      'liquid',
+      'command',
+      'aubergine',
+      'emeralddb',
+      'paperline',
+      'toybox',
+      'aurora',
       'midnight',
       'paper',
       'terminal',
@@ -91,6 +98,28 @@ describe('saveTheme', () => {
     expect(document.documentElement.getAttribute('data-theme')).toBe('synthwave');
     const { theme } = await chrome.storage.local.get('theme');
     expect(theme).toBe('synthwave');
+  });
+});
+
+describe('themes.css DESIGN.md-inspired blocks', () => {
+  const css = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../themes.css'), 'utf8');
+
+  it('defines Liquid Glass with glass treatment', () => {
+    expect(/\[data-theme=(['"])liquid\1\]/.test(css)).toBe(true);
+    expect(css).toContain('backdrop-filter: blur(18px) saturate(1.25)');
+    expect(css).toContain('--accent-grad: linear-gradient(135deg, #e0f7ff');
+  });
+
+  it('defines the additional DESIGN.md-inspired themes', () => {
+    for (const key of ['command', 'aubergine', 'emeralddb', 'paperline', 'toybox', 'aurora']) {
+      expect(new RegExp(`\\[data-theme=(['"])${key}\\1\\]`).test(css)).toBe(true);
+    }
+    expect(css).toContain('--accent: #56c2ff');
+    expect(css).toContain('--accent: #7553ff');
+    expect(css).toContain('--accent: #3ecf8e');
+    expect(css).toContain('--accent: #057dbc');
+    expect(css).toContain('--accent: #e60012');
+    expect(css).toContain('--accent-grad: linear-gradient(135deg, #22d3ee');
   });
 });
 

@@ -49,12 +49,14 @@ Plus **SKTPG** (a one-tap State / Known-pitfalls / Trajectory / Proof / Growth r
 
 Newest first — the highlights. Full, detailed notes live in the **[changelog](CHANGELOG.md)**.
 
-### Unreleased — Provider model refresh
+### Unreleased — Theme pack, provider refresh, stability
 
+- 🎨 **DESIGN.md theme pack.** Six new CSS-only looks: Command Blue, Aubergine Trace, Emerald DB, Paperline, Toybox Red, and Gradient Aurora.
+- 🫧 **Liquid Glass theme.** A CSS-only theme inspired by `liquid-dom`'s glassy WebGPU look, without adding its runtime, flags, or dependencies.
 - 🔄 **Live model lists.** Gemini, OpenRouter, and Nous load their current provider catalogs in Settings, so new models and renamed slugs show up without another hand edit.
-- 🧠 **Gemini Ultra-ready.** The Google picker uses your API key to show the Gemini models your account can actually call, with a Custom field for brand-new IDs.
+- 🧠 **Gemini Ultra-ready, stable by default.** The Google picker uses your API key to show the Gemini models your account can actually call, while fresh scans fall back to stable Gemini 2.5 unless you opt into newer IDs.
 - 🔓 **Sign in with Claude.** Anthropic now supports the same Claude Code / Pi OAuth flow, while still accepting a Console API key.
-- 🧭 **Safer routing.** Legacy saved model IDs are normalized before calls, and per-part routing uses the refreshed catalogs.
+- 🧭 **Safer routing and scan recovery.** Legacy saved model IDs are normalized before calls, OAuth-only providers count as connected, scans keep the MV3 worker warm, and IndexedDB blocked-upgrade hangs now surface cleanly.
 
 ### v3.1.0 — Interactive Canvas
 
@@ -103,9 +105,9 @@ Use almost any AI provider, not just the built-in five.
 
 - 🗂️ **Select multiple repos** in the Library and delete them in one confirmed action (or _Select all_). **Esc** to back out.
 
-### v1.2.0 — 13 themes, done right
+### v1.2.0 — Themes, done right
 
-- 🎨 **5 new themes** — Nord, Gruvbox, Rosé Pine, Catppuccin Latte, Solarized Light (13 in all).
+- 🎨 **5 new themes** — Nord, Gruvbox, Rosé Pine, Catppuccin Latte, Solarized Light. Current builds include even more, including Mono Ink and Liquid Glass.
 - 💡 **Light themes fixed** — no more dark patches bleeding through; every theme now reads crisp and clear, light or dark.
 
 ### v1.1.0 — Trust & polish

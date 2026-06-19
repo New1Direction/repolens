@@ -13,7 +13,7 @@ export const CHAIN = ['nous', 'google', 'openrouter', 'xai', 'anthropic'];
 // Each provider's default model when the user hasn't overridden it (mirrors the callX defaults).
 export const DEFAULT_MODELS = {
   nous: 'stepfun/step-3.7-flash',
-  google: 'gemini-3.1-pro-preview',
+  google: 'gemini-2.5-flash',
   openrouter: 'x-ai/grok-4.3',
   xai: 'grok-4.3',
   anthropic: 'claude-sonnet-4-6',

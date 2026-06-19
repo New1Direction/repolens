@@ -2,6 +2,17 @@ export const DEFAULT_THEME = 'monoink';
 
 export const THEMES = [
   { key: 'monoink', label: 'Mono Ink', swatch: 'linear-gradient(135deg, #0f1115 50%, #2563eb 50%)' },
+  {
+    key: 'liquid',
+    label: 'Liquid Glass',
+    swatch: 'linear-gradient(135deg, #e0f7ff 0%, #7dd3fc 45%, #172554 100%)',
+  },
+  { key: 'command', label: 'Command Blue', swatch: 'linear-gradient(135deg, #07080a 55%, #56c2ff 55%)' },
+  { key: 'aubergine', label: 'Aubergine Trace', swatch: 'linear-gradient(135deg, #1f1633, #7553ff)' },
+  { key: 'emeralddb', label: 'Emerald DB', swatch: 'linear-gradient(135deg, #121212 55%, #3ecf8e 55%)' },
+  { key: 'paperline', label: 'Paperline', swatch: 'linear-gradient(135deg, #ffffff 50%, #000000 50%)' },
+  { key: 'toybox', label: 'Toybox Red', swatch: 'linear-gradient(135deg, #ffffff 55%, #e60012 55%)' },
+  { key: 'aurora', label: 'Gradient Aurora', swatch: 'linear-gradient(135deg, #0f172a, #22d3ee, #a78bfa)' },
   { key: 'midnight', label: 'Midnight', swatch: '#0a0a0f' },
   { key: 'paper', label: 'Paper', swatch: '#f7f7fb' },
   { key: 'terminal', label: 'Terminal', swatch: '#07100b' },

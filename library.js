@@ -3790,4 +3790,17 @@ async function init() {
   await checkOnboarding();
 }
 
-init();
+init().catch((err) => {
+  const status = document.getElementById('status');
+  if (status) {
+    status.classList.remove('hidden');
+    status.textContent = `Library could not load: ${err?.message || 'unknown error'}`;
+  }
+  const empty = document.getElementById('empty');
+  if (empty) {
+    document.getElementById('grid')?.classList.add('hidden');
+    empty.classList.remove('hidden');
+    empty.textContent =
+      'Library could not load. Close other RepoLens tabs, reload the extension, then reopen Library.';
+  }
+});

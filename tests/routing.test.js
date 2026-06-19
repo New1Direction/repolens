@@ -93,6 +93,12 @@ describe('buildAttemptPlan', () => {
     expect(plan).toEqual([{ provider: 'deepseek', model: 'deepseek-chat' }]);
   });
 
+  it('treats ChatGPT-login OAuth as connected before the OpenAI key is minted', () => {
+    expect(isConnected('openai', { openaiOauthCredentials: { refresh_token: 'refresh' } })).toBe(true);
+    const plan = buildAttemptPlan({ keys: { openaiOauthCredentials: { refresh_token: 'refresh' } } });
+    expect(plan).toEqual([{ provider: 'openai', model: 'gpt-4.1' }]);
+  });
+
   it('a registry provider can be the per-part override and is tried first', () => {
     const keys = { ...allKeys, groqKey: 'gsk-x' };
     const plan = buildAttemptPlan({ routing: { core: 'groq:llama-3.3-70b-versatile' }, part: 'core', keys });

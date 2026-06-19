@@ -867,7 +867,7 @@
             </div>
             <div class="chg">
               <span class="ci">🧪</span>
-              <div><b>900 tests, all green.</b> <span>No regressions across 97 test files.</span></div>
+              <div><b>903 tests, all green.</b> <span>No regressions across 97 test files.</span></div>
             </div>
           </div>
         </div>
@@ -886,17 +886,28 @@
         <div class="timeline">
           <div class="rel reveal">
             <div class="rel-head">
-              <span class="rel-v">Next</span><span class="rel-theme">Provider model refresh.</span
-              ><span class="rel-date">Jun 18</span>
+              <span class="rel-v">Next</span
+              ><span class="rel-theme">Theme pack, provider refresh, stability.</span
+              ><span class="rel-date">Jun 19</span>
             </div>
             <div class="rel-body">
-              Settings now pulls live model catalogs for Gemini, OpenRouter, and Nous, and Anthropic supports
-              the Claude Code / Pi sign-in flow again alongside Console API keys.
+              RepoLens gets seven new CSS-only themes, live model catalogs for Gemini/OpenRouter/Nous, Claude
+              Code / Pi-style Anthropic sign-in, and hardening for stuck scans plus Library save/load hangs.
             </div>
             <ul class="rel-list">
-              <li><b>Live model pickers</b> — no stale Gemini / OpenRouter / Nous slugs.</li>
+              <li>
+                <b>21 total themes</b> — Liquid Glass plus Command Blue, Aubergine Trace, Emerald DB,
+                Paperline, Toybox Red, and Gradient Aurora.
+              </li>
+              <li>
+                <b>Live model pickers</b> — no stale Gemini / OpenRouter / Nous slugs; Gemini stays stable by
+                default.
+              </li>
               <li><b>Claude OAuth</b> — sign in with Claude or paste <code>sk-ant-api…</code>.</li>
-              <li><b>Safer routing</b> — legacy saved model IDs are normalized before provider calls.</li>
+              <li>
+                <b>Stability fixes</b> — scan keepalive, fetch timeouts, OAuth-only routing, and IndexedDB
+                blocked-upgrade recovery.
+              </li>
             </ul>
           </div>
           <div class="rel reveal">

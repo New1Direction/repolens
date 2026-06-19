@@ -27,7 +27,7 @@
   --card-shadow: none;
 
   /* Motion — single source of truth for duration + easing. Theme-independent,
-     so all 13 themes inherit these from :root. User-initiated motion stays
+     so all themes inherit these from :root. User-initiated motion stays
      under 300ms; the @media (prefers-reduced-motion: reduce) guards in each
      surface remain the authoritative off-switch. */
   --dur-fast: 120ms; /* micro: presses, chip/tab hover */
@@ -83,6 +83,279 @@
   --font: 'Space Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --card-shadow: 0 1px 2px rgba(15, 17, 21, 0.06), 0 8px 24px rgba(15, 17, 21, 0.06);
+}
+
+[data-theme='liquid'] {
+  --body-bg:
+    radial-gradient(circle at 18% 0%, rgba(125, 211, 252, 0.2), transparent 32%),
+    radial-gradient(circle at 88% 12%, rgba(99, 102, 241, 0.18), transparent 28%),
+    linear-gradient(145deg, #07111d 0%, #0b1324 50%, #050812 100%);
+  --bg: #07111d;
+  --surface: rgba(15, 25, 42, 0.62);
+  --surface-alt: rgba(10, 18, 31, 0.72);
+  --border: rgba(186, 230, 253, 0.14);
+  --border-2: rgba(224, 247, 255, 0.24);
+
+  --text: #e6f6ff;
+  --text-strong: #ffffff;
+  --text-body: #c8e7f5;
+  --text-sub: #9fc7d8;
+  --text-muted: #7ba4b8;
+  --text-faint: #5f8092;
+  --text-fainter: #3e5868;
+
+  --accent: #7dd3fc;
+  --accent-deep: #38bdf8;
+  --accent-deep-hover: #0ea5e9;
+  --accent-grad: linear-gradient(135deg, #e0f7ff 0%, #7dd3fc 42%, #818cf8 100%);
+
+  --font: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --card-shadow: 0 18px 60px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+[data-theme='liquid'] .svc-card,
+[data-theme='liquid'] .tab-content,
+[data-theme='liquid'] .hist-row,
+[data-theme='liquid'] .theme-chip,
+[data-theme='liquid'] .tone-chip,
+[data-theme='liquid'] .entry-card,
+[data-theme='liquid'] .use-card,
+[data-theme='liquid'] .pro-col,
+[data-theme='liquid'] .con-col,
+[data-theme='liquid'] .hl-callout,
+[data-theme='liquid'] .action-menu-panel,
+[data-theme='liquid'] .scan-tip,
+[data-theme='liquid'] .token-panel,
+[data-theme='liquid'] input[type='text'],
+[data-theme='liquid'] input[type='password'],
+[data-theme='liquid'] .model-select {
+  backdrop-filter: blur(18px) saturate(1.25);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+  box-shadow: var(--card-shadow);
+}
+
+[data-theme='liquid'] .export-btn,
+[data-theme='liquid'] .svc-btn,
+[data-theme='liquid'] .save-btn,
+[data-theme='liquid'] .token-row button {
+  background: rgba(224, 247, 255, 0.08);
+  border-color: rgba(224, 247, 255, 0.2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+[data-theme='liquid'] .logo,
+[data-theme='liquid'] .health-fill {
+  box-shadow: 0 0 28px rgba(125, 211, 252, 0.28);
+}
+
+[data-theme='command'] {
+  --body-bg: radial-gradient(circle at 82% 0%, rgba(86, 194, 255, 0.12), transparent 28%), #07080a;
+  --bg: #07080a;
+  --surface: #0d0d0d;
+  --surface-alt: #101111;
+  --border: #262a2c;
+  --border-2: rgba(255, 255, 255, 0.16);
+
+  --text: #f4f5f7;
+  --text-strong: #ffffff;
+  --text-body: #d9dde3;
+  --text-sub: #c2c7ca;
+  --text-muted: #78787c;
+  --text-faint: #5e6366;
+  --text-fainter: #434345;
+
+  --accent: #56c2ff;
+  --accent-deep: #2aaef7;
+  --accent-deep-hover: #7dd3ff;
+  --accent-grad: linear-gradient(135deg, #56c2ff, #5fd9a0);
+
+  --font: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --card-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+[data-theme='command'] kbd,
+[data-theme='command'] .lib-kbhints kbd,
+[data-theme='command'] .theme-chip,
+[data-theme='command'] .tone-chip {
+  background: linear-gradient(180deg, #121212, #0d0d0d);
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 18px rgba(86, 194, 255, 0.08);
+}
+
+[data-theme='aubergine'] {
+  --body-bg:
+    radial-gradient(circle at 80% 5%, rgba(117, 83, 255, 0.18), transparent 30%),
+    linear-gradient(145deg, #1f1633 0%, #150f23 55%, #0f0c1a 100%);
+  --bg: #1f1633;
+  --surface: #181225;
+  --surface-alt: #2b1b3d;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-2: rgba(255, 255, 255, 0.16);
+
+  --text: #ffffff;
+  --text-strong: #ffffff;
+  --text-body: #e3e0ef;
+  --text-sub: #c8c5d8;
+  --text-muted: #9b97ad;
+  --text-faint: #6e6a82;
+  --text-fainter: #504b63;
+
+  --accent: #7553ff;
+  --accent-deep: #6240e8;
+  --accent-deep-hover: #8b72ff;
+  --accent-grad: linear-gradient(135deg, #7553ff 0%, #ff70bc 100%);
+
+  --font: Rubik, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --card-shadow: 0 18px 50px rgba(15, 12, 26, 0.38);
+}
+
+[data-theme='emeralddb'] {
+  --body-bg: radial-gradient(circle at 80% 0%, rgba(62, 207, 142, 0.12), transparent 30%), #121212;
+  --bg: #121212;
+  --surface: #171717;
+  --surface-alt: #1c1c1c;
+  --border: #2e2e2e;
+  --border-2: #404040;
+
+  --text: #fafafa;
+  --text-strong: #ffffff;
+  --text-body: #d8d8d8;
+  --text-sub: #b4b4b4;
+  --text-muted: #898989;
+  --text-faint: #6a6a6a;
+  --text-fainter: #4a4a4a;
+
+  --accent: #3ecf8e;
+  --accent-deep: #00c46a;
+  --accent-deep-hover: #a3e9c5;
+  --accent-grad: linear-gradient(135deg, #3ecf8e, #5ac4ee);
+
+  --font: Circular, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'Office Code Pro', 'Source Code Pro', ui-monospace, Menlo, Consolas, monospace;
+  --card-shadow: 0 16px 42px rgba(0, 0, 0, 0.34), 0 0 0 1px rgba(62, 207, 142, 0.04);
+}
+
+[data-theme='paperline'] {
+  --body-bg: #ffffff;
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-alt: #f7f7f7;
+  --border: #e2e8f0;
+  --border-2: #000000;
+
+  --text: #1a1a1a;
+  --text-strong: #000000;
+  --text-body: #1a1a1a;
+  --text-sub: #404040;
+  --text-muted: #757575;
+  --text-faint: #999999;
+  --text-fainter: #c7c7c7;
+
+  --accent: #057dbc;
+  --accent-deep: #000000;
+  --accent-deep-hover: #057dbc;
+  --accent-grad: linear-gradient(135deg, #000000, #057dbc);
+
+  --font: Georgia, 'Times New Roman', serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --card-shadow: none;
+}
+
+[data-theme='paperline'] .svc-card,
+[data-theme='paperline'] .tab-content,
+[data-theme='paperline'] .hist-row,
+[data-theme='paperline'] .entry-card,
+[data-theme='paperline'] .lib-card,
+[data-theme='paperline'] .export-btn,
+[data-theme='paperline'] .lib-btn,
+[data-theme='paperline'] input,
+[data-theme='paperline'] select,
+[data-theme='paperline'] textarea {
+  border-color: var(--border-2);
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+[data-theme='toybox'] {
+  --body-bg: radial-gradient(circle at 12% 10%, rgba(230, 0, 18, 0.07), transparent 24%), #ffffff;
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-alt: #fff8f0;
+  --border: #e5e5e5;
+  --border-2: #cccccc;
+
+  --text: #1f1f1f;
+  --text-strong: #000000;
+  --text-body: #2e2e2e;
+  --text-sub: #5a5a5a;
+  --text-muted: #8a8a8a;
+  --text-faint: #bcbcbc;
+  --text-fainter: #d8d8d8;
+
+  --accent: #e60012;
+  --accent-deep: #cc0010;
+  --accent-deep-hover: #a8000d;
+  --accent-grad: linear-gradient(135deg, #e60012, #ff8c00);
+
+  --font: 'Avenir Next Rounded', 'Helvetica Neue', Inter, system-ui, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --card-shadow: 0 10px 28px rgba(31, 31, 31, 0.08);
+}
+
+[data-theme='toybox'] .export-btn,
+[data-theme='toybox'] .svc-btn,
+[data-theme='toybox'] .save-btn,
+[data-theme='toybox'] .lib-btn,
+[data-theme='toybox'] .tab-btn,
+[data-theme='toybox'] .theme-chip,
+[data-theme='toybox'] .tone-chip {
+  border-radius: 9999px;
+}
+
+[data-theme='aurora'] {
+  --body-bg:
+    radial-gradient(circle at 18% 0%, rgba(34, 211, 238, 0.24), transparent 28%),
+    radial-gradient(circle at 82% 16%, rgba(167, 139, 250, 0.24), transparent 30%),
+    radial-gradient(circle at 48% 92%, rgba(16, 185, 129, 0.18), transparent 34%),
+    linear-gradient(145deg, #0f172a 0%, #111827 58%, #020617 100%);
+  --bg: #0f172a;
+  --surface: rgba(15, 23, 42, 0.84);
+  --surface-alt: rgba(17, 24, 39, 0.9);
+  --border: rgba(148, 163, 184, 0.16);
+  --border-2: rgba(226, 232, 240, 0.28);
+
+  --text: #f8fafc;
+  --text-strong: #ffffff;
+  --text-body: #dbeafe;
+  --text-sub: #bfdbfe;
+  --text-muted: #93c5fd;
+  --text-faint: #64748b;
+  --text-fainter: #475569;
+
+  --accent: #22d3ee;
+  --accent-deep: #a78bfa;
+  --accent-deep-hover: #c4b5fd;
+  --accent-grad: linear-gradient(135deg, #22d3ee 0%, #a78bfa 52%, #10b981 100%);
+
+  --font: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --card-shadow: 0 18px 60px rgba(2, 6, 23, 0.4);
+}
+
+[data-theme='aurora'] .svc-card,
+[data-theme='aurora'] .tab-content,
+[data-theme='aurora'] .hist-row,
+[data-theme='aurora'] .entry-card,
+[data-theme='aurora'] .lib-card,
+[data-theme='aurora'] .theme-chip,
+[data-theme='aurora'] .tone-chip {
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
 }
 
 [data-theme='paper'] {

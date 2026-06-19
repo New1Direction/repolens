@@ -1,5 +1,20 @@
+const REPO_FETCH_TIMEOUT_MS = 20_000;
+
+async function fetchWithTimeout(url, init, label = 'Repository request') {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), REPO_FETCH_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...(init || {}), signal: ctrl.signal });
+  } catch (err) {
+    if (err?.name === 'AbortError') throw new Error(`${label} timed out after 20s`);
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function fetchJson(url, headers) {
-  const r = await fetch(url, headers ? { headers } : undefined);
+  const r = await fetchWithTimeout(url, headers ? { headers } : undefined, 'Repository metadata');
   if (!r.ok) throw new Error(`HTTP ${r.status} for ${url}`);
   return r.json();
 }
@@ -33,8 +48,12 @@ async function fetchGitHub(repoId, opts = {}) {
   const init = headers ? { headers } : undefined;
   const [meta, readmeRes, langRes] = await Promise.all([
     fetchJson(`https://api.github.com/repos/${repoId}`, headers),
-    fetch(`https://api.github.com/repos/${repoId}/readme`, init).catch(() => ({ ok: false })),
-    fetch(`https://api.github.com/repos/${repoId}/languages`, init).catch(() => ({ ok: false })),
+    fetchWithTimeout(`https://api.github.com/repos/${repoId}/readme`, init, 'GitHub README').catch(() => ({
+      ok: false,
+    })),
+    fetchWithTimeout(`https://api.github.com/repos/${repoId}/languages`, init, 'GitHub languages').catch(
+      () => ({ ok: false })
+    ),
   ]);
   let readme = '';
   if (readmeRes.ok) {
@@ -68,10 +87,16 @@ async function fetchGitLab(repoId) {
   const encoded = encodeURIComponent(repoId);
   const [meta, readmeRes, langRes] = await Promise.all([
     fetchJson(`https://gitlab.com/api/v4/projects/${encoded}`),
-    fetch(`https://gitlab.com/api/v4/projects/${encoded}/repository/files/README.md/raw?ref=HEAD`).catch(
-      () => null
-    ),
-    fetch(`https://gitlab.com/api/v4/projects/${encoded}/languages`).catch(() => ({ ok: false })),
+    fetchWithTimeout(
+      `https://gitlab.com/api/v4/projects/${encoded}/repository/files/README.md/raw?ref=HEAD`,
+      undefined,
+      'GitLab README'
+    ).catch(() => null),
+    fetchWithTimeout(
+      `https://gitlab.com/api/v4/projects/${encoded}/languages`,
+      undefined,
+      'GitLab languages'
+    ).catch(() => ({ ok: false })),
   ]);
   let readme = '';
   if (readmeRes?.ok) readme = await readmeRes.text();
@@ -141,7 +166,11 @@ export async function fetchMaintenanceSignals(platform, repoId) {
   try {
     const [meta, contribRes] = await Promise.all([
       fetchJson(`https://api.github.com/repos/${repoId}`),
-      fetch(`https://api.github.com/repos/${repoId}/contributors?per_page=5&anon=0`).catch(() => ({
+      fetchWithTimeout(
+        `https://api.github.com/repos/${repoId}/contributors?per_page=5&anon=0`,
+        undefined,
+        'GitHub contributors'
+      ).catch(() => ({
         ok: false,
       })),
     ]);
