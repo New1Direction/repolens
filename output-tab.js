@@ -2633,12 +2633,153 @@ function updateDecisionBadge(repoId) {
     });
 }
 
+function recommendationFallback(d, fit) {
+  const explicit = d.recommendation || {};
+  if (explicit.action || explicit.title || explicit.rationale || explicit.next) return explicit;
+  const alt = d.alternatives?.[0]?.name;
+  const map = {
+    strong: {
+      action: 'adopt',
+      title: 'Adopt with a quick proof',
+      rationale:
+        'The repo looks healthy enough that the fastest path is a small integration spike, not more reading.',
+      next:
+        d.start_here?.[0]?.desc ||
+        'Run the documented quickstart and wire the smallest useful example into a scratch project.',
+    },
+    solid: {
+      action: 'trial',
+      title: 'Run a focused trial',
+      rationale: 'The signals are good, but you should validate setup friction and fit before committing.',
+      next:
+        d.start_here?.[0]?.desc ||
+        'Spend 30 minutes on install, quickstart, and one real use case from your stack.',
+    },
+    care: {
+      action: alt ? 'compare' : 'hold',
+      title: alt ? `Compare against ${alt}` : 'Trial only if the fit is exact',
+      rationale:
+        'There are enough tradeoffs that adoption needs a direct comparison or a narrow proof first.',
+      next: alt
+        ? `Open Alternatives and compare this against ${alt}.`
+        : 'Write down the exact requirement this satisfies, then test only that path.',
+    },
+    risky: {
+      action: 'avoid',
+      title: 'Avoid for production for now',
+      rationale:
+        'The risk signals are high enough that this should not enter a critical path without stronger evidence.',
+      next: alt
+        ? `Start with ${alt} instead, then revisit this only if the alternative fails.`
+        : 'Look for a maintained alternative before spending integration time.',
+    },
+  };
+  return map[fit.level] || map.solid;
+}
+
+function confidenceFallback(d) {
+  if (d.confidence?.level || d.confidence?.reason) return d.confidence;
+  const hasReadme = Boolean(d.eli5 || d.technical);
+  const hasHealth = Number(d.health?.score) > 0;
+  const flags = (d.red_flags || []).length;
+  const level = hasReadme && hasHealth && flags ? 'medium' : 'low';
+  return {
+    level,
+    reason: hasReadme
+      ? 'Based on README/metadata and provider analysis. Run Deep Dive for source-level confidence.'
+      : 'Limited repository evidence was available; treat this as a first-pass read.',
+  };
+}
+
+function evidenceFallback(d) {
+  if (d.evidence?.length) return d.evidence;
+  const out = [];
+  if (d.health?.summary)
+    out.push({ claim: d.health.summary, why: 'Maintenance health changes adoption risk.', type: 'health' });
+  for (const p of (d.pros || []).slice(0, 2))
+    out.push({ claim: p, why: 'This is a concrete upside to validate.', type: 'strength' });
+  for (const f of (d.red_flags || []).filter((x) => x?.severity !== 'ok').slice(0, 2)) {
+    out.push({
+      claim: f.title || f.text,
+      why: f.text || 'This can change the adoption decision.',
+      type: 'risk',
+    });
+  }
+  return out.slice(0, 5);
+}
+
+function actionPlanFallback(d, rec) {
+  const plan = d.action_plan || {};
+  if (plan.steps?.length || plan.validation_checklist?.length || plan.questions?.length) return plan;
+  const firstStart = d.start_here?.[0];
+  const secondStart = d.start_here?.[1];
+  const coreFit = d.use_cases?.core_fit || 'the main use case you care about';
+  return {
+    goal: `Know whether this repo can handle ${coreFit} without hidden setup or maintenance cost.`,
+    steps: [
+      {
+        time: '5 min',
+        title: 'Read the shortest path',
+        action:
+          firstStart?.desc ||
+          'Open the README and find install, quickstart, and the smallest complete example.',
+        success: 'You can explain what problem it solves and where it plugs in.',
+      },
+      {
+        time: '15 min',
+        title: 'Run the smallest example',
+        action:
+          secondStart?.desc || 'Install it in a scratch project and run the smallest documented workflow.',
+        success: 'The happy path works without undocumented steps.',
+      },
+      {
+        time: '10 min',
+        title: 'Test your real constraint',
+        action: rec.next || 'Try the one requirement that would make or break adoption for your project.',
+        success: 'You know whether to adopt, compare, or stop.',
+      },
+    ],
+    validation_checklist: [
+      'Can you run the quickstart from a clean environment?',
+      'Is the license acceptable for your use case?',
+      'Are the red flags acceptable or easy to mitigate?',
+    ],
+    questions: ['Who will own upgrades and debugging if this enters your stack?'],
+  };
+}
+
 function verdictDashboard(d) {
   const fit = deriveFit(d);
   const what = esc(d.description || firstSentence(d.eli5) || 'A software project.');
   const line = d.bottom_line
     ? `<div class="v-line"><span class="ai">AI BOTTOM LINE</span>${esc(d.bottom_line)}</div>`
     : '';
+  const recommendation = recommendationFallback(d, fit);
+  const confidence = confidenceFallback(d);
+  const evidence = evidenceFallback(d);
+  const actionPlan = actionPlanFallback(d, recommendation);
+
+  const actionLabels = {
+    adopt: 'Adopt',
+    trial: 'Trial',
+    compare: 'Compare',
+    hold: 'Hold',
+    avoid: 'Avoid',
+  };
+  const actionCard = `<div class="v-action v-action-${esc(recommendation.action || 'trial')}">
+    <div class="v-sec v-sec-tight">Best next action</div>
+    <div class="v-action-head"><span>${esc(actionLabels[recommendation.action] || 'Next')}</span>${esc(recommendation.title || 'Run a focused trial')}</div>
+    ${recommendation.rationale ? `<p>${esc(recommendation.rationale)}</p>` : ''}
+    ${recommendation.next ? `<div class="v-next"><b>Do next:</b> ${esc(recommendation.next)}</div>` : ''}
+  </div>`;
+
+  const confidenceCard =
+    confidence.level || confidence.reason
+      ? `<div class="v-confidence v-conf-${esc(confidence.level || 'medium')}">
+    <span class="v-conf-label">${esc(confidence.level || 'medium')} confidence</span>
+    <span>${esc(confidence.reason || 'Run a Deep Dive for source-level confidence.')}</span>
+  </div>`
+      : '';
 
   const langs = (d.languages || [])
     .slice(0, 4)
@@ -2684,6 +2825,40 @@ function verdictDashboard(d) {
         )
         .join('')
     : '';
+
+  const evidenceBlock = evidence.length
+    ? `<div class="v-sec">Why this verdict</div><div class="v-evidence">${evidence
+        .map(
+          (e) =>
+            `<div class="v-ev v-ev-${esc(e.type)}"><div class="v-ev-claim">${esc(e.claim)}</div>${e.why ? `<div class="v-ev-why">${esc(e.why)}</div>` : ''}</div>`
+        )
+        .join('')}</div>`
+    : '';
+
+  const planSteps = (actionPlan.steps || [])
+    .map(
+      (s, i) =>
+        `<div class="v-step"><div class="v-step-num">${i + 1}</div><div><div class="v-step-title">${s.time ? `<span>${esc(s.time)}</span>` : ''}${esc(s.title || 'Step')}</div><div class="v-step-action">${esc(s.action)}</div>${s.success ? `<div class="v-step-success">Good sign: ${esc(s.success)}</div>` : ''}</div></div>`
+    )
+    .join('');
+  const checklist = (actionPlan.validation_checklist || []).map((x) => `<li>${esc(x)}</li>`).join('');
+  const questions = (actionPlan.questions || []).map((x) => `<li>${esc(x)}</li>`).join('');
+  const actionPlanBlock =
+    planSteps || checklist || questions
+      ? `<div class="v-plan">
+    <div class="v-sec v-sec-tight">30-minute trial plan</div>
+    ${actionPlan.goal ? `<p class="v-plan-goal">${esc(actionPlan.goal)}</p>` : ''}
+    ${planSteps ? `<div class="v-steps">${planSteps}</div>` : ''}
+    ${
+      checklist || questions
+        ? `<div class="v-plan-lists">
+      ${checklist ? `<div><div class="v-minihead">Validate before adoption</div><ul>${checklist}</ul></div>` : ''}
+      ${questions ? `<div><div class="v-minihead">Questions to answer</div><ul>${questions}</ul></div>` : ''}
+    </div>`
+        : ''
+    }
+  </div>`
+      : '';
 
   const entries = (d.start_here || []).length
     ? `<div class="v-sec">Where to start</div>` +
@@ -2731,9 +2906,13 @@ function verdictDashboard(d) {
     <p class="v-what">${what}</p>
     <div class="v-fit fit-${fit.level}"><span class="v-chip">${esc(fit.label)}</span><span class="v-why">${esc(fit.why)}</span></div>
     ${line}
+    ${actionCard}
+    ${confidenceCard}
     <div id="vd-decision-anchor"></div>
     <div class="v-facts">${cells}</div>
+    ${evidenceBlock}
     ${flags}
+    ${actionPlanBlock}
     ${entries}
     ${diffCallout}
     ${jumps}

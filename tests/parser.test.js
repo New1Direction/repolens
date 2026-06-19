@@ -75,6 +75,40 @@ describe('parseClaudeResponse', () => {
     };
     expect(parseClaudeResponse(JSON.stringify(many)).highlights.length).toBe(4);
   });
+  it('parses actionable verdict fields and clamps invalid enum values', () => {
+    const withAction = {
+      ...validResponse,
+      recommendation: {
+        action: 'trial',
+        title: 'Run a spike',
+        rationale: 'Good fit but verify setup.',
+        next: 'Run the quickstart.',
+      },
+      confidence: { level: 'medium', reason: 'README is detailed but no local source scan yet.' },
+      evidence: [
+        { claim: 'Has a focused API', why: 'Lowers integration risk.', type: 'strength' },
+        { claim: 'Weak docs', why: 'Raises trial cost.', type: 'bogus' },
+      ],
+      action_plan: {
+        goal: 'Know if it fits the stack.',
+        steps: [{ time: '10 min', title: 'Install', action: 'Run quickstart', success: 'Demo boots' }],
+        validation_checklist: ['Check test coverage'],
+        questions: ['Who owns this?'],
+      },
+    };
+    const out = parseClaudeResponse(JSON.stringify(withAction));
+    expect(out.recommendation.action).toBe('trial');
+    expect(out.confidence.level).toBe('medium');
+    expect(out.evidence[1].type).toBe('fit');
+    expect(out.action_plan.steps[0].success).toBe('Demo boots');
+
+    const bad = parseClaudeResponse(
+      JSON.stringify({ recommendation: { action: 'ship-it' }, confidence: { level: 'certain' } })
+    );
+    expect(bad.recommendation.action).toBe('');
+    expect(bad.confidence.level).toBe('');
+    expect(bad.action_plan.steps).toEqual([]);
+  });
   it('parses tech_stack and defaults it when missing', () => {
     const withTs = {
       ...validResponse,

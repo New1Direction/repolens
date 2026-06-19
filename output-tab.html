@@ -3300,6 +3300,187 @@
         color: var(--accent);
         margin-bottom: 6px;
       }
+      .v-action,
+      .v-plan {
+        border: 1px solid var(--border);
+        background: var(--surface-alt);
+        border-radius: 14px;
+        padding: 14px;
+        margin-bottom: 14px;
+      }
+      .v-action {
+        position: relative;
+        overflow: hidden;
+      }
+      .v-action::before {
+        content: '';
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 4px;
+        background: var(--accent-grad);
+      }
+      .v-action-head {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        font-size: 17px;
+        font-weight: 800;
+        color: var(--text-strong);
+        margin-bottom: 7px;
+      }
+      .v-action-head span {
+        font: 800 10px/1 var(--mono, monospace);
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--accent);
+      }
+      .v-action p {
+        color: var(--text-sub);
+        font-size: 12.5px;
+        line-height: 1.55;
+        margin: 0 0 9px;
+      }
+      .v-next {
+        color: var(--text-body);
+        background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+        border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border));
+        border-radius: 10px;
+        padding: 9px 11px;
+        font-size: 12.5px;
+        line-height: 1.45;
+      }
+      .v-confidence {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+        padding: 9px 12px;
+        margin: -4px 0 14px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: color-mix(in srgb, var(--surface-alt) 70%, var(--surface));
+        color: var(--text-muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+      .v-conf-label {
+        color: var(--text);
+        font-weight: 800;
+        white-space: nowrap;
+        text-transform: capitalize;
+      }
+      .v-conf-high .v-conf-label {
+        color: var(--ok-ink);
+      }
+      .v-conf-low .v-conf-label {
+        color: var(--warn-ink);
+      }
+      .v-sec-tight {
+        margin-top: 0 !important;
+      }
+      .v-evidence {
+        display: grid;
+        gap: 8px;
+        margin-bottom: 16px;
+      }
+      .v-ev {
+        border: 1px solid var(--border);
+        border-left: 3px solid var(--accent);
+        border-radius: 10px;
+        background: var(--surface-alt);
+        padding: 10px 12px;
+      }
+      .v-ev-risk {
+        border-left-color: var(--warn);
+      }
+      .v-ev-health {
+        border-left-color: var(--ok);
+      }
+      .v-ev-claim {
+        color: var(--text);
+        font-weight: 700;
+        font-size: 12.5px;
+        line-height: 1.4;
+      }
+      .v-ev-why {
+        color: var(--text-muted);
+        font-size: 12px;
+        line-height: 1.45;
+        margin-top: 4px;
+      }
+      .v-plan-goal {
+        color: var(--text-sub);
+        font-size: 12.5px;
+        line-height: 1.55;
+        margin: 0 0 12px;
+      }
+      .v-steps {
+        display: grid;
+        gap: 9px;
+      }
+      .v-step {
+        display: grid;
+        grid-template-columns: 26px 1fr;
+        gap: 10px;
+        padding: 10px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 11px;
+      }
+      .v-step-num {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background: var(--accent);
+        color: var(--bg);
+        font: 800 12px/1 var(--mono, monospace);
+      }
+      .v-step-title {
+        color: var(--text);
+        font-weight: 800;
+        font-size: 13px;
+      }
+      .v-step-title span {
+        color: var(--accent);
+        font: 700 10px/1 var(--mono, monospace);
+        margin-right: 7px;
+      }
+      .v-step-action,
+      .v-step-success {
+        color: var(--text-sub);
+        font-size: 12px;
+        line-height: 1.45;
+        margin-top: 4px;
+      }
+      .v-step-success {
+        color: var(--ok-ink);
+      }
+      .v-plan-lists {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 12px;
+      }
+      .v-minihead {
+        color: var(--text);
+        font: 800 10px/1 var(--mono, monospace);
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        margin-bottom: 7px;
+      }
+      .v-plan-lists ul {
+        margin: 0;
+        padding-left: 17px;
+        color: var(--text-sub);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+      @media (max-width: 720px) {
+        .v-plan-lists {
+          grid-template-columns: 1fr;
+        }
+      }
       .v-facts {
         display: grid;
         grid-template-columns: repeat(2, 1fr);

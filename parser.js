@@ -1,6 +1,9 @@
 import { normalizeCapabilities, deriveCapabilities } from './taxonomy.js';
 
 const HL_SEVERITIES = new Set(['risk', 'insight', 'opportunity']);
+const REC_ACTIONS = new Set(['adopt', 'trial', 'compare', 'hold', 'avoid']);
+const CONFIDENCE_LEVELS = new Set(['high', 'medium', 'low']);
+const EVIDENCE_TYPES = new Set(['strength', 'risk', 'fit', 'health']);
 const HL_SECTIONS = new Set([
   'eli5',
   'technical',
@@ -29,6 +32,64 @@ function normalizeHighlights(raw) {
     }));
 }
 
+function normalizeRecommendation(raw) {
+  const r = raw && typeof raw === 'object' ? raw : {};
+  return {
+    action: REC_ACTIONS.has(r.action) ? r.action : '',
+    title: String(r.title ?? ''),
+    rationale: String(r.rationale ?? ''),
+    next: String(r.next ?? ''),
+  };
+}
+
+function normalizeConfidence(raw) {
+  const c = raw && typeof raw === 'object' ? raw : {};
+  return {
+    level: CONFIDENCE_LEVELS.has(c.level) ? c.level : '',
+    reason: String(c.reason ?? ''),
+  };
+}
+
+function normalizeEvidence(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((e) => e && typeof e === 'object' && String(e.claim || '').trim())
+    .slice(0, 5)
+    .map((e) => ({
+      claim: String(e.claim),
+      why: String(e.why ?? ''),
+      type: EVIDENCE_TYPES.has(e.type) ? e.type : 'fit',
+    }));
+}
+
+function normalizeActionPlan(raw) {
+  const p = raw && typeof raw === 'object' ? raw : {};
+  const steps = Array.isArray(p.steps)
+    ? p.steps
+        .filter((s) => s && typeof s === 'object' && String(s.title || s.action || '').trim())
+        .slice(0, 5)
+        .map((s) => ({
+          time: String(s.time ?? ''),
+          title: String(s.title ?? ''),
+          action: String(s.action ?? ''),
+          success: String(s.success ?? ''),
+        }))
+    : [];
+  const strings = (xs, max) =>
+    Array.isArray(xs)
+      ? xs
+          .map(String)
+          .filter((s) => s.trim())
+          .slice(0, max)
+      : [];
+  return {
+    goal: String(p.goal ?? ''),
+    steps,
+    validation_checklist: strings(p.validation_checklist, 6),
+    questions: strings(p.questions, 5),
+  };
+}
+
 export function parseClaudeResponse(rawText) {
   let text = rawText.trim();
   text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
@@ -45,6 +106,10 @@ export function parseClaudeResponse(rawText) {
   return {
     eli5: data.eli5 ?? '',
     analogies: Array.isArray(data.analogies) ? data.analogies.map(String) : [],
+    recommendation: normalizeRecommendation(data.recommendation),
+    confidence: normalizeConfidence(data.confidence),
+    evidence: normalizeEvidence(data.evidence),
+    action_plan: normalizeActionPlan(data.action_plan),
     technical: data.technical ?? '',
     use_cases: data.use_cases ?? { core_fit: '', good_fit: '', works_well: '', long_term: '' },
     skip_if: data.skip_if ?? { overkill: '', wrong_tool: '', needs_care: '', consider: '' },

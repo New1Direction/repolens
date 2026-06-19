@@ -11,6 +11,7 @@ the same day, as a rapid burst of improvements, so they share a date.
 
 ### Added
 
+- **Decision-grade Verdict tab.** The Verdict view now leads with a best next action, confidence, evidence, and a 30-minute trial plan so every scan tells you what to do next — not just what the repo is.
 - **DESIGN.md-inspired theme pack.** Added six more CSS-only themes researched from DESIGN.md catalogs: **Command Blue**, **Aubergine Trace**, **Emerald DB**, **Paperline**, **Toybox Red**, and **Gradient Aurora**.
 - **Liquid Glass theme.** Inspired by `liquid-dom`'s liquid-glass direction without adding its WebGPU/React runtime, RepoLens now has a CSS-only **Liquid Glass** theme: translucent surfaces, icy blue highlights, glassy panels, and no new dependency or browser flag.
 - **Live first-class model catalogs.** Google Gemini, OpenRouter, and Nous now load their live model lists in **Options** instead of relying on stale hard-coded dropdowns. RepoLens filters those catalogs to text-capable models, preserves a **Custom…** escape hatch, and reuses the live list in **Models per scan part**.

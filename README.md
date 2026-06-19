@@ -51,6 +51,7 @@ Newest first — the highlights. Full, detailed notes live in the **[changelog](
 
 ### Unreleased — Theme pack, provider refresh, stability
 
+- ✅ **Decision-grade Verdict.** Scans now produce a best next action, confidence, evidence, and a 30-minute trial plan.
 - 🎨 **DESIGN.md theme pack.** Six new CSS-only looks: Command Blue, Aubergine Trace, Emerald DB, Paperline, Toybox Red, and Gradient Aurora.
 - 🫧 **Liquid Glass theme.** A CSS-only theme inspired by `liquid-dom`'s glassy WebGPU look, without adding its runtime, flags, or dependencies.
 - 🔄 **Live model lists.** Gemini, OpenRouter, and Nous load their current provider catalogs in Settings, so new models and renamed slugs show up without another hand edit.

@@ -63,6 +63,18 @@ export function verdictCopyText(d) {
 
   if (what) lines.push('', what);
   if (d && d.bottom_line) lines.push('', d.bottom_line);
+  if (d?.recommendation?.title || d?.recommendation?.next) {
+    lines.push('', 'Next action:');
+    if (d.recommendation.title) lines.push(`→ ${d.recommendation.title}`);
+    if (d.recommendation.next) lines.push(d.recommendation.next);
+  }
+  if (d?.action_plan?.steps?.length) {
+    lines.push('', '30-minute trial plan:');
+    for (const s of d.action_plan.steps.slice(0, 3)) {
+      const time = s.time ? `${s.time}: ` : '';
+      lines.push(`- ${time}${s.title || 'Step'} — ${s.action || ''}`.trim());
+    }
+  }
 
   const pros = ((d && d.pros) || []).slice(0, 2);
   const cons = ((d && d.cons) || []).slice(0, 2);
