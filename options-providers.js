@@ -13,6 +13,8 @@ import {
   provVerName,
   compatStorageKeys,
   isCompatConnected,
+  isAllowedCustomEndpointUrl,
+  CUSTOM_ENDPOINT_POLICY_MESSAGE,
 } from './providers.js';
 import { createPkcePair } from './oauth-pkce.js';
 import {
@@ -49,12 +51,10 @@ const remove = (keys) => chrome.storage.local.remove(keys);
 // fetch it. Built-in vendor hosts are already declared, so this is a no-op for them.
 // Must run from a user gesture (the Save click qualifies).
 async function requestOrigin(url) {
-  try {
-    const origin = new URL(url).origin + '/*';
-    await chrome.permissions.request({ origins: [origin] });
-  } catch {
-    /* invalid URL or already granted — the self-test will surface real failures */
-  }
+  if (!isAllowedCustomEndpointUrl(url)) throw new Error(CUSTOM_ENDPOINT_POLICY_MESSAGE);
+  const origin = new URL(url).origin + '/*';
+  const granted = await chrome.permissions.request({ origins: [origin] });
+  if (!granted) throw new Error('Permission was not granted for this endpoint origin.');
 }
 
 /** Provider-routing groups for the per-part picker (only providers with a model catalog). */
@@ -204,10 +204,17 @@ function buildCard(p, snapshot) {
       text: 'Save endpoint',
       onclick: async () => {
         const v = ovInput.value.trim();
-        if (v) {
-          await requestOrigin(v);
-          await set({ [provBaseName(p.id)]: v });
-        } else await remove(provBaseName(p.id));
+        try {
+          if (v) {
+            await requestOrigin(v);
+            await set({ [provBaseName(p.id)]: v });
+          } else await remove(provBaseName(p.id));
+          result.className = 'cc-test-result ok';
+          result.textContent = v ? '✓ Endpoint saved' : 'Endpoint override cleared';
+        } catch (e) {
+          result.className = 'cc-test-result err';
+          result.textContent = `✗ ${e?.message || e}`;
+        }
       },
     });
     card.appendChild(
@@ -322,13 +329,20 @@ function buildCard(p, snapshot) {
       baseInput.focus();
       return;
     }
-    await requestOrigin(base); // custom hosts aren't pre-declared — ask for the origin
-    const patch = { [provBaseName(p.id)]: base, [provProtoName(p.id)]: protoSel.value };
-    const key = keyInput.value.trim();
-    if (key) patch[provKeyName(p.id)] = key;
-    await set(patch);
-    keyInput.value = '';
-    setState(isCompatConnected(p.id, await get(compatStorageKeys())));
+    try {
+      await requestOrigin(base); // custom hosts aren't pre-declared — ask for the origin
+      const patch = { [provBaseName(p.id)]: base, [provProtoName(p.id)]: protoSel.value };
+      const key = keyInput.value.trim();
+      if (key) patch[provKeyName(p.id)] = key;
+      await set(patch);
+      keyInput.value = '';
+      result.className = 'cc-test-result ok';
+      result.textContent = '✓ Endpoint saved';
+      setState(isCompatConnected(p.id, await get(compatStorageKeys())));
+    } catch (e) {
+      result.className = 'cc-test-result err';
+      result.textContent = `✗ ${e?.message || e}`;
+    }
   }
 
   async function saveAzure() {
@@ -337,16 +351,23 @@ function buildCard(p, snapshot) {
       baseInput.focus();
       return;
     }
-    await requestOrigin(base); // the resource host isn't pre-declared
-    const patch = {
-      [provBaseName(p.id)]: base,
-      [provVerName(p.id)]: verInput.value.trim() || p.defaultApiVersion,
-    };
-    const key = keyInput.value.trim();
-    if (key) patch[provKeyName(p.id)] = key;
-    await set(patch);
-    keyInput.value = '';
-    setState(isCompatConnected(p.id, await get(compatStorageKeys())));
+    try {
+      await requestOrigin(base); // the resource host isn't pre-declared
+      const patch = {
+        [provBaseName(p.id)]: base,
+        [provVerName(p.id)]: verInput.value.trim() || p.defaultApiVersion,
+      };
+      const key = keyInput.value.trim();
+      if (key) patch[provKeyName(p.id)] = key;
+      await set(patch);
+      keyInput.value = '';
+      result.className = 'cc-test-result ok';
+      result.textContent = '✓ Endpoint saved';
+      setState(isCompatConnected(p.id, await get(compatStorageKeys())));
+    } catch (e) {
+      result.className = 'cc-test-result err';
+      result.textContent = `✗ ${e?.message || e}`;
+    }
   }
 
   async function runTest(kind) {

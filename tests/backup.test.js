@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   BACKUP_FORMAT,
   BACKUP_VERSION,
+  MAX_STRING_LENGTHS,
   buildBackup,
   validateBackup,
   summarizeBackup,
@@ -115,6 +116,27 @@ describe('validateBackup', () => {
     const { value, warnings } = validateBackup({ format: BACKUP_FORMAT, version: 1, repos });
     expect(value.repos).toHaveLength(5000);
     expect(warnings.join(' ')).toMatch(/5001 repos/);
+  });
+  it('drops rows with oversized key fields or string payloads', () => {
+    const huge = 'x'.repeat(MAX_STRING_LENGTHS.scalar + 1);
+    const longRepoId = 'o/' + 'r'.repeat(MAX_STRING_LENGTHS.repoId);
+    const { value, warnings } = validateBackup({
+      format: BACKUP_FORMAT,
+      version: 1,
+      repos: [
+        { id: 1, payload: { repoId: 'ok/one', description: 'fine' } },
+        { id: 2, payload: { repoId: longRepoId } },
+        { id: 3, payload: { repoId: 'bad/huge', description: huge } },
+      ],
+      cache: [
+        { repoId: 'ok/one', platform: 'github', eli5: 'fine' },
+        { repoId: 'bad/cache', platform: 'github', eli5: huge },
+      ],
+    });
+    expect(value.repos.map((r) => r.payload.repoId)).toEqual(['ok/one']);
+    expect(value.cache.map((c) => c.repoId)).toEqual(['ok/one']);
+    expect(warnings.join(' ')).toMatch(/invalid repo rows/);
+    expect(warnings.join(' ')).toMatch(/invalid cache row/);
   });
 });
 

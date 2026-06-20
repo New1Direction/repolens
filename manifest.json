@@ -76,7 +76,6 @@
       "128": "icons/icon128.png"
     }
   },
-  "web_accessible_resources": [{ "resources": ["whats-new.html"], "matches": ["<all_urls>"] }],
   "options_page": "options.html",
   "icons": {
     "16": "icons/icon16.png",

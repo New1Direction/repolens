@@ -26,19 +26,101 @@ export const MAX_ROWS = {
   scenes: 2000,
 };
 
+// String caps stop a hostile backup from smuggling a tiny row count with huge
+// values (e.g. a 1 MB repoId / note) that would pin the IDB lock or blow quota.
+export const MAX_STRING_LENGTHS = {
+  id: 512,
+  repoId: 256,
+  label: 128,
+  scalar: 20_000,
+};
+
 // Per-repo snapshot ring-buffer cap — single source of truth in snapshots.js; each
 // imported snapshots row is trimmed to its most recent SNAP_CAP entries.
 const SNAP_CAP = SNAPSHOT_CAP;
 
 const arr = (x) => (Array.isArray(x) ? x : []);
-const rowHasRepo = (r) => !!(r && r.id != null && r.payload && r.payload.repoId);
-const rowHasId = (r) => !!(r && r.id != null && r.payload != null);
-const edgeOk = (e) => !!(e && e.id != null && e.source != null && e.target != null && e.label);
-const cacheOk = (c) => !!(c && c.repoId && c.platform);
-const collectionOk = (c) => !!(c && c.id != null && c.payload && typeof c.payload.name === 'string');
-const decisionOk = (d) => !!(d && d.id != null && d.payload && d.payload.repoId && d.payload.decision);
-const snapshotOk = (r) => !!(r && r.id != null && r.repoId && Array.isArray(r.snaps));
-const sceneOk = (s) => !!(s && s.id && s.scope && Array.isArray(s.nodes) && Array.isArray(s.edges));
+const shortString = (x, max = MAX_STRING_LENGTHS.scalar) => typeof x !== 'string' || x.length <= max;
+const shortId = (x) => shortString(String(x ?? ''), MAX_STRING_LENGTHS.id);
+const shortRepoId = (x) => typeof x === 'string' && x.length > 0 && x.length <= MAX_STRING_LENGTHS.repoId;
+const shortLabel = (x) => typeof x === 'string' && x.length > 0 && x.length <= MAX_STRING_LENGTHS.label;
+function stringsWithin(value, max = MAX_STRING_LENGTHS.scalar) {
+  if (typeof value === 'string') return value.length <= max;
+  if (!value || typeof value !== 'object') return true;
+  if (Array.isArray(value)) return value.every((v) => stringsWithin(v, max));
+  return Object.values(value).every((v) => stringsWithin(v, max));
+}
+const rowHasRepo = (r) =>
+  !!(
+    r &&
+    r.id != null &&
+    shortId(r.id) &&
+    r.payload &&
+    shortRepoId(r.payload.repoId) &&
+    stringsWithin(r.payload)
+  );
+const rowHasId = (r) =>
+  !!(r && r.id != null && shortId(r.id) && r.payload != null && stringsWithin(r.payload));
+const edgeOk = (e) =>
+  !!(
+    e &&
+    e.id != null &&
+    shortId(e.id) &&
+    e.source != null &&
+    shortId(e.source) &&
+    e.target != null &&
+    shortId(e.target) &&
+    shortLabel(e.label) &&
+    stringsWithin(e.properties || {})
+  );
+const cacheOk = (c) =>
+  !!(
+    c &&
+    shortRepoId(c.repoId) &&
+    typeof c.platform === 'string' &&
+    shortString(c.platform, 64) &&
+    stringsWithin(c)
+  );
+const collectionOk = (c) =>
+  !!(
+    c &&
+    c.id != null &&
+    shortId(c.id) &&
+    c.payload &&
+    typeof c.payload.name === 'string' &&
+    shortString(c.payload.name, 120) &&
+    stringsWithin(c.payload)
+  );
+const decisionOk = (d) =>
+  !!(
+    d &&
+    d.id != null &&
+    shortId(d.id) &&
+    d.payload &&
+    shortRepoId(d.payload.repoId) &&
+    d.payload.decision &&
+    stringsWithin(d.payload)
+  );
+const snapshotOk = (r) =>
+  !!(
+    r &&
+    r.id != null &&
+    shortId(r.id) &&
+    shortRepoId(r.repoId) &&
+    Array.isArray(r.snaps) &&
+    stringsWithin(r.snaps)
+  );
+const sceneOk = (s) =>
+  !!(
+    s &&
+    s.id &&
+    shortString(s.id, MAX_STRING_LENGTHS.id) &&
+    s.scope &&
+    shortString(s.scope, 64) &&
+    Array.isArray(s.nodes) &&
+    Array.isArray(s.edges) &&
+    stringsWithin(s)
+  );
 
 /** Empty normalized shape — the safe fallback when a file can't be parsed. */
 function emptyValue() {
@@ -152,24 +234,22 @@ export function validateBackup(obj) {
     return kept;
   };
   const value = {
-    repos: clamp('repos', arr(obj.repos).filter(rowHasRepo)),
-    nodes: clamp('nodes', arr(obj.nodes).filter(rowHasId)),
-    edges: clamp('edges', arr(obj.edges).filter(edgeOk)),
-    cache: clamp('cache', arr(obj.cache).filter(cacheOk)),
-    collections: clamp('collections', arr(obj.collections).filter(collectionOk)),
-    decisions: clamp('decisions', arr(obj.decisions).filter(decisionOk)),
+    repos: clamp('repos', filterWarn('repo', arr(obj.repos), rowHasRepo)),
+    nodes: clamp('nodes', filterWarn('node', arr(obj.nodes), rowHasId)),
+    edges: clamp('edges', filterWarn('edge', arr(obj.edges), edgeOk)),
+    cache: clamp('cache', filterWarn('cache', arr(obj.cache), cacheOk)),
+    collections: clamp('collections', filterWarn('collection', arr(obj.collections), collectionOk)),
+    decisions: clamp('decisions', filterWarn('decision', arr(obj.decisions), decisionOk)),
     snapshots: clamp(
       'snapshots',
-      arr(obj.snapshots)
-        .filter(snapshotOk)
-        .map((r) => ({
-          ...r,
-          // Trim to the cap and coerce each snap's flags to an array — a corrupt/hostile
-          // file may carry a non-array `flags` that would later throw in snapshotTrend.
-          snaps: arr(r.snaps)
-            .slice(-SNAP_CAP)
-            .map((s) => (s && typeof s === 'object' ? { ...s, flags: arr(s.flags) } : s)),
-        }))
+      filterWarn('snapshot', arr(obj.snapshots), snapshotOk).map((r) => ({
+        ...r,
+        // Trim to the cap and coerce each snap's flags to an array — a corrupt/hostile
+        // file may carry a non-array `flags` that would later throw in snapshotTrend.
+        snaps: arr(r.snaps)
+          .slice(-SNAP_CAP)
+          .map((s) => (s && typeof s === 'object' ? { ...s, flags: arr(s.flags) } : s)),
+      }))
     ),
     scenes: clamp('scenes', filterWarn('scene', arr(obj.scenes), sceneOk)),
   };

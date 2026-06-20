@@ -42,12 +42,35 @@ jobs:
       - name: Package Chrome extension
         run: |
           VERSION=$(node -p "require('./manifest.json').version")
+          ZIP="dist/repolens-v${VERSION}.zip"
+          rm -rf dist repolens-release
           mkdir -p dist repolens-release
+
           cp manifest.json README.md CHANGELOG.md repolens-release/
           cp batch.html library.html options.html output-tab.html share.html stack-tab.html whats-new.html repolens-release/
-          cp ./*.js ./*.css repolens-release/
+          cp ./*.css repolens-release/
+          for file in ./*.js; do
+            case "$(basename "$file")" in
+              eslint.config.js|vitest.config.js) continue ;;
+            esac
+            cp "$file" repolens-release/
+          done
           cp -R icons assets store migrate vendor repolens-release/
-          (cd repolens-release && zip -r "../dist/repolens-v${VERSION}.zip" . -x '*.DS_Store')
+          (cd repolens-release && zip -r "../${ZIP}" . -x '*.DS_Store')
+
+          unzip -Z1 "$ZIP" | sort > /tmp/repolens-zip-files.txt
+          cat /tmp/repolens-zip-files.txt
+          forbidden='(^|/)(node_modules|tests|coverage|website|mcp|docs|tools|\.github|\.git|\.verify|\.playwright-mcp)/|(^|/)(eslint\.config\.js|vitest\.config\.js|package-lock\.json|package\.json)$'
+          if grep -E "$forbidden" /tmp/repolens-zip-files.txt; then
+            echo "Release zip contains forbidden dev/test files" >&2
+            exit 1
+          fi
+          for required in manifest.json background.js output-tab.html library.html whats-new.html store/idb.js icons/icon128.png; do
+            if ! grep -Fxq "$required" /tmp/repolens-zip-files.txt; then
+              echo "Release zip missing required file: $required" >&2
+              exit 1
+            fi
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: repolens-extension-zip

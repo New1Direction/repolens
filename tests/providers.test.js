@@ -14,6 +14,9 @@ import {
   normalizeOpenAiUrl,
   normalizeAnthropicUrl,
   compatEndpoint,
+  isDangerousEndpointUrl,
+  isAllowedCustomEndpointUrl,
+  CUSTOM_ENDPOINT_POLICY_MESSAGE,
   openaiBody,
   anthropicBody,
   parseOpenAiText,
@@ -73,10 +76,13 @@ describe('isCompatConnected', () => {
     expect(isCompatConnected('ollama', {})).toBe(false);
     expect(isCompatConnected('ollama', { ollamaEnabled: true })).toBe(true);
   });
-  it('custom needs an endpoint; the key is optional (local servers)', () => {
+  it('custom needs a safe public endpoint; the key is optional', () => {
     expect(isCompatConnected('custom', { customKey: 'k' })).toBe(false); // key without an endpoint → not configured
-    expect(isCompatConnected('custom', { customBaseUrl: 'https://x/y' })).toBe(true); // endpoint alone is enough
-    expect(isCompatConnected('custom', { customBaseUrl: 'https://x/y', customKey: 'k' })).toBe(true);
+    expect(isCompatConnected('custom', { customBaseUrl: 'https://models.example.com/y' })).toBe(true); // endpoint alone is enough
+    expect(
+      isCompatConnected('custom', { customBaseUrl: 'https://models.example.com/y', customKey: 'k' })
+    ).toBe(true);
+    expect(isCompatConnected('custom', { customBaseUrl: 'http://localhost:11434' })).toBe(false);
   });
   it('unknown provider is never connected', () => {
     expect(isCompatConnected('nope', { nopeKey: 'x' })).toBe(false);
@@ -140,6 +146,19 @@ describe('URL normalization', () => {
   });
 });
 
+describe('custom endpoint policy', () => {
+  it('blocks private/internal endpoints and allows public http(s)', () => {
+    expect(isDangerousEndpointUrl('http://localhost:11434')).toBe(true);
+    expect(isDangerousEndpointUrl('http://127.0.0.1:11434')).toBe(true);
+    expect(isDangerousEndpointUrl('http://10.0.0.2/v1')).toBe(true);
+    expect(isDangerousEndpointUrl('https://model.internal/v1')).toBe(true);
+    expect(isDangerousEndpointUrl('https://intranet/v1')).toBe(true);
+    expect(isAllowedCustomEndpointUrl('https://models.example.com/v1')).toBe(true);
+    expect(isAllowedCustomEndpointUrl('file:///tmp/model.sock')).toBe(false);
+    expect(CUSTOM_ENDPOINT_POLICY_MESSAGE).toMatch(/Ollama provider/);
+  });
+});
+
 describe('compatEndpoint', () => {
   it('uses the registry endpoint when no override', () => {
     expect(compatEndpoint('deepseek', {})).toBe('https://api.deepseek.com/v1/chat/completions');
@@ -152,13 +171,14 @@ describe('compatEndpoint', () => {
       'https://proxy.test/anthropic/v1/messages'
     );
   });
-  it('custom builds from its base + protocol', () => {
-    expect(compatEndpoint('custom', { customBaseUrl: 'https://my.test', customProto: 'anthropic' })).toBe(
-      'https://my.test/v1/messages'
+  it('custom builds from its safe public base + protocol', () => {
+    expect(
+      compatEndpoint('custom', { customBaseUrl: 'https://my.example.com', customProto: 'anthropic' })
+    ).toBe('https://my.example.com/v1/messages');
+    expect(compatEndpoint('custom', { customBaseUrl: 'https://my.example.com/v1' })).toBe(
+      'https://my.example.com/v1/chat/completions'
     );
-    expect(compatEndpoint('custom', { customBaseUrl: 'https://my.test/v1' })).toBe(
-      'https://my.test/v1/chat/completions'
-    );
+    expect(compatEndpoint('custom', { customBaseUrl: 'http://localhost:11434/v1' })).toBe('');
   });
   it('azure embeds the deployment + api-version and needs a resource endpoint + model', () => {
     expect(
@@ -172,6 +192,7 @@ describe('compatEndpoint', () => {
       /\/openai\/deployments\/d1\/chat\/completions\?api-version=/
     ); // default version
     expect(compatEndpoint('azure', { azureBaseUrl: 'https://r.openai.azure.com' })).toBe(''); // no deployment yet
+    expect(compatEndpoint('azure', { azureBaseUrl: 'http://127.0.0.1:8080', azureModel: 'd1' })).toBe('');
   });
 });
 
@@ -182,6 +203,7 @@ describe('azure connectivity', () => {
     expect(isCompatConnected('azure', { azureBaseUrl: 'https://r.openai.azure.com', azureKey: 'k' })).toBe(
       true
     );
+    expect(isCompatConnected('azure', { azureBaseUrl: 'http://192.168.1.20', azureKey: 'k' })).toBe(false);
   });
 });
 

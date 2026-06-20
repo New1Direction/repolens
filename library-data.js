@@ -188,6 +188,13 @@ export function sourceUrl(platform, repoId) {
   return `https://github.com/search?q=${encodeURIComponent(id)}&type=repositories`;
 }
 
+/** Markdown-safe repo link using the platform-aware source URL. */
+export function repoMarkdownLink(row) {
+  const repoId = String(row?.repoId || '');
+  const safeLabel = repoId.replace(/\\/g, '\\\\').replace(/\[/g, '\\[').replace(/]/g, '\\]');
+  return `[${safeLabel}](${sourceUrl(row?.platform || '', repoId)})`;
+}
+
 /** Union two row lists by repoId — primary rows win, secondary fills the gaps.
  * Returns a NEW array; neither input is mutated. */
 export function mergeRows(primary, secondary) {

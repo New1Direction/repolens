@@ -4,6 +4,7 @@
 // not cached.
 
 const PREFIX = 'rlcache:';
+const ASK_PREFIX = 'repolens_ask_';
 const LENS_KEYS = ['deepDive', 'systems', 'ideate', 'prioritize', 'sktpg', 'versus', 'synergies'];
 
 export function cacheKey(platform, repoId) {
@@ -69,6 +70,19 @@ export async function importCache(entries = [], { mode = 'merge' } = {}) {
 export async function clearCache() {
   const all = await chrome.storage.local.get(null);
   const keys = Object.keys(all).filter((k) => k.startsWith(PREFIX));
+  if (keys.length) await chrome.storage.local.remove(keys);
+  return keys.length;
+}
+
+export async function removeAskHistory(repoId) {
+  const id = String(repoId || '');
+  if (!id) return;
+  await chrome.storage.local.remove(`${ASK_PREFIX}${id}`);
+}
+
+export async function clearAskHistory() {
+  const all = await chrome.storage.local.get(null);
+  const keys = Object.keys(all).filter((k) => k.startsWith(ASK_PREFIX));
   if (keys.length) await chrome.storage.local.remove(keys);
   return keys.length;
 }

@@ -261,6 +261,65 @@ export const COMPAT_PROVIDERS = [
 
 export const COMPAT_IDS = COMPAT_PROVIDERS.map((p) => p.id);
 
+const PRIVATE_TLDS = ['.local', '.internal', '.lan', '.home'];
+
+function ipv4Parts(host) {
+  if (!/^\d{1,3}(?:\.\d{1,3}){3}$/.test(host)) return null;
+  const parts = host.split('.').map(Number);
+  return parts.every((n) => Number.isInteger(n) && n >= 0 && n <= 255) ? parts : null;
+}
+
+function isPrivateIpv4(host) {
+  const p = ipv4Parts(host);
+  if (!p) return false;
+  const [a, b] = p;
+  return (
+    a === 0 ||
+    a === 10 ||
+    a === 127 ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168) ||
+    (a === 100 && b >= 64 && b <= 127)
+  );
+}
+
+function isPrivateIpv6(host) {
+  const h = host.replace(/^\[|\]$/g, '').toLowerCase();
+  return h === '::1' || h.startsWith('fc') || h.startsWith('fd') || h.startsWith('fe80:');
+}
+
+/** True when a user-entered endpoint targets localhost/private/internal networks. */
+export function isDangerousEndpointUrl(input) {
+  try {
+    const u = new URL(String(input || '').trim());
+    const host = u.hostname.replace(/^\[|\]$/g, '').toLowerCase();
+    return (
+      host === 'localhost' ||
+      host.endsWith('.localhost') ||
+      (!host.includes('.') && !host.includes(':')) ||
+      PRIVATE_TLDS.some((suffix) => host.endsWith(suffix)) ||
+      isPrivateIpv4(host) ||
+      isPrivateIpv6(host)
+    );
+  } catch {
+    return true;
+  }
+}
+
+/** User-entered provider endpoints must be public http(s) URLs. Ollama local has a dedicated provider. */
+export function isAllowedCustomEndpointUrl(input) {
+  try {
+    const u = new URL(String(input || '').trim());
+    return (u.protocol === 'https:' || u.protocol === 'http:') && !isDangerousEndpointUrl(input);
+  } catch {
+    return false;
+  }
+}
+
+export const CUSTOM_ENDPOINT_POLICY_MESSAGE =
+  'Use a public http(s) endpoint. Private, localhost, .local, and internal-network hosts are blocked here; use the dedicated Ollama provider for local models.';
+
 export function compatProviderById(id) {
   return COMPAT_PROVIDERS.find((p) => p.id === id) || null;
 }
@@ -291,8 +350,9 @@ export function isCompatConnected(id, keys = {}) {
   const p = compatProviderById(id);
   if (!p) return false;
   if (p.keyless) return !!keys[provEnabledName(id)];
-  if (p.custom) return !!keys[provBaseName(id)]; // endpoint is the minimum; key is optional (local servers)
-  if (p.protocol === 'azure') return !!(keys[provBaseName(id)] && keys[provKeyName(id)]); // resource + key
+  if (p.custom) return isAllowedCustomEndpointUrl(keys[provBaseName(id)]); // endpoint is the minimum; key is optional
+  if (p.protocol === 'azure')
+    return !!(isAllowedCustomEndpointUrl(keys[provBaseName(id)]) && keys[provKeyName(id)]); // resource + key
   // ChatGPT-login OAuth stores a structured refresh token; inference mints the
   // normal OpenAI API key lazily, so the provider is connected before openaiKey exists.
   if (id === 'openai' && keys.openaiOauthCredentials?.refresh_token) return true;
@@ -341,13 +401,16 @@ export function compatEndpoint(id, keys = {}) {
     // Azure embeds the deployment (model) and api-version in the URL.
     const base = (keys[provBaseName(id)] || '').trim().replace(/\/+$/, '');
     const model = compatModelFor(id, keys);
-    if (!base || !model || !/^https?:\/\//i.test(base)) return '';
+    if (!base || !model || !isAllowedCustomEndpointUrl(base)) return '';
     const ver = (keys[provVerName(id)] || p.defaultApiVersion || '2024-10-21').trim();
     return `${base}/openai/deployments/${encodeURIComponent(model)}/chat/completions?api-version=${encodeURIComponent(ver)}`;
   }
   const proto = compatProtocol(id, keys);
   const override = (keys[provBaseName(id)] || '').trim();
-  if (override) return proto === 'anthropic' ? normalizeAnthropicUrl(override) : normalizeOpenAiUrl(override);
+  if (override) {
+    if (!isAllowedCustomEndpointUrl(override)) return '';
+    return proto === 'anthropic' ? normalizeAnthropicUrl(override) : normalizeOpenAiUrl(override);
+  }
   return p.endpoint || '';
 }
 

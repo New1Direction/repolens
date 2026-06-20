@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { cacheAnalysis, getCached, importCache, clearCache } from '../cache.js';
+import {
+  cacheAnalysis,
+  getCached,
+  importCache,
+  clearCache,
+  removeAskHistory,
+  clearAskHistory,
+} from '../cache.js';
 
 let store;
 beforeEach(() => {
@@ -68,11 +75,34 @@ describe('cache backup — clearCache', () => {
   it('removes only rlcache:* keys, leaving settings intact', async () => {
     store['theme'] = 'midnight';
     store['anthropicKey'] = 'sk-secret';
+    store['repolens_ask_a/one'] = [{ q: 'old' }];
     await cacheAnalysis('github', 'a/one', { eli5: 'x' });
     const cleared = await clearCache();
     expect(cleared).toBe(1);
     expect(store['theme']).toBe('midnight');
     expect(store['anthropicKey']).toBe('sk-secret');
+    expect(store['repolens_ask_a/one']).toEqual([{ q: 'old' }]);
     expect(await getCached('github', 'a/one')).toBeNull();
+  });
+});
+
+describe('ask history cleanup', () => {
+  it('removes one repo ask history key', async () => {
+    store['repolens_ask_a/one'] = [{ q: 'old' }];
+    store['repolens_ask_b/two'] = [{ q: 'keep' }];
+    await removeAskHistory('a/one');
+    expect(store['repolens_ask_a/one']).toBeUndefined();
+    expect(store['repolens_ask_b/two']).toEqual([{ q: 'keep' }]);
+  });
+
+  it('clears all ask history keys without touching settings', async () => {
+    store['theme'] = 'midnight';
+    store['repolens_ask_a/one'] = [{ q: 'old' }];
+    store['repolens_ask_b/two'] = [{ q: 'old' }];
+    const cleared = await clearAskHistory();
+    expect(cleared).toBe(2);
+    expect(store['theme']).toBe('midnight');
+    expect(store['repolens_ask_a/one']).toBeUndefined();
+    expect(store['repolens_ask_b/two']).toBeUndefined();
   });
 });

@@ -6,6 +6,7 @@ import {
   allCapabilities,
   relativeTime,
   sourceUrl,
+  repoMarkdownLink,
   mergeRows,
 } from '../library-data.js';
 
@@ -85,7 +86,7 @@ describe('libraryRow', () => {
   });
 });
 
-describe('sourceUrl', () => {
+describe('sourceUrl and markdown links', () => {
   it('maps each platform to its project page', () => {
     expect(sourceUrl('github', 'facebook/react')).toBe('https://github.com/facebook/react');
     expect(sourceUrl('gitlab', 'inkscape/inkscape')).toBe('https://gitlab.com/inkscape/inkscape');
@@ -97,6 +98,17 @@ describe('sourceUrl', () => {
   });
   it('falls back to a GitHub search for bare names', () => {
     expect(sourceUrl('', 'mystery')).toBe('https://github.com/search?q=mystery&type=repositories');
+  });
+  it('builds markdown export links with platform-aware URLs', () => {
+    expect(repoMarkdownLink({ platform: 'gitlab', repoId: 'inkscape/inkscape' })).toBe(
+      '[inkscape/inkscape](https://gitlab.com/inkscape/inkscape)'
+    );
+    expect(repoMarkdownLink({ platform: 'npm', repoId: '@scope/pkg' })).toBe(
+      '[@scope/pkg](https://www.npmjs.com/package/@scope/pkg)'
+    );
+    expect(repoMarkdownLink({ platform: 'pypi', repoId: 'requests' })).toBe(
+      '[requests](https://pypi.org/project/requests/)'
+    );
   });
 });
 

@@ -1993,7 +1993,6 @@ async function callXAI(model = 'grok-4.3', prompt) {
       throw new Error('xAI returned no text content');
     }
     const err = await res.json().catch(() => ({}));
-    console.warn('[RepoLens xAI]', endpoint, res.status, JSON.stringify(err));
     lastErr = err.error?.message || 'xAI API error ' + res.status + ' at ' + endpoint;
     if (res.status === 401 && isOAuth) {
       await chrome.storage.local.remove(['xaiKey', 'xaiRefresh', 'xaiExpiry', 'xaiCredentials']);

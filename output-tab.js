@@ -240,6 +240,7 @@ function updateLoadingStage(data = {}) {
 async function waitForData() {
   const startedAt = Date.now();
   const softTimeoutMs = 90_000;
+  const missingSessionTimeoutMs = 15_000;
   const maxTimeoutMs = 6 * 60_000;
   const staleHeartbeatMs = 45_000;
   let phraseIndex = 0;
@@ -265,6 +266,9 @@ async function waitForData() {
       const data = stored[sessionKey];
 
       if (!data) {
+        if (elapsed > missingSessionTimeoutMs) {
+          throw new Error('Analysis session was not found — please re-run the scan from the extension.');
+        }
         await sleep(150);
         continue;
       }

@@ -44,7 +44,15 @@ import {
   nextColor,
   COLLECTION_COLORS,
 } from './collections.js';
-import { listCached, removeCached, openCachedAnalysis, importCache, clearCache } from './cache.js';
+import {
+  listCached,
+  removeCached,
+  openCachedAnalysis,
+  importCache,
+  clearCache,
+  removeAskHistory,
+  clearAskHistory,
+} from './cache.js';
 import {
   libraryRow,
   sortRows,
@@ -52,6 +60,7 @@ import {
   allCapabilities,
   relativeTime,
   sourceUrl,
+  repoMarkdownLink,
   mergeRows,
   libraryStats,
 } from './library-data.js';
@@ -736,6 +745,7 @@ async function removeRepo(repoId, btn) {
     }
   }
   await deleteRepo(repoId); // best-effort; never throws
+  await removeAskHistory(repoId).catch(() => {});
   cacheByRepo.delete(repoId);
   allRows = allRows.filter((row) => row.repoId !== repoId);
   await pruneRepoFromCollections(repoId); // keep collection membership honest
@@ -1090,6 +1100,7 @@ async function deleteSelected() {
       }
     }
     await deleteRepo(repoId); // best-effort; never throws
+    await removeAskHistory(repoId).catch(() => {});
     cacheByRepo.delete(repoId);
   }
   const idSet = new Set(ids);
@@ -1432,6 +1443,7 @@ async function clearLibraryFlow(btn) {
     setStatus('Clearing library…');
     await clearLibrary();
     await clearCache().catch(() => {});
+    await clearAskHistory().catch(() => {});
     setStatus('Library cleared. Reloading…');
     setTimeout(() => location.reload(), 600);
   } catch (e) {
@@ -2308,7 +2320,7 @@ function exportDigest(format) {
       ]
         .filter(Boolean)
         .join(' · ');
-      return `- **[${r.repoId}](https://github.com/${r.repoId})**${decLabel(r.repoId)}${meta ? ` — ${meta}` : ''}\n  ${r.blurb ? r.blurb.slice(0, 120) : ''}${noteText(r.repoId)}`;
+      return `- **${repoMarkdownLink(r)}**${decLabel(r.repoId)}${meta ? ` — ${meta}` : ''}\n  ${r.blurb ? r.blurb.slice(0, 120) : ''}${noteText(r.repoId)}`;
     };
     const sections = Object.entries(groups)
       .filter(([, rs]) => rs.length)
@@ -2551,7 +2563,7 @@ function exportVisible(_format) {
     ]
       .filter(Boolean)
       .join(' · ');
-    return `- **[${r.repoId}](https://github.com/${r.repoId})**${decLabel(r.repoId)}${meta ? ` — ${meta}` : ''}\n  ${r.blurb ? r.blurb.slice(0, 120) : ''}${noteText(r.repoId)}`;
+    return `- **${repoMarkdownLink(r)}**${decLabel(r.repoId)}${meta ? ` — ${meta}` : ''}\n  ${r.blurb ? r.blurb.slice(0, 120) : ''}${noteText(r.repoId)}`;
   };
   const filter = [
     state.query && `query: "${state.query}"`,
@@ -2785,7 +2797,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'o') {
     e.preventDefault();
     const row = allRows.find((r) => r.repoId === repoId);
-    if (row) window.open(sourceUrl(row), '_blank', 'noopener');
+    if (row) window.open(sourceUrl(row.platform || '', row.repoId), '_blank', 'noopener');
   }
   if (e.key === 'r') {
     e.preventDefault();
