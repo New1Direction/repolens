@@ -19,16 +19,146 @@
   align-items: flex-start;
 }
 .hero-aside {
+  position: relative;
   display: flex;
   justify-content: center;
+  width: min(100%, 560px);
+}
+.hero-proof {
+  position: relative;
+  z-index: 3;
+  width: clamp(320px, 30vw, 410px);
+  border-radius: 22px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--surface-2) 94%, white);
+  border: 1px solid var(--border-2);
+  box-shadow: var(--shadow-lg);
+}
+.hero-proof::after {
+  content: '';
+  position: absolute;
+  inset: -30% -20% auto auto;
+  width: 180px;
+  height: 180px;
+  border-radius: 999px;
+  background: var(--accent-weak);
+  filter: blur(16px);
+  pointer-events: none;
+}
+.hero-proof-bar {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-2) 64%, transparent);
+}
+.proof-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--border-2);
+}
+.proof-dot:first-child {
+  background: var(--pop);
+}
+.proof-dot:nth-child(2) {
+  background: var(--warm);
+}
+.proof-dot:nth-child(3) {
+  background: var(--accent-3);
+}
+.proof-url {
+  margin-left: auto;
+  font: 700 10px/1 var(--mono);
+  color: var(--muted);
+}
+.hero-proof-body {
+  position: relative;
+  z-index: 1;
+  padding: 18px;
+}
+.proof-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.proof-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 7px 10px;
+  font: 800 11px/1 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-3);
+  background: color-mix(in srgb, var(--accent-3) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-3) 34%, transparent);
+}
+.proof-score {
+  font: 850 2.4rem/0.9 var(--font-display, var(--sans));
+  letter-spacing: -0.04em;
+  color: var(--accent);
+}
+.hero-proof h2 {
+  margin: 14px 0 8px;
+  font-size: clamp(1.18rem, 1rem + 0.6vw, 1.45rem);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  color: var(--text-strong);
+}
+.hero-proof p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+.proof-meter {
+  height: 9px;
+  margin: 16px 0 14px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+}
+.proof-meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), var(--accent-3));
+}
+.proof-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 7px;
+}
+.proof-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  font: 700 11px/1 var(--mono);
+  color: var(--text);
 }
 
-/* Video mascot — framed "viewport", now a real focal asset on the right. */
+/* Video mascot — framed "viewport", now a supporting character beside product proof. */
 .hero-mascot {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 16px;
+  transform: translateY(-50%);
 }
 .hero-mascot-stage {
   position: relative;
@@ -131,7 +261,11 @@
     align-items: center;
   }
   .hero-aside {
-    order: -1;
+    width: 100%;
+    margin-top: 22px;
+  }
+  .hero-proof {
+    width: min(100%, 360px);
   }
   .hero-title,
   .hero-sub,
@@ -146,8 +280,11 @@
     margin-left: auto;
     margin-right: auto;
   }
+  .hero-mascot {
+    gap: 8px;
+  }
   .hero-mascot-stage {
-    width: clamp(190px, 52vw, 240px);
+    width: clamp(170px, 46vw, 220px);
   }
 }
 
@@ -859,7 +996,7 @@
 /* Pull the closing CTA up — the generic section top padding left it floating in
    a void between the showcase strip and the footer. */
 .site-root .final-cta {
-  padding-top: clamp(36px, 3.5vw, 60px);
+  padding: clamp(34px, 3vw, 56px) 0 0;
 }
 .final-cta-inner {
   text-align: center;
@@ -874,8 +1011,18 @@
   border: 1px solid var(--border-2);
   box-shadow: var(--shadow-lg);
 }
-.final-cta-inner .vee {
-  color: var(--text-strong);
+.final-cta-kicker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font: 800 11px/1 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: var(--accent-weak);
+  border: 1px solid var(--accent-line);
 }
 .final-cta-title {
   font-size: clamp(1.9rem, 1.2rem + 2.4vw, 3.1rem);

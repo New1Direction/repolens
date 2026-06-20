@@ -11,65 +11,37 @@ type Feature = {
 const FEATURES: Feature[] = [
   {
     icon: 'verdict',
-    title: 'Verdict-first',
-    body: 'A fit call — strong / solid / care / risky — plus a one-line bottom line, before anything else. The decision, then the evidence.',
-    tags: ['fit', 'bottom line', 'health'],
+    title: 'Scan the dependency page',
+    body: 'Open a GitHub, GitLab, npm, or PyPI page and get a verdict-first briefing: fit, risk, maintenance, license, and the bottom line.',
+    tags: ['scan', 'verdict', 'risk'],
     span: 'wide',
   },
   {
-    icon: 'search',
-    title: 'Discovery & recommendations',
-    body: 'Search GitHub from inside the extension, or let RepoLens recommend peers from the repos you’ve already adopted — same capabilities, same language, ones you haven’t seen yet.',
-    tags: ['discover', 'recommend', 'github'],
+    icon: 'layers',
+    title: 'Read the evidence',
+    body: 'Deep Dive explains the actual shape of the project — files, dependency graph, tests, lineage, and plain-English reasoning.',
+    tags: ['evidence', 'deep dive'],
     span: 'wide',
   },
   {
     icon: 'rows',
-    title: 'Library + triage',
-    body: 'Every scan becomes a sortable, filterable grid. Decide with the keyboard, in flow.',
-    tags: ['triage', 'keyboard'],
-    span: 'normal',
-  },
-  {
-    icon: 'kanban',
-    title: 'Boards',
-    body: 'Group the repos you’re weighing into collections you can compare and revisit.',
-    tags: ['collections'],
-    span: 'normal',
-  },
-  {
-    icon: 'star',
-    title: 'Evaluations',
-    body: 'Score repos 1–5 against your own weighted rubric. The badge follows each card.',
-    tags: ['rubric', 'scoring'],
+    title: 'Triage the shortlist',
+    body: 'Every scan lands in a sortable library with boards, evaluations, drift alerts, and keyboard-first decisions.',
+    tags: ['library', 'boards'],
     span: 'normal',
   },
   {
     icon: 'bars',
-    title: 'N-way compare',
-    body: 'Put any 2–10 repos side-by-side in a structured matrix; export to CSV or Markdown.',
-    tags: ['matrix', 'export'],
-    span: 'normal',
-  },
-  {
-    icon: 'layers',
-    title: 'Deep Dive',
-    body: 'Atoms → lineage → a Feynman-style explanation, optionally grounded in measured facts from the source: real file counts, the dependency graph, tests, and a secret scan.',
-    tags: ['eli5', 'lineage', 'grounded'],
-    span: 'wide',
-  },
-  {
-    icon: 'clock',
-    title: 'Drift alerts',
-    body: 'A daily background check flags repos that have gone stale, so your shortlist stays honest.',
-    tags: ['stale', 'daily'],
+    title: 'Compare alternatives',
+    body: 'Put candidates side-by-side, search GitHub for peers, and export the reasoning to CSV or Markdown.',
+    tags: ['compare', 'export'],
     span: 'normal',
   },
   {
     icon: 'sliders',
-    title: 'Bring any model',
-    body: 'Your keys, 20+ providers, route each part of a scan to a different model — or run local Ollama for $0.',
-    tags: ['byo-keys', 'local'],
+    title: 'Keep it local/private',
+    body: 'Bring your own keys, route scans across 20+ providers, or run local Ollama. No server account required.',
+    tags: ['local', 'byo keys'],
     span: 'normal',
   },
 ];
@@ -80,11 +52,11 @@ export function FeatureBento() {
       <div className="container">
         <span className="eyebrow">The case file</span>
         <h2 id="features-heading" className="section-title">
-          A research tool, not a bookmark folder.
+          The dependency decision workflow.
         </h2>
         <p className="section-note">
-          Thirty-plus releases of compounding workflow — from the first verdict to a library that
-          finds its own peers.
+          Fewer moving parts up front: scan a package, read the evidence, compare alternatives,
+          and keep the whole evaluation local/private.
         </p>
 
         <div className="bento">

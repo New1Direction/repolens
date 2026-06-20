@@ -24,7 +24,7 @@ export function SiteHeader() {
         <div className="site-header-actions">
           <ThemeToggle />
           <Link href="/docs/getting-started" className="btn btn-primary btn-sm">
-            Install
+            Add to Chrome
           </Link>
         </div>
       </div>

@@ -3,7 +3,6 @@ import { VerdictDemo } from '@/components/home/VerdictDemo';
 import { FeatureBento } from '@/components/home/FeatureBento';
 import { HowItWorks } from '@/components/home/HowItWorks';
 import { ModelsPrivacy } from '@/components/home/ModelsPrivacy';
-import { ThemeShowcase } from '@/components/home/ThemeShowcase';
 import { FinalCta } from '@/components/home/FinalCta';
 import { SiteMotion } from '@/components/home/SiteMotion';
 import './styles/home.css';
@@ -16,7 +15,6 @@ export default function HomePage() {
       <FeatureBento />
       <HowItWorks />
       <ModelsPrivacy />
-      <ThemeShowcase />
       <FinalCta />
       <SiteMotion />
     </>

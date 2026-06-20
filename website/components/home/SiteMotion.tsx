@@ -30,12 +30,12 @@ export function SiteMotion() {
       mm.add('(prefers-reduced-motion: no-preference)', () => {
         // 1) Hero entrance — stagger the pieces in on load.
         gsap.from(
-          '.hero .kicker, .hero .hero-mascot, .hero-title, .hero-sub, .hero-cta, .hero-foot',
+          '.hero .kicker, .hero-title, .hero-sub, .hero-cta, .hero-foot, .hero-proof, .hero .hero-mascot',
           { opacity: 0, y: 26, duration: 0.7, stagger: 0.09, ease, clearProps: 'transform' },
         );
 
-        // Scrubbed parallax — the mascot port drifts up as the hero scrolls away.
-        gsap.to('.hero .hero-mascot-stage', {
+        // Scrubbed parallax — the product proof and mascot drift up as the hero scrolls away.
+        gsap.to('.hero .hero-mascot-stage, .hero .hero-proof', {
           yPercent: -14,
           ease: 'none',
           scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: 0.4 },

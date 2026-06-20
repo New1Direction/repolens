@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { HeroMascot } from './HeroMascot';
 import { GITHUB_URL } from '@/components/site/SiteHeader';
 
 export function Hero() {
@@ -8,7 +7,7 @@ export function Hero() {
       <div className="container hero-grid">
         <div className="hero-copy">
           <span className="kicker">
-            <span className="pulse" /> Case No. RL-3.0 · Chrome · Manifest V3
+            <span className="pulse" /> Chrome extension for evaluating open-source dependencies
           </span>
 
           <h1 id="hero-heading" className="hero-title">
@@ -25,7 +24,7 @@ export function Hero() {
 
           <div className="hero-cta">
             <Link href="/docs/getting-started" className="btn btn-primary">
-              Install RepoLens
+              Add to Chrome — local/private
             </Link>
             <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">
               View on GitHub →
@@ -39,7 +38,32 @@ export function Hero() {
         </div>
 
         <div className="hero-aside">
-          <HeroMascot />
+          <div className="hero-proof" aria-label="RepoLens scan result preview">
+            <div className="hero-proof-bar">
+              <span className="proof-dot" />
+              <span className="proof-dot" />
+              <span className="proof-dot" />
+              <span className="proof-url">github.com/org/repo</span>
+            </div>
+            <div className="hero-proof-body">
+              <div className="proof-status">
+                <span className="proof-badge">Solid fit</span>
+                <span className="proof-score">84</span>
+              </div>
+              <h2>Verdict before the README pitch.</h2>
+              <p>
+                Maintained, testable, permissive license. Watch dependency churn before adopting.
+              </p>
+              <div className="proof-meter" aria-hidden="true">
+                <span style={{ width: '84%' }} />
+              </div>
+              <ul className="proof-list">
+                <li>License: MIT</li>
+                <li>Tests: present</li>
+                <li>Risk: dependency drift</li>
+              </ul>
+            </div>
+          </div>
         </div>
       </div>
     </section>
