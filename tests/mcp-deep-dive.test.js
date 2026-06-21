@@ -78,7 +78,7 @@ describe('runDeepDive (offline, mocked GitHub + Anthropic)', () => {
       return Promise.resolve({ ok: false });
     });
 
-    const out = await runDeepDive({ repo: 'honojs/hono' });
+    const out = await runDeepDive({ repo: 'honojs/hono', report: false });
     expect(out.repoId).toBe('honojs/hono');
     expect(out.explanation).toBe('Plain.');
     expect(out.atoms).toHaveLength(1);

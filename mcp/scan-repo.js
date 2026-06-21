@@ -8,6 +8,7 @@ import { deriveFit } from '../src/verdict.js';
 import { parseRepoInput } from './repo-input.js';
 import { callAnthropic } from './anthropic.js';
 import { ghOpts } from './github-auth.js';
+import { attachHtmlReport } from './report.js';
 
 export const SCAN_TOOL = {
   name: 'scan_repo',
@@ -17,7 +18,14 @@ export const SCAN_TOOL = {
     'the user wants a structured read on whether to use a repository, not its README pitch.',
   inputSchema: {
     type: 'object',
-    properties: { repo: { type: 'string', description: 'A repo as owner/name or a GitHub URL' } },
+    properties: {
+      repo: { type: 'string', description: 'A repo as owner/name or a GitHub URL' },
+      report: { type: 'boolean', description: 'Write a local HTML report. Default: true.' },
+      openReport: {
+        type: 'boolean',
+        description: 'Open the local HTML report in the browser. Default: true.',
+      },
+    },
     required: ['repo'],
     additionalProperties: false,
   },
@@ -46,6 +54,11 @@ export const SCAN_TOOL = {
       cons: { type: 'array', items: { type: 'string' } },
       red_flags: { type: 'array' },
       capabilities: { type: 'array', items: { type: 'string' } },
+      report: {
+        type: 'object',
+        description: 'Local HTML report path/url opened for the user.',
+        properties: { path: { type: 'string' }, url: { type: 'string' }, opened: { type: 'boolean' } },
+      },
     },
     required: ['repoId', 'fit'],
   },
@@ -74,5 +87,6 @@ export async function runScanRepo(args) {
   const { platform, repoId } = parseRepoInput(args?.repo);
   const repoData = await fetchRepoData(platform, repoId, ghOpts());
   const analysis = parseClaudeResponse(await callAnthropic(buildPrompt(repoData)));
-  return buildScanResult(platform, repoData, analysis);
+  const result = buildScanResult(platform, repoData, analysis);
+  return attachHtmlReport('scan_repo', repoId, result, args);
 }

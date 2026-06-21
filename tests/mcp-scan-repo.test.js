@@ -68,7 +68,7 @@ describe('runScanRepo (offline, mocked GitHub + Anthropic)', () => {
       return Promise.resolve({ ok: false });
     });
 
-    const out = await runScanRepo({ repo: 'facebook/react' });
+    const out = await runScanRepo({ repo: 'facebook/react', report: false });
     expect(out.repoId).toBe('facebook/react');
     expect(out.fit.level).toBe('solid');
 
@@ -96,7 +96,7 @@ describe('runScanRepo (offline, mocked GitHub + Anthropic)', () => {
         }),
       });
     });
-    await runScanRepo({ repo: 'x/y' });
+    await runScanRepo({ repo: 'x/y', report: false });
     const ghCall = global.fetch.mock.calls.find((c) => String(c[0]).endsWith('/repos/x/y'));
     // No init / no headers => anonymous, identical to extension behavior.
     expect(ghCall[1]?.headers?.Authorization).toBeUndefined();

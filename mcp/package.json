@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Local MCP server exposing RepoLens repo analysis (scan_repo) as a tool.",
+  "description": "Local MCP server that lets agents scan repos and opens RepoLens HTML reports.",
   "bin": {
     "repolens-mcp": "./server.js"
   },

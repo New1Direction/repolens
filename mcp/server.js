@@ -35,8 +35,13 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
   }
   try {
     const result = await tool.run(req.params.arguments || {});
+    const reportLine = result?.report?.url
+      ? `\n\nOpened local RepoLens HTML report: ${result.report.url}`
+      : '';
+    const summary =
+      result?.bottom_line || result?.explanation || result?.title || `${req.params.name} completed.`;
     return {
-      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+      content: [{ type: 'text', text: `${summary}${reportLine}` }],
       structuredContent: result,
     };
   } catch (err) {

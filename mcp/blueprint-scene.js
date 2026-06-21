@@ -19,6 +19,7 @@ import { buildBlueprintScene } from '../src/blueprint-adapter.js';
 import { parseRepoInput } from './repo-input.js';
 import { callAnthropic } from './anthropic.js';
 import { ghOpts } from './github-auth.js';
+import { attachHtmlReport } from './report.js';
 
 export const BLUEPRINT_TOOL = {
   name: 'blueprint_scene',
@@ -28,7 +29,14 @@ export const BLUEPRINT_TOOL = {
     'dependency / architecture diagram. Heavier than scan_repo (reads source, two model calls).',
   inputSchema: {
     type: 'object',
-    properties: { repo: { type: 'string', description: 'A repo as owner/name or a GitHub URL' } },
+    properties: {
+      repo: { type: 'string', description: 'A repo as owner/name or a GitHub URL' },
+      report: { type: 'boolean', description: 'Write a local HTML report. Default: true.' },
+      openReport: {
+        type: 'boolean',
+        description: 'Open the local HTML report in the browser. Default: true.',
+      },
+    },
     required: ['repo'],
     additionalProperties: false,
   },
@@ -87,6 +95,11 @@ export const BLUEPRINT_TOOL = {
         properties: { x: { type: 'number' }, y: { type: 'number' }, zoom: { type: 'number' } },
       },
       source: { type: 'object', description: 'lens + timestamps' },
+      report: {
+        type: 'object',
+        description: 'Local HTML report path/url opened for the user.',
+        properties: { path: { type: 'string' }, url: { type: 'string' }, opened: { type: 'boolean' } },
+      },
     },
     required: ['id', 'nodes', 'edges'],
   },
@@ -99,5 +112,6 @@ export async function runBlueprintScene(args) {
   const source = await fetchSource(platform, repoId, opts);
   const { atoms } = parseAtoms(await callAnthropic(buildAtomsPrompt(repoData, source, null)));
   const lineage = parseLineage(await callAnthropic(buildLineagePrompt(atoms)));
-  return buildBlueprintScene({ deepDive: { atoms, lineage }, repoId, title: repoId });
+  const result = buildBlueprintScene({ deepDive: { atoms, lineage }, repoId, title: repoId });
+  return attachHtmlReport('blueprint_scene', repoId, result, args);
 }

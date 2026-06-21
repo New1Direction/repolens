@@ -20,6 +20,7 @@ import {
 import { parseRepoInput } from './repo-input.js';
 import { callAnthropic } from './anthropic.js';
 import { ghOpts } from './github-auth.js';
+import { attachHtmlReport } from './report.js';
 
 export const DEEP_DIVE_TOOL = {
   name: 'deep_dive',
@@ -30,7 +31,14 @@ export const DEEP_DIVE_TOOL = {
     'wants to *understand* a codebase, not just judge it. Heaviest tool (reads source, three model calls).',
   inputSchema: {
     type: 'object',
-    properties: { repo: { type: 'string', description: 'A repo as owner/name or a GitHub URL' } },
+    properties: {
+      repo: { type: 'string', description: 'A repo as owner/name or a GitHub URL' },
+      report: { type: 'boolean', description: 'Write a local HTML report. Default: true.' },
+      openReport: {
+        type: 'boolean',
+        description: 'Open the local HTML report in the browser. Default: true.',
+      },
+    },
     required: ['repo'],
     additionalProperties: false,
   },
@@ -67,6 +75,11 @@ export const DEEP_DIVE_TOOL = {
       },
       atoms: { type: 'array', description: 'The atomic units the explanation is built from.' },
       lineage: { type: 'object', description: 'Causal links + roots/leaves between atoms.' },
+      report: {
+        type: 'object',
+        description: 'Local HTML report path/url opened for the user.',
+        properties: { path: { type: 'string' }, url: { type: 'string' }, opened: { type: 'boolean' } },
+      },
     },
     required: ['repoId', 'explanation'],
   },
@@ -95,5 +108,6 @@ export async function runDeepDive(args) {
   const { atoms } = parseAtoms(await callAnthropic(buildAtomsPrompt(repoData, source, null)));
   const lineage = parseLineage(await callAnthropic(buildLineagePrompt(atoms)));
   const feynman = parseFeynman(await callAnthropic(buildFeynmanPrompt(repoData, atoms, lineage)));
-  return buildDeepDiveResult(repoId, atoms, lineage, feynman, source);
+  const result = buildDeepDiveResult(repoId, atoms, lineage, feynman, source);
+  return attachHtmlReport('deep_dive', repoId, result, args);
 }

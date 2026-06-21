@@ -19,7 +19,37 @@
 
 RepoLens is a **Manifest V3 Chrome extension**. Open a GitHub, GitLab, npm, or PyPI page and click the toolbar icon. RepoLens reads the repo, runs it past the AI provider you picked, and opens a tab that leads with a straight answer: should you use this? You see the verdict before any of the README's pitch.
 
+It also ships a **local MCP server** so your coding agent can scan repos before it installs or recommends a dependency. The agent gets structured JSON, and RepoLens opens a local HTML report in your browser so you still get the full visual verdict — not just a text blob.
+
 > Stars tell you a project is popular. They don't tell you whether it fits your problem. RepoLens answers the question you have: should I use this, and what am I signing up for?
+
+---
+
+## Use RepoLens from your AI agent
+
+Run the local MCP server, then ask Claude/Cursor/Pi/etc. to use RepoLens before adding a dependency:
+
+```bash
+cd mcp
+npm install
+ANTHROPIC_API_KEY=sk-ant-... node server.js
+```
+
+Example prompts:
+
+> Use RepoLens to check whether I should use `honojs/hono` for an edge API.
+>
+> Before installing this package, run a RepoLens scan and open the report.
+>
+> Generate a RepoLens deep dive for `github.com/fastify/fastify`.
+
+MCP tools:
+
+- `scan_repo` — fast verdict-first dependency report.
+- `deep_dive` — plain-English architecture explanation with gaps/assumptions.
+- `blueprint_scene` — graph-shaped architecture map.
+
+Each tool writes a self-contained local `.html` report and opens it by default. See [`mcp/README.md`](mcp/README.md) for Claude Desktop config and environment options.
 
 ---
 
