@@ -7,6 +7,7 @@
 //   scan_repo       — verdict-first analysis (fit/health/pros/cons/flags)
 //   blueprint_scene — laid-out nodes/edges graph of how the repo is built
 //   deep_dive       — plain-English explanation + gaps + confidence (heaviest)
+//   compare_repos   — compare dependencies and open a visual bake-off report
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -15,11 +16,13 @@ import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprot
 import { SCAN_TOOL, runScanRepo } from './scan-repo.js';
 import { BLUEPRINT_TOOL, runBlueprintScene } from './blueprint-scene.js';
 import { DEEP_DIVE_TOOL, runDeepDive } from './deep-dive.js';
+import { COMPARE_TOOL, runCompareRepos } from './compare-repos.js';
 
 const TOOLS = {
   [SCAN_TOOL.name]: { def: SCAN_TOOL, run: runScanRepo },
   [BLUEPRINT_TOOL.name]: { def: BLUEPRINT_TOOL, run: runBlueprintScene },
   [DEEP_DIVE_TOOL.name]: { def: DEEP_DIVE_TOOL, run: runDeepDive },
+  [COMPARE_TOOL.name]: { def: COMPARE_TOOL, run: runCompareRepos },
 };
 
 const server = new Server({ name: 'repolens', version: '0.1.0' }, { capabilities: { tools: {} } });

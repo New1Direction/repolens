@@ -28,6 +28,22 @@ describe('MCP local HTML reports', () => {
     expect(html).not.toContain('<script');
   });
 
+  it('renders a visual comparison report', () => {
+    const html = buildReportHtml({
+      kind: 'compare_repos',
+      data: {
+        useCase: 'edge API',
+        bottom_line: 'Pick Hono.',
+        winner: { repoId: 'github:honojs/hono', rationale: 'Edge-first.' },
+        ranking: [{ repoId: 'github:honojs/hono', rank: 1, score: 94, why: 'Edge-first.' }],
+        matrix: [{ criterion: 'Use-case fit', winner: 'github:honojs/hono', notes: 'Best fit.' }],
+      },
+    });
+    expect(html).toContain('RepoLens MCP comparison');
+    expect(html).toContain('Tradeoff matrix');
+    expect(html).toContain('github:honojs/hono');
+  });
+
   it('writes a report and can skip browser opening for agent/tests', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'repolens-report-test-'));
     const prev = process.env.REPOLENS_MCP_REPORT_DIR;

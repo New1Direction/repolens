@@ -21,12 +21,25 @@ posts. RepoLens gives the agent a dependency due-diligence tool:
 - `deep_dive` — plain-English architecture explanation, weak spots, assumptions,
   self-test questions, atoms + lineage.
 - `blueprint_scene` — graph-shaped architecture map with nodes/edges/positions.
+- `compare_repos` — compare 2-5 repos/packages for a use case, pick a winner,
+  and open a visual bake-off report.
 
-Every tool accepts:
+Single-repo tools accept:
 
 ```json
 {
   "repo": "honojs/hono",
+  "report": true,
+  "openReport": true
+}
+```
+
+`compare_repos` accepts:
+
+```json
+{
+  "repos": ["honojs/hono", "fastify/fastify", "npm:@tinyhttp/app"],
+  "useCase": "edge API on Cloudflare Workers",
   "report": true,
   "openReport": true
 }
@@ -132,6 +145,10 @@ Generate a RepoLens deep_dive for github.com/fastify/fastify and summarize the g
 
 ```text
 Use blueprint_scene on remix-run/remix so I can see how the repo is structured.
+```
+
+```text
+Compare honojs/hono vs fastify/fastify for an edge API and open the RepoLens report.
 ```
 
 ## Supported inputs

@@ -45,14 +45,17 @@ Example prompts:
 > Before installing this package, run a RepoLens scan and open the report.
 >
 > Generate a RepoLens deep dive for `github.com/fastify/fastify`.
+>
+> Compare `honojs/hono` vs `fastify/fastify` for an edge API and open the report.
 
 MCP tools:
 
 - `scan_repo` — fast verdict-first dependency report.
 - `deep_dive` — plain-English architecture explanation with gaps/assumptions.
 - `blueprint_scene` — graph-shaped architecture map.
+- `compare_repos` — visual bake-off report with a default pick, ranking, tradeoff matrix, choose-if guidance, and risk comparison.
 
-Each tool writes a self-contained local `.html` report and opens it by default. MCP supports Anthropic, OpenAI, OpenRouter, and Google env keys, and `scan_repo` accepts GitHub, GitLab, npm, and PyPI inputs. See [`mcp/README.md`](mcp/README.md) for Claude Desktop config and environment options.
+Each tool writes a self-contained local `.html` report and opens it by default. MCP supports Anthropic, OpenAI, OpenRouter, and Google env keys, and `scan_repo`/`compare_repos` accept GitHub, GitLab, npm, and PyPI inputs. See [`mcp/README.md`](mcp/README.md) for Claude Desktop config and environment options.
 
 ---
 
