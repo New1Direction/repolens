@@ -1,25 +1,25 @@
-// scan_repo tool: verdict-first analysis of a GitHub repo.
-// Pipeline (extension modules, verbatim): fetchRepoData -> buildPrompt -> (Anthropic) -> parseClaudeResponse.
+// scan_repo tool: verdict-first analysis of a GitHub/GitLab/npm/PyPI repo.
+// Pipeline (extension modules, verbatim): fetchRepoData -> buildPrompt -> model -> parseClaudeResponse.
 
 import { fetchRepoData } from '../src/fetcher.js';
 import { buildPrompt } from '../src/prompt.js';
 import { parseClaudeResponse } from '../src/parser.js';
 import { deriveFit } from '../src/verdict.js';
 import { parseRepoInput } from './repo-input.js';
-import { callAnthropic } from './anthropic.js';
+import { callModel } from './model.js';
 import { ghOpts } from './github-auth.js';
 import { attachHtmlReport } from './report.js';
 
 export const SCAN_TOOL = {
   name: 'scan_repo',
   description:
-    "Read a GitHub repo's real source and return RepoLens's verdict-first analysis: " +
+    "Read a GitHub/GitLab/npm/PyPI repo and return RepoLens's verdict-first analysis: " +
     'overall fit, a health score, pros, cons, red flags, and capabilities. Use this when ' +
     'the user wants a structured read on whether to use a repository, not its README pitch.',
   inputSchema: {
     type: 'object',
     properties: {
-      repo: { type: 'string', description: 'A repo as owner/name or a GitHub URL' },
+      repo: { type: 'string', description: 'owner/name, platform:name, or a GitHub/GitLab/npm/PyPI URL' },
       report: { type: 'boolean', description: 'Write a local HTML report. Default: true.' },
       openReport: {
         type: 'boolean',
@@ -86,7 +86,7 @@ export function buildScanResult(platform, repoData, analysis) {
 export async function runScanRepo(args) {
   const { platform, repoId } = parseRepoInput(args?.repo);
   const repoData = await fetchRepoData(platform, repoId, ghOpts());
-  const analysis = parseClaudeResponse(await callAnthropic(buildPrompt(repoData)));
+  const analysis = parseClaudeResponse(await callModel(buildPrompt(repoData)));
   const result = buildScanResult(platform, repoData, analysis);
   return attachHtmlReport('scan_repo', repoId, result, args);
 }

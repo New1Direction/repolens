@@ -17,7 +17,7 @@ import {
 } from '../src/deepdive.js';
 import { buildBlueprintScene } from '../src/blueprint-adapter.js';
 import { parseRepoInput } from './repo-input.js';
-import { callAnthropic } from './anthropic.js';
+import { callModel } from './model.js';
 import { ghOpts } from './github-auth.js';
 import { attachHtmlReport } from './report.js';
 
@@ -30,7 +30,7 @@ export const BLUEPRINT_TOOL = {
   inputSchema: {
     type: 'object',
     properties: {
-      repo: { type: 'string', description: 'A repo as owner/name or a GitHub URL' },
+      repo: { type: 'string', description: 'owner/name, platform:name, or a GitHub/GitLab/npm/PyPI URL' },
       report: { type: 'boolean', description: 'Write a local HTML report. Default: true.' },
       openReport: {
         type: 'boolean',
@@ -110,8 +110,8 @@ export async function runBlueprintScene(args) {
   const opts = ghOpts();
   const repoData = await fetchRepoData(platform, repoId, opts);
   const source = await fetchSource(platform, repoId, opts);
-  const { atoms } = parseAtoms(await callAnthropic(buildAtomsPrompt(repoData, source, null)));
-  const lineage = parseLineage(await callAnthropic(buildLineagePrompt(atoms)));
+  const { atoms } = parseAtoms(await callModel(buildAtomsPrompt(repoData, source, null)));
+  const lineage = parseLineage(await callModel(buildLineagePrompt(atoms)));
   const result = buildBlueprintScene({ deepDive: { atoms, lineage }, repoId, title: repoId });
   return attachHtmlReport('blueprint_scene', repoId, result, args);
 }

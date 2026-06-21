@@ -1,15 +1,33 @@
 {
   "name": "repolens-mcp",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "description": "Local MCP server that lets agents scan repos and opens RepoLens HTML reports.",
+  "license": "MIT",
+  "homepage": "https://github.com/New1Direction/RepoLens#mcp",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/New1Direction/RepoLens.git",
+    "directory": "mcp"
+  },
+  "keywords": [
+    "mcp",
+    "repo-analysis",
+    "dependency-audit",
+    "ai-agents",
+    "developer-tools"
+  ],
   "bin": {
     "repolens-mcp": "./server.js"
   },
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "check": "find . -maxdepth 1 -name '*.js' -print0 | xargs -0 -n1 node --check"
   },
+  "files": [
+    "*.js",
+    "README.md"
+  ],
   "engines": {
     "node": ">=18"
   },

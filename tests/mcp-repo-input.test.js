@@ -2,8 +2,21 @@ import { describe, it, expect } from 'vitest';
 import { parseRepoInput } from '../mcp/repo-input.js';
 
 describe('parseRepoInput', () => {
-  it('parses owner/name', () => {
+  it('parses owner/name as GitHub by default', () => {
     expect(parseRepoInput('honojs/hono')).toEqual({ platform: 'github', repoId: 'honojs/hono' });
+  });
+
+  it('parses platform-prefixed refs', () => {
+    expect(parseRepoInput('github:honojs/hono')).toEqual({ platform: 'github', repoId: 'honojs/hono' });
+    expect(parseRepoInput('gitlab:inkscape/inkscape')).toEqual({
+      platform: 'gitlab',
+      repoId: 'inkscape/inkscape',
+    });
+    expect(parseRepoInput('npm:@modelcontextprotocol/sdk')).toEqual({
+      platform: 'npm',
+      repoId: '@modelcontextprotocol/sdk',
+    });
+    expect(parseRepoInput('pypi:fastapi')).toEqual({ platform: 'pypi', repoId: 'fastapi' });
   });
 
   it('parses a full GitHub URL', () => {
@@ -17,6 +30,21 @@ describe('parseRepoInput', () => {
     expect(parseRepoInput('https://github.com/honojs/hono/tree/main?tab=readme')).toEqual({
       platform: 'github',
       repoId: 'honojs/hono',
+    });
+  });
+
+  it('parses GitLab, npm, and PyPI URLs', () => {
+    expect(parseRepoInput('https://gitlab.com/inkscape/inkscape')).toEqual({
+      platform: 'gitlab',
+      repoId: 'inkscape/inkscape',
+    });
+    expect(parseRepoInput('https://www.npmjs.com/package/@modelcontextprotocol/sdk')).toEqual({
+      platform: 'npm',
+      repoId: '@modelcontextprotocol/sdk',
+    });
+    expect(parseRepoInput('https://pypi.org/project/fastapi/')).toEqual({
+      platform: 'pypi',
+      repoId: 'fastapi',
     });
   });
 

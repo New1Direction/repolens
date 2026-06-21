@@ -30,8 +30,11 @@ It also ships a **local MCP server** so your coding agent can scan repos before 
 Run the local MCP server, then ask Claude/Cursor/Pi/etc. to use RepoLens before adding a dependency:
 
 ```bash
-cd mcp
-npm install
+# After npm publish
+ANTHROPIC_API_KEY=sk-ant-... npx repolens-mcp
+
+# From this repo today
+cd mcp && npm install
 ANTHROPIC_API_KEY=sk-ant-... node server.js
 ```
 
@@ -49,7 +52,7 @@ MCP tools:
 - `deep_dive` — plain-English architecture explanation with gaps/assumptions.
 - `blueprint_scene` — graph-shaped architecture map.
 
-Each tool writes a self-contained local `.html` report and opens it by default. See [`mcp/README.md`](mcp/README.md) for Claude Desktop config and environment options.
+Each tool writes a self-contained local `.html` report and opens it by default. MCP supports Anthropic, OpenAI, OpenRouter, and Google env keys, and `scan_repo` accepts GitHub, GitLab, npm, and PyPI inputs. See [`mcp/README.md`](mcp/README.md) for Claude Desktop config and environment options.
 
 ---
 

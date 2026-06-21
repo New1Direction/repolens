@@ -51,14 +51,40 @@ The returned JSON includes:
 
 ## Setup
 
+After npm publish, the intended one-command path is:
+
+```bash
+ANTHROPIC_API_KEY=sk-ant-... npx repolens-mcp
+```
+
+From a repo checkout today:
+
 ```bash
 cd mcp
 npm install
-export ANTHROPIC_API_KEY=sk-ant-...       # required
-export ANTHROPIC_MODEL=claude-sonnet-4-6  # optional override
-export ANTHROPIC_TIMEOUT_MS=60000         # optional; hard per-call timeout (default 60s)
+export ANTHROPIC_API_KEY=sk-ant-...       # one provider key is required
 export GITHUB_TOKEN=ghp_...               # optional; lifts GitHub 60/hr → 5000/hr
 node server.js                            # speaks MCP over stdio
+```
+
+Provider environment variables:
+
+```bash
+# Auto-pick order: Anthropic → OpenAI → OpenRouter → Google
+export ANTHROPIC_API_KEY=sk-ant-...
+export OPENAI_API_KEY=sk-...
+export OPENROUTER_API_KEY=sk-or-...
+export GOOGLE_API_KEY=AIza...
+
+# Optional model overrides
+export ANTHROPIC_MODEL=claude-sonnet-4-6
+export OPENAI_MODEL=gpt-4.1-mini
+export OPENROUTER_MODEL=anthropic/claude-sonnet-4.5
+export GOOGLE_MODEL=gemini-2.5-flash
+
+# Force one provider instead of auto-pick
+export REPOLENS_MCP_PROVIDER=openai # anthropic | openai | openrouter | google
+export REPOLENS_MCP_TIMEOUT_MS=60000
 ```
 
 Optional report environment variables:
@@ -108,13 +134,30 @@ Generate a RepoLens deep_dive for github.com/fastify/fastify and summarize the g
 Use blueprint_scene on remix-run/remix so I can see how the repo is structured.
 ```
 
+## Supported inputs
+
+`scan_repo` supports all fetcher-backed RepoLens targets:
+
+```text
+honojs/hono
+https://github.com/honojs/hono
+github:honojs/hono
+gitlab:inkscape/inkscape
+https://gitlab.com/inkscape/inkscape
+npm:react
+https://www.npmjs.com/package/@modelcontextprotocol/sdk
+pypi:fastapi
+https://pypi.org/project/fastapi/
+```
+
+`deep_dive` and `blueprint_scene` accept the same inputs, but source-tree reads are
+GitHub-deep today; non-GitHub targets degrade to README/metadata context.
+
 ## Current scope
 
-- GitHub input only: `owner/name` or a GitHub URL.
-- Anthropic provider only via `ANTHROPIC_API_KEY`.
 - Local-only: no hosted backend, no RepoLens account.
-- The Chrome extension still has the broader provider/platform UX; MCP is the
+- Provider support: Anthropic, OpenAI, OpenRouter, and Google via env keys.
+- The Chrome extension still has the richest provider/platform UI; MCP is the
   agent-native path.
 
-Planned next steps: publish as `repolens-mcp`, add OpenAI/OpenRouter/Gemini env
-providers, and extend `scan_repo` to npm/PyPI/GitLab inputs.
+Planned next steps: publish `repolens-mcp` to npm and add a comparison tool.
