@@ -52,7 +52,7 @@
   ],
   "optional_host_permissions": ["https://*/*", "http://*/*"],
   "background": {
-    "service_worker": "background.js",
+    "service_worker": "src/background.js",
     "type": "module"
   },
   "content_scripts": [
@@ -63,7 +63,7 @@
         "https://www.npmjs.com/package/*",
         "https://pypi.org/project/*"
       ],
-      "js": ["content_script.js"],
+      "js": ["src/content_script.js"],
       "run_at": "document_idle"
     }
   ],

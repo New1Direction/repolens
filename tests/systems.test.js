@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { SYSTEMS_FRAMEWORKS, isFramework, buildSystemsPrompt, parseSystems } from '../systems.js';
+import { SYSTEMS_FRAMEWORKS, isFramework, buildSystemsPrompt, parseSystems } from '../src/systems.js';
 
 const repo = { repoId: 'facebook/react', description: 'UI lib', language: 'JavaScript' };
 const source = { tree: ['src/index.js'], files: [{ path: 'src/index.js', content: 'export const x=1' }] };

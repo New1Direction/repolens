@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { estimateTokens, formatTokens } from '../estimate.js';
+import { estimateTokens, formatTokens } from '../src/estimate.js';
 
 describe('estimateTokens', () => {
   it('is zero for empty / whitespace / nullish', () => {

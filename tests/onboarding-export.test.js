@@ -1,8 +1,8 @@
 import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach } from 'vitest';
-import { saveRepo, saveScene, exportStores, hashRepoId } from '../store.js';
-import { idbClear } from '../store/idb.js';
-import { DEMO_REPO, demoScene } from '../demo-repo.js';
+import { saveRepo, saveScene, exportStores, hashRepoId } from '../src/store.js';
+import { idbClear } from '../src/store/idb.js';
+import { DEMO_REPO, demoScene } from '../src/demo-repo.js';
 
 const realAnalysis = { repoId: 'a/real', language: 'Rust', category: 'CLI', health: { score: 80 } };
 

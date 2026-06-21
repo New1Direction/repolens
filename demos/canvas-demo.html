@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <title>Canvas demo — RepoLens Blueprint</title>
-    <link rel="stylesheet" href="./themes.css" />
+    <link rel="stylesheet" href="../themes.css" />
     <style>
       /* Case File fallbacks so the demo renders standalone (themes.css canvas rules use these tokens). */
       :root {
@@ -79,10 +79,10 @@
     </div>
 
     <script type="module">
-      import { buildBlueprintScene } from './blueprint-adapter.js';
-      import { mountCanvas } from './canvas-engine.js';
-      import { buildTour } from './tour.js';
-      import { startTour } from './tour-runner.js';
+      import { buildBlueprintScene } from '../src/blueprint-adapter.js';
+      import { mountCanvas } from '../src/canvas-engine.js';
+      import { buildTour } from '../src/tour.js';
+      import { startTour } from '../src/tour-runner.js';
 
       const deepDive = {
         atoms: [

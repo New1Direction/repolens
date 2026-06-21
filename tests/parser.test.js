@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseClaudeResponse } from '../parser.js';
+import { parseClaudeResponse } from '../src/parser.js';
 
 const validResponse = {
   eli5: 'Simple explanation.',

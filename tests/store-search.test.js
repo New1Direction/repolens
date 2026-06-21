@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { rankRepos, tokens } from '../store/search.js';
+import { rankRepos, tokens } from '../src/store/search.js';
 
 const repo = (repoId, extra = {}) => ({ repoId, ...extra });
 

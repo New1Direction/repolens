@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach } from 'vitest';
-import { idbPut, idbGet, idbGetAll, idbDelete, idbClear } from '../store/idb.js';
+import { idbPut, idbGet, idbGetAll, idbDelete, idbClear } from '../src/store/idb.js';
 
 describe('idb helper', () => {
   beforeEach(async () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { libraryStats } from '../library-data.js';
+import { libraryStats } from '../src/library-data.js';
 
 const row = (level, health) => ({ fit: { level }, health });
 

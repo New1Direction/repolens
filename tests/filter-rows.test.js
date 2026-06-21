@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { filterRows } from '../library-data.js';
+import { filterRows } from '../src/library-data.js';
 
 const row = (repoId, opts = {}) => ({
   repoId,

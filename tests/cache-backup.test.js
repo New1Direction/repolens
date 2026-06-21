@@ -6,7 +6,7 @@ import {
   clearCache,
   removeAskHistory,
   clearAskHistory,
-} from '../cache.js';
+} from '../src/cache.js';
 
 let store;
 beforeEach(() => {

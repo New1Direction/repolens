@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { fetchRepoData } from '../fetcher.js';
+import { fetchRepoData } from '../src/fetcher.js';
 
 beforeEach(() => {
   vi.restoreAllMocks();

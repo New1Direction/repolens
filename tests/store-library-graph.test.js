@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { describe, it, expect } from 'vitest';
-import { upsertNode, addEdge, getLibraryGraph } from '../store.js';
+import { upsertNode, addEdge, getLibraryGraph } from '../src/store.js';
 
 describe('getLibraryGraph', () => {
   it('returns all node payloads and all edges', async () => {

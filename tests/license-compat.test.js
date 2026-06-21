@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { bucketFor, checkPairCompat, checkLibraryCompat, SPDX_BUCKETS } from '../license-compat.js';
+import { bucketFor, checkPairCompat, checkLibraryCompat, SPDX_BUCKETS } from '../src/license-compat.js';
 
 describe('bucketFor', () => {
   it('classifies MIT as permissive', () => expect(bucketFor('MIT')).toBe('permissive'));

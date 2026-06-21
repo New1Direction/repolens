@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildPrompt, sanitizeReadme } from '../prompt.js';
+import { buildPrompt, sanitizeReadme } from '../src/prompt.js';
 
 const sampleRepo = {
   platform: 'github',

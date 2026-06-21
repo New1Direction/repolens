@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { emptyLens, withRun, setActive, runOf, ranFrameworks } from '../lens-runs.js';
+import { emptyLens, withRun, setActive, runOf, ranFrameworks } from '../src/lens-runs.js';
 
 describe('lens-runs', () => {
   it('emptyLens is an empty active + runs', () => {

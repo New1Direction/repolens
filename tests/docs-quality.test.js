@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildDocsQualityPrompt, parseDocsQuality, DOCS_GRADES, DOCS_VERDICTS } from '../docs-quality.js';
+import { buildDocsQualityPrompt, parseDocsQuality, DOCS_GRADES, DOCS_VERDICTS } from '../src/docs-quality.js';
 
 // ─── buildDocsQualityPrompt ───────────────────────────────────────────────────
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { base64url, createPkcePair } from '../oauth-pkce.js';
+import { base64url, createPkcePair } from '../src/oauth-pkce.js';
 
 const B64URL = /^[A-Za-z0-9_-]+$/;
 

@@ -11,7 +11,7 @@ import {
   repoCollections,
   nextColor,
   COLLECTION_COLORS,
-} from '../collections.js';
+} from '../src/collections.js';
 
 describe('makeCollection', () => {
   it('trims the name and starts empty with injected id/timestamp', () => {

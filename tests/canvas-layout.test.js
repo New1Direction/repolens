@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { layoutBlueprint } from '../canvas-layout.js';
+import { layoutBlueprint } from '../src/canvas-layout.js';
 
 const N = (id) => ({ id, label: id, kind: 'module', layer: null, x: 0, y: 0, pinned: false, ref: null });
 

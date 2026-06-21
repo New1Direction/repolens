@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ACTS, ACT_ORDER, TAB_LABELS, actForTab, tabsForAct } from '../output-acts.js';
+import { ACTS, ACT_ORDER, TAB_LABELS, actForTab, tabsForAct } from '../src/output-acts.js';
 
 describe('act model', () => {
   it('orders the four acts', () => {

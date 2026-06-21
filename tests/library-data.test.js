@@ -8,7 +8,7 @@ import {
   sourceUrl,
   repoMarkdownLink,
   mergeRows,
-} from '../library-data.js';
+} from '../src/library-data.js';
 
 const mk = (repoId, score, warns, caps = [], extra = {}) => ({
   repoId,

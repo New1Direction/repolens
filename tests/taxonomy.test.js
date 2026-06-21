@@ -7,7 +7,7 @@ import {
   layersAdjacent,
   normalizeCapabilities,
   deriveCapabilities,
-} from '../taxonomy.js';
+} from '../src/taxonomy.js';
 
 describe('taxonomy vocabulary', () => {
   it('exposes layers of tags and a flat ALL_TAGS set incl. "other"', () => {

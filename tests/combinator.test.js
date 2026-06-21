@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { scoreCombo, combineCandidates, diversifyTopK } from '../combinator.js';
+import { scoreCombo, combineCandidates, diversifyTopK } from '../src/combinator.js';
 
 const vec = { repoId: 'o/vec', name: 'vec', capabilities: ['vector-index'] }; // storage
 const vec2 = { repoId: 'o/vec2', name: 'vec2', capabilities: ['vector-index'] }; // storage (same role)

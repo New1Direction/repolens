@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildAttemptPlan, isConnected, modelFor, CHAIN, DEFAULT_MODELS } from '../routing.js';
+import { buildAttemptPlan, isConnected, modelFor, CHAIN, DEFAULT_MODELS } from '../src/routing.js';
 
 // All five providers connected, each on its default model.
 const allKeys = {

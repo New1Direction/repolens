@@ -8,7 +8,7 @@ import {
   parseLineage,
   buildFeynmanPrompt,
   parseFeynman,
-} from '../deepdive.js';
+} from '../src/deepdive.js';
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -129,7 +129,7 @@ describe('buildFeynmanPrompt + parseFeynman', () => {
   });
 });
 
-import { factsBlock } from '../deepdive.js';
+import { factsBlock } from '../src/deepdive.js';
 
 describe('factsBlock + facts-aware atoms prompt', () => {
   const facts = {

@@ -5,7 +5,7 @@ import {
   milestoneSteps,
   shouldOfferMilestone,
   MILESTONE_AT,
-} from '../onboarding.js';
+} from '../src/onboarding.js';
 
 describe('onboarding step lists', () => {
   it('intro stages are non-empty, reference real copy keys + selectors', () => {

@@ -21,7 +21,7 @@ import {
   anthropicBody,
   parseOpenAiText,
   parseAnthropicText,
-} from '../providers.js';
+} from '../src/providers.js';
 
 describe('registry integrity', () => {
   it('every provider has id/label/protocol and a non-empty endpoint (except custom/azure)', () => {

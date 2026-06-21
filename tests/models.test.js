@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { PARTS, CATALOG, canonicalModel } from '../models.js';
-import { CHAIN } from '../routing.js';
+import { PARTS, CATALOG, canonicalModel } from '../src/models.js';
+import { CHAIN } from '../src/routing.js';
 
 describe('PARTS', () => {
   it('has unique non-empty ids and labels', () => {

@@ -7,7 +7,7 @@ import {
   parseMaintenance,
   MAINT_BANDS,
   BUS_FACTORS,
-} from '../maintenance.js';
+} from '../src/maintenance.js';
 
 const NOW = new Date('2026-06-13T00:00:00Z').getTime();
 const daysAgo = (n) => new Date(NOW - n * 86400000).toISOString();

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { withRetry } from '../retry.js';
+import { withRetry } from '../src/retry.js';
 
 const noSleep = () => Promise.resolve();
 

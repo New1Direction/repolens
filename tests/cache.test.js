@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { cacheKey, cacheAnalysis, getCached, listCached, removeCached } from '../cache.js';
+import { cacheKey, cacheAnalysis, getCached, listCached, removeCached } from '../src/cache.js';
 
 let store;
 beforeEach(() => {

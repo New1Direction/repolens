@@ -7,7 +7,7 @@ import {
   validateBackup,
   summarizeBackup,
   backupFilename,
-} from '../backup.js';
+} from '../src/backup.js';
 
 const repos = [
   { id: 1, payload: { repoId: 'a/one', eli5: 'x' } },

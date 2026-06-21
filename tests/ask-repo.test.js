@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildAskRepoPrompt, parseAskRepoAnswer } from '../ask-repo.js';
+import { buildAskRepoPrompt, parseAskRepoAnswer } from '../src/ask-repo.js';
 
 const base = {
   repoId: 'facebook/react',

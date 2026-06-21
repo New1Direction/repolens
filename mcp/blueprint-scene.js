@@ -7,9 +7,15 @@
 // skipped since the scene only needs atoms + lineage. `facts` is null here —
 // the extension's local "runner" (measured metrics) isn't part of a headless MCP.
 
-import { fetchRepoData } from '../fetcher.js';
-import { fetchSource, buildAtomsPrompt, parseAtoms, buildLineagePrompt, parseLineage } from '../deepdive.js';
-import { buildBlueprintScene } from '../blueprint-adapter.js';
+import { fetchRepoData } from '../src/fetcher.js';
+import {
+  fetchSource,
+  buildAtomsPrompt,
+  parseAtoms,
+  buildLineagePrompt,
+  parseLineage,
+} from '../src/deepdive.js';
+import { buildBlueprintScene } from '../src/blueprint-adapter.js';
 import { parseRepoInput } from './repo-input.js';
 import { callAnthropic } from './anthropic.js';
 import { ghOpts } from './github-auth.js';

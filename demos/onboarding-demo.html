@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <title>Onboarding demo — RepoLens Vee coachmark</title>
-    <link rel="stylesheet" href="./themes.css" />
+    <link rel="stylesheet" href="../themes.css" />
     <style>
       /* Case File fallbacks so the demo renders standalone. */
       :root {
@@ -178,9 +178,9 @@
     </div>
 
     <script type="module">
-      import { startCoachmark } from './coachmark.js';
-      import { introStageA, milestoneSteps } from './onboarding.js';
-      import { COPY } from './onboarding-copy.js';
+      import { startCoachmark } from '../src/coachmark.js';
+      import { introStageA, milestoneSteps } from '../src/onboarding.js';
+      import { COPY } from '../src/onboarding-copy.js';
 
       // Strip any `before` hooks from introStageA steps — those reference extension-only
       // DOM/storage APIs that don't exist in this standalone harness.

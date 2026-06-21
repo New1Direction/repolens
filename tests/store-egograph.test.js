@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildEgoGraph } from '../store/egograph.js';
+import { buildEgoGraph } from '../src/store/egograph.js';
 
 describe('buildEgoGraph', () => {
   const center = 100;

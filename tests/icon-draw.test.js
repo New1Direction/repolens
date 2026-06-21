@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { drawVeeIcon, ICON_COLORS, BASE_GRID } from '../icon-draw.js';
+import { drawVeeIcon, ICON_COLORS, BASE_GRID } from '../src/icon-draw.js';
 
 // A recording stub for a Canvas2D-style context. It captures every arc() call
 // and the fillStyle/strokeStyle active at draw time, so we can assert geometry

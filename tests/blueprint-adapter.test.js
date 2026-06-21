@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildBlueprintScene } from '../blueprint-adapter.js';
+import { buildBlueprintScene } from '../src/blueprint-adapter.js';
 
 const deepDive = {
   atoms: [

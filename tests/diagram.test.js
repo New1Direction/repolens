@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { lineageSvg, loopSvg } from '../diagram.js';
+import { lineageSvg, loopSvg } from '../src/diagram.js';
 
 const atoms = [
   { id: 'a', name: 'Alpha' },

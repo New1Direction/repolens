@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { normalizeRunnerUrl, scanRepo, pingRunner, DEFAULT_RUNNER_URL } from '../runner.js';
+import { normalizeRunnerUrl, scanRepo, pingRunner, DEFAULT_RUNNER_URL } from '../src/runner.js';
 
 beforeEach(() => {
   vi.restoreAllMocks();

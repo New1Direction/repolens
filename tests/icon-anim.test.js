@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { scanFrameParams, ANIM_SIZES, RING_GREY, RING_BLUE } from '../icon-anim.js';
+import { scanFrameParams, ANIM_SIZES, RING_GREY, RING_BLUE } from '../src/icon-anim.js';
 
 describe('scanFrameParams', () => {
   it('starts the aperture small and grown-in by the end of the grow phase', () => {

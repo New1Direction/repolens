@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { detectPlatform } from '../url-detector.js';
+import { detectPlatform } from '../src/url-detector.js';
 
 describe('detectPlatform', () => {
   it('detects a GitHub repo', () => {

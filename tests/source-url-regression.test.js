@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { repoMarkdownLink, sourceUrl } from '../library-data.js';
+import { repoMarkdownLink, sourceUrl } from '../src/library-data.js';
 
 describe('source URL regressions', () => {
   it('uses the row platform when opening a source URL', () => {

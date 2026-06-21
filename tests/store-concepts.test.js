@@ -1,7 +1,7 @@
 // tests/store-concepts.test.js
 import { describe, it, expect } from 'vitest';
 import 'fake-indexeddb/auto';
-import { setConcepts, getConcepts, getAllConcepts } from '../store.js';
+import { setConcepts, getConcepts, getAllConcepts } from '../src/store.js';
 
 describe('concepts persistence', () => {
   it('round-trips a record by repoId', async () => {

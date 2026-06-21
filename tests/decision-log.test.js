@@ -5,7 +5,7 @@ import {
   buildDecision,
   normalizeDecision,
   isValidDecision,
-} from '../decision-log.js';
+} from '../src/decision-log.js';
 
 // ─── constants ────────────────────────────────────────────────────────────────
 

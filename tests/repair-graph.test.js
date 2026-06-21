@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { repairGraph } from '../repair-graph.js';
+import { repairGraph } from '../src/repair-graph.js';
 
 describe('repairGraph', () => {
   it('drops edges whose endpoints are missing', () => {

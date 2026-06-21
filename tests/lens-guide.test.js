@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { LENS_GUIDE, guideFor } from '../lens-guide.js';
+import { LENS_GUIDE, guideFor } from '../src/lens-guide.js';
 
 const KEYS = [
   'triz',

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { toSnapshot, appendSnapshot, snapshotTrend, sparkline, SNAPSHOT_CAP } from '../snapshots.js';
+import { toSnapshot, appendSnapshot, snapshotTrend, sparkline, SNAPSHOT_CAP } from '../src/snapshots.js';
 
 describe('toSnapshot', () => {
   it('trims a payload to the snapshot shape (health, flag titles, fit via deriveFit)', () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { toCanvasSvg, toExcalidraw } from '../canvas-export.js';
+import { toCanvasSvg, toExcalidraw } from '../src/canvas-export.js';
 
 const scene = {
   id: 'repo:1',

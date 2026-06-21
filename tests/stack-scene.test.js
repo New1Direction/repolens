@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildStackScene } from '../stack-scene.js';
+import { buildStackScene } from '../src/stack-scene.js';
 
 const result = {
   title: 'Edge API stack',

@@ -10,7 +10,7 @@ import {
   ANTHROPIC_ACCESS_KEY,
   ANTHROPIC_REFRESH_KEY,
   ANTHROPIC_EXPIRY_KEY,
-} from '../oauth-anthropic.js';
+} from '../src/oauth-anthropic.js';
 
 let store;
 beforeEach(() => {

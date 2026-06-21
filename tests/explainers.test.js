@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { SCAN_EXPLAINERS, explainerFor } from '../explainers.js';
+import { SCAN_EXPLAINERS, explainerFor } from '../src/explainers.js';
 
 const SCAN_TAB_IDS = [10, 11, 12, 13, 14, 16, 17, 18];
 const CORE_TAB_IDS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 15];

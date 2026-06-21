@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeScore, DEFAULT_RUBRIC } from '../evaluations.js';
+import { computeScore, DEFAULT_RUBRIC } from '../src/evaluations.js';
 
 const rubric = [
   { id: 'docs', name: 'Documentation', weight: 1 },

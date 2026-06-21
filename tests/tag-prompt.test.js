@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildTagPrompt, parseTags } from '../tag-prompt.js';
+import { buildTagPrompt, parseTags } from '../src/tag-prompt.js';
 
 describe('buildTagPrompt', () => {
   it('offers the taxonomy and the repo context, asks for capabilities JSON', () => {

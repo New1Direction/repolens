@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { esc, paras, formatStars } from '../format.js';
+import { esc, paras, formatStars } from '../src/format.js';
 
 describe('esc', () => {
   it('escapes HTML-significant characters', () => {

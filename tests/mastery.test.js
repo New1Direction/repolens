@@ -7,7 +7,7 @@ import {
   levelRank,
   deriveCheckResult,
   aggregateMastery,
-} from '../mastery.js';
+} from '../src/mastery.js';
 
 const Q = (n) => Array.from({ length: n }, (_, i) => ({ q: `q${i}`, a: `a${i}` }));
 

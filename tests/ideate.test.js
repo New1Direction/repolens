@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { IDEATE_FRAMEWORKS, isIdeateFramework, buildIdeatePrompt, parseIdeate } from '../ideate.js';
+import { IDEATE_FRAMEWORKS, isIdeateFramework, buildIdeatePrompt, parseIdeate } from '../src/ideate.js';
 
 const repo = { repoId: 'facebook/react', description: 'UI lib', language: 'JavaScript' };
 const source = { tree: ['src/index.js'], files: [{ path: 'src/index.js', content: 'export const x=1' }] };

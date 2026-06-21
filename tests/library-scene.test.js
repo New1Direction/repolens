@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildLibraryScene } from '../library-scene.js';
+import { buildLibraryScene } from '../src/library-scene.js';
 
 const graph = {
   nodes: [

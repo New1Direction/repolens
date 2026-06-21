@@ -11,8 +11,8 @@ import {
   upsertNode,
   addEdge,
   getEgoGraph,
-} from '../store.js';
-import { idbClear } from '../store/idb.js';
+} from '../src/store.js';
+import { idbClear } from '../src/store/idb.js';
 
 const analysis = (repoId, extra = {}) => ({
   repoId,
@@ -112,7 +112,7 @@ describe('store — graph', () => {
   });
 });
 
-import { appendScanSnapshot, listSnapshots, listAllSnapshots } from '../store.js';
+import { appendScanSnapshot, listSnapshots, listAllSnapshots } from '../src/store.js';
 
 describe('scan ledger', () => {
   beforeEach(async () => {

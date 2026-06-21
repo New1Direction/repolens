@@ -7,7 +7,7 @@ import {
   lexicalMatcher,
   bestEmbeddingMatch,
   deriveConceptLinks,
-} from '../concepts.js';
+} from '../src/concepts.js';
 
 const rec = (repoId, names, vectors = null) => ({
   repoId,

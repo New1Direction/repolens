@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { providerSupportsEmbeddings, compatEmbeddingsEndpoint, embeddingsModelFor } from '../providers.js';
-import { embeddingsBody, parseEmbeddings, compatStorageKeys } from '../providers.js';
+import {
+  providerSupportsEmbeddings,
+  compatEmbeddingsEndpoint,
+  embeddingsModelFor,
+} from '../src/providers.js';
+import { embeddingsBody, parseEmbeddings, compatStorageKeys } from '../src/providers.js';
 
 describe('embeddings capability', () => {
   it('openai supports embeddings when connected (has a key)', () => {

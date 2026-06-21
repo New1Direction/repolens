@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { deriveFit, firstSentence, verdictCopyText } from '../verdict.js';
+import { deriveFit, firstSentence, verdictCopyText } from '../src/verdict.js';
 
 describe('firstSentence', () => {
   it('returns the first sentence, or empty', () => {

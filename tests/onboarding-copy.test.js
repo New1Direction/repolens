@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { COPY } from '../onboarding-copy.js';
+import { COPY } from '../src/onboarding-copy.js';
 
 const BANNED = [
   'unlock',

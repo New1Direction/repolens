@@ -7,10 +7,10 @@ import {
   saveScene,
   getScene,
   exportStores,
-} from '../store.js';
-import { buildBackup, validateBackup } from '../backup.js';
-import { importStores } from '../store.js';
-import { idbClear } from '../store/idb.js';
+} from '../src/store.js';
+import { buildBackup, validateBackup } from '../src/backup.js';
+import { importStores } from '../src/store.js';
+import { idbClear } from '../src/store/idb.js';
 
 const payload = (repoId, extra = {}) => ({
   repoId,

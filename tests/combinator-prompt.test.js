@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildCombinatorPrompt, parseCombinator } from '../combinator-prompt.js';
+import { buildCombinatorPrompt, parseCombinator } from '../src/combinator-prompt.js';
 
 const repos = [
   { repoId: 'o/vec', capabilities: ['vector-index'], eli5: 'an ANN index' },

@@ -12,8 +12,8 @@ import {
   getEgoGraph,
   saveCollection,
   listCollections,
-} from '../store.js';
-import { idbClear } from '../store/idb.js';
+} from '../src/store.js';
+import { idbClear } from '../src/store/idb.js';
 
 const analysis = (repoId, extra = {}) => ({
   repoId,
@@ -144,9 +144,9 @@ describe('store backup — importStores', () => {
   });
 });
 
-import { listSnapshots } from '../store.js';
-import { idbPut } from '../store/idb.js';
-import { SNAPSHOT_CAP } from '../snapshots.js';
+import { listSnapshots } from '../src/store.js';
+import { idbPut } from '../src/store/idb.js';
+import { SNAPSHOT_CAP } from '../src/snapshots.js';
 
 it('snapshots survive an export → clear → import round-trip', async () => {
   await saveRepo({ repoId: 'rt/one', health: 70, stars: 0, red_flags: [] });

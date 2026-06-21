@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { placeCard } from '../coachmark.js';
+import { placeCard } from '../src/coachmark.js';
 
 const VP = { w: 1000, h: 700 };
 const CARD = { w: 320, h: 150 };

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildFitsStackPrompt, parseFitsStack, FITS_VERDICTS } from '../fits-stack.js';
+import { buildFitsStackPrompt, parseFitsStack, FITS_VERDICTS } from '../src/fits-stack.js';
 
 const repo = {
   repoId: 'owner/new-lib',

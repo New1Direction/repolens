@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildComparePrompt, parseCompareResult } from '../compare-repos.js';
+import { buildComparePrompt, parseCompareResult } from '../src/compare-repos.js';
 
 const base = {
   repoId: 'owner/alpha',

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildStackPrompt, parseStack, STACK_LAYERS } from '../stack-prompt.js';
+import { buildStackPrompt, parseStack, STACK_LAYERS } from '../src/stack-prompt.js';
 
 const repos = [
   {

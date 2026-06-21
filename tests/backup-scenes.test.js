@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildBackup, validateBackup } from '../backup.js';
+import { buildBackup, validateBackup } from '../src/backup.js';
 
 const scene = { id: 'repo:1', scope: 'blueprint', repoId: 'a/b', nodes: [], edges: [], annotations: [] };
 

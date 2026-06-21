@@ -209,20 +209,23 @@ The extension auto-detects it and the Deep Dive pill turns green. Without it, De
 
 ## Layout
 
-| Path                                    | Responsibility                                                                                                               |
-| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `background.js`                         | Service worker: scan orchestration, AI provider calls + per-part routing, store writes                                       |
-| `output-tab.{js,html}`                  | The result surface — verdict landing + every tab                                                                             |
-| `library.{js,html}` · `library-data.js` | The Library home + its pure row/sort/filter helpers                                                                          |
-| `store.js` · `store/`                   | In-browser persistence (IndexedDB doc store, client-side search ranker, ego-graph builder)                                   |
-| `routing.js` · `models.js`              | Per-part model routing + the provider × model catalog                                                                        |
-| `providers.js` · `options-providers.js` | OpenAI/Anthropic-compatible provider registry + the data-driven Settings cards (keys, models, endpoint override, self-tests) |
-| `migrate/velesdb-import.js`             | One-time import from a legacy VelesDB server                                                                                 |
-| `runner.js`                             | Client for the optional Rust deeper-scan runner                                                                              |
-| `backup.js` · `store.js` · `cache.js`   | Library Export / Import / Backup — versioned envelope, validated + bounded on restore                                        |
-| `safe-html.js`                          | One canonical HTML escaper + an injection-safe `html\`\``template (replaces the old per-file`esc()` copies)                  |
-| `errors.js` · `retry.js`                | Provider-error ranking (surface the one fixable failure) + exponential-backoff retries                                       |
-| `tests/`                                | Vitest unit tests for the pure helpers                                                                                       |
+| Path                                              | Responsibility                                                                                                               |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `manifest.json` + root `*.html`                   | MV3 entry points and extension pages                                                                                         |
+| `src/background.js`                               | Service worker: scan orchestration, AI provider calls + per-part routing, store writes                                       |
+| `src/output-tab.js` · `output-tab.html`           | The result surface — verdict landing + every tab                                                                             |
+| `src/library.js` · `library.html`                 | The Library home UI                                                                                                          |
+| `src/library-data.js` · `src/library-filters.js`  | Pure row/sort/filter helpers shared by render and export paths                                                               |
+| `src/store.js` · `src/store/`                     | In-browser persistence (IndexedDB doc store, client-side search ranker, ego-graph builder)                                   |
+| `src/routing.js` · `src/models.js`                | Per-part model routing + the provider × model catalog                                                                        |
+| `src/providers.js` · `src/options-providers.js`   | OpenAI/Anthropic-compatible provider registry + the data-driven Settings cards (keys, models, endpoint override, self-tests) |
+| `src/migrate/velesdb-import.js`                   | One-time import from a legacy VelesDB server                                                                                 |
+| `src/runner.js`                                   | Client for the optional Rust deeper-scan runner                                                                              |
+| `src/backup.js` · `src/store.js` · `src/cache.js` | Library Export / Import / Backup — versioned envelope, validated + bounded on restore                                        |
+| `src/safe-html.js`                                | One canonical HTML escaper + an injection-safe `html\`\``template (replaces the old per-file`esc()` copies)                  |
+| `src/errors.js` · `src/retry.js`                  | Provider-error ranking (surface the one fixable failure) + exponential-backoff retries                                       |
+| `demos/`                                          | Non-shipping preview/demo HTML kept out of the repo root                                                                     |
+| `tests/`                                          | Vitest unit tests for the pure helpers                                                                                       |
 
 ---
 

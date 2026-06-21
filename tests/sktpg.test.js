@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildSktpgPrompt, parseSktpg, SKTPG_DEFAULT_ENABLED, SKTPG_BANDS } from '../sktpg.js';
+import { buildSktpgPrompt, parseSktpg, SKTPG_DEFAULT_ENABLED, SKTPG_BANDS } from '../src/sktpg.js';
 
 const repo = { repoId: 'facebook/react', description: 'UI lib', language: 'JavaScript' };
 const source = { tree: ['src/index.js'], files: [{ path: 'src/index.js', content: 'export const x=1' }] };

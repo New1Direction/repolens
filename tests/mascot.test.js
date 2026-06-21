@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { setMascotState, setMascotFromFit, veeSvg, VEE_STATES } from '../mascot.js';
+import { setMascotState, setMascotFromFit, veeSvg, VEE_STATES } from '../src/mascot.js';
 
 // A minimal stand-in for an Element's classList so the pure state logic can be
 // tested without a DOM environment.

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildSynergiesPrompt, parseSynergies } from '../synergies.js';
+import { buildSynergiesPrompt, parseSynergies } from '../src/synergies.js';
 
 const repo = {
   repoId: 'facebook/react',

@@ -7,7 +7,7 @@
 // is null — the extension's local "runner" (measured metrics) isn't part of a
 // headless MCP, and factsBlock('') degrades cleanly.
 
-import { fetchRepoData } from '../fetcher.js';
+import { fetchRepoData } from '../src/fetcher.js';
 import {
   fetchSource,
   buildAtomsPrompt,
@@ -16,7 +16,7 @@ import {
   parseLineage,
   buildFeynmanPrompt,
   parseFeynman,
-} from '../deepdive.js';
+} from '../src/deepdive.js';
 import { parseRepoInput } from './repo-input.js';
 import { callAnthropic } from './anthropic.js';
 import { ghOpts } from './github-auth.js';

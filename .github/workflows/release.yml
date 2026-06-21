@@ -49,13 +49,7 @@ jobs:
           cp manifest.json README.md CHANGELOG.md repolens-release/
           cp batch.html library.html options.html output-tab.html share.html stack-tab.html whats-new.html repolens-release/
           cp ./*.css repolens-release/
-          for file in ./*.js; do
-            case "$(basename "$file")" in
-              eslint.config.js|vitest.config.js) continue ;;
-            esac
-            cp "$file" repolens-release/
-          done
-          cp -R icons assets store migrate vendor repolens-release/
+          cp -R src icons assets vendor repolens-release/
           (cd repolens-release && zip -r "../${ZIP}" . -x '*.DS_Store')
 
           unzip -Z1 "$ZIP" | sort > /tmp/repolens-zip-files.txt
@@ -65,7 +59,7 @@ jobs:
             echo "Release zip contains forbidden dev/test files" >&2
             exit 1
           fi
-          for required in manifest.json background.js output-tab.html library.html whats-new.html store/idb.js icons/icon128.png; do
+          for required in manifest.json src/background.js output-tab.html library.html whats-new.html src/store/idb.js icons/icon128.png; do
             if ! grep -Fxq "$required" /tmp/repolens-zip-files.txt; then
               echo "Release zip missing required file: $required" >&2
               exit 1

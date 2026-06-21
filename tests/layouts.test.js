@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { spine, flow, ranked } from '../layouts.js';
+import { spine, flow, ranked } from '../src/layouts.js';
 
 describe('layouts: spine', () => {
   it('empty input → empty string', () => {
@@ -55,7 +55,7 @@ describe('layouts: ranked', () => {
   });
 });
 
-import { matrix2x2, optionMatrix } from '../layouts.js';
+import { matrix2x2, optionMatrix } from '../src/layouts.js';
 
 describe('layouts: matrix2x2', () => {
   it('fewer than 4 cells → empty string', () => {

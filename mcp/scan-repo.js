@@ -1,10 +1,10 @@
 // scan_repo tool: verdict-first analysis of a GitHub repo.
 // Pipeline (extension modules, verbatim): fetchRepoData -> buildPrompt -> (Anthropic) -> parseClaudeResponse.
 
-import { fetchRepoData } from '../fetcher.js';
-import { buildPrompt } from '../prompt.js';
-import { parseClaudeResponse } from '../parser.js';
-import { deriveFit } from '../verdict.js';
+import { fetchRepoData } from '../src/fetcher.js';
+import { buildPrompt } from '../src/prompt.js';
+import { parseClaudeResponse } from '../src/parser.js';
+import { deriveFit } from '../src/verdict.js';
 import { parseRepoInput } from './repo-input.js';
 import { callAnthropic } from './anthropic.js';
 import { ghOpts } from './github-auth.js';

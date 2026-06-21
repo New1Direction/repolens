@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { toMarkdown, toHtml, toScaffold, slugify } from '../exporter.js';
+import { toMarkdown, toHtml, toScaffold, slugify } from '../src/exporter.js';
 
 const data = {
   repoId: 'facebook/react',

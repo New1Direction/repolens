@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { encodeShareCard, decodeShareCard } from '../share-card.js';
+import { encodeShareCard, decodeShareCard } from '../src/share-card.js';
 
 const sample = {
   repoId: 'facebook/react',

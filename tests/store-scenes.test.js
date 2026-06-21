@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { describe, it, expect } from 'vitest';
-import { saveScene, getScene, listScenes, deleteScene } from '../store.js';
+import { saveScene, getScene, listScenes, deleteScene } from '../src/store.js';
 
 const mk = (id, repoId) => ({
   id,

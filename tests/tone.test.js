@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { TONES, DEFAULT_TONE, isTone, tonePreamble, withTone } from '../tone.js';
+import { TONES, DEFAULT_TONE, isTone, tonePreamble, withTone } from '../src/tone.js';
 
 describe('TONES', () => {
   it('exposes the default + five named tones', () => {

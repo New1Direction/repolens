@@ -15,7 +15,7 @@ import {
   refreshOpenAIToken,
   mintOpenAIApiKey,
   waitForOpenAIOAuthResult,
-} from '../oauth-openai.js';
+} from '../src/oauth-openai.js';
 
 let store;
 beforeEach(() => {

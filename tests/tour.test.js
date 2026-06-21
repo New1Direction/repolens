@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildTour } from '../tour.js';
+import { buildTour } from '../src/tour.js';
 
 const scene = {
   nodes: [

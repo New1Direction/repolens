@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { nodeIdFor, edgeIdFor, egoLayout, egoGraphSvg } from '../graph.js';
-import { hashRepoId } from '../store.js';
+import { nodeIdFor, edgeIdFor, egoLayout, egoGraphSvg } from '../src/graph.js';
+import { hashRepoId } from '../src/store.js';
 
 describe('nodeIdFor', () => {
   it('hashes a canonical owner/repo unchanged (collapses onto its analyzed node)', () => {
@@ -96,7 +96,7 @@ describe('egoGraphSvg', () => {
   });
 });
 
-import { ideaIdFor } from '../graph.js';
+import { ideaIdFor } from '../src/graph.js';
 
 describe('ideaIdFor', () => {
   it('is deterministic and order-independent over the source repoIds', () => {

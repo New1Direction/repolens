@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { layoutCorkboard } from '../canvas-layout.js';
+import { layoutCorkboard } from '../src/canvas-layout.js';
 const N = (id) => ({ id, label: id, kind: 'repo', layer: null, x: 0, y: 0, pinned: false, ref: {} });
 
 describe('layoutCorkboard', () => {

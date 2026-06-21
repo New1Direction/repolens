@@ -5,7 +5,7 @@ import {
   SAFE_SETTING_KEYS,
   buildSettingsBackup,
   validateSettingsBackup,
-} from '../settings-backup.js';
+} from '../src/settings-backup.js';
 
 const settings = {
   theme: 'claude',

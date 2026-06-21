@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { hashId, createScene, withNodePos, validateScene } from '../scene.js';
+import { hashId, createScene, withNodePos, validateScene } from '../src/scene.js';
 
 describe('hashId', () => {
   it('is deterministic and positive', () => {

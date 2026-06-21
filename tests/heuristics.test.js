@@ -4,7 +4,7 @@ import {
   isHeuristicFramework,
   buildHeuristicsPrompt,
   parseHeuristics,
-} from '../heuristics.js';
+} from '../src/heuristics.js';
 
 const repo = { repoId: 'facebook/react', description: 'UI lib', language: 'JavaScript' };
 const source = { tree: ['src/index.js'], files: [{ path: 'src/index.js', content: 'export const x=1' }] };

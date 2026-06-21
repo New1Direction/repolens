@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildVersusPrompt, parseVersus } from '../versus.js';
+import { buildVersusPrompt, parseVersus } from '../src/versus.js';
 
 const a = {
   repoId: 'facebook/react',

@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <title>Corkboard demo — RepoLens</title>
-    <link rel="stylesheet" href="./themes.css" />
+    <link rel="stylesheet" href="../themes.css" />
     <style>
       :root {
         --bg: #fbf6ea;
@@ -74,9 +74,9 @@
     </div>
 
     <script type="module">
-      import { buildLibraryScene } from './library-scene.js';
-      import { layoutCorkboard } from './canvas-layout.js';
-      import { mountCanvas } from './canvas-engine.js';
+      import { buildLibraryScene } from '../src/library-scene.js';
+      import { layoutCorkboard } from '../src/canvas-layout.js';
+      import { mountCanvas } from '../src/canvas-engine.js';
 
       // shape mirrors store.getLibraryGraph(): nodes carry the hashed nodeId + payload; edges use nodeIds.
       const graph = {

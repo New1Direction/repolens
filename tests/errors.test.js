@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { categorizeError, rankErrors, errorActions } from '../errors.js';
+import { categorizeError, rankErrors, errorActions } from '../src/errors.js';
 
 describe('categorizeError', () => {
   it('classifies auth failures as fixable, not retryable', () => {

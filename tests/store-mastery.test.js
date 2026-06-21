@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import 'fake-indexeddb/auto';
-import { setMastery, getMastery, getAllMastery } from '../store.js';
+import { setMastery, getMastery, getAllMastery } from '../src/store.js';
 
 describe('mastery persistence', () => {
   it('round-trips a record by repoId', async () => {

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { DEMO_REPO, demoScene, isDemo } from '../demo-repo.js';
-import { validateScene } from '../scene.js';
+import { DEMO_REPO, demoScene, isDemo } from '../src/demo-repo.js';
+import { validateScene } from '../src/scene.js';
 
 describe('demo fixture', () => {
   it('is a valid analysis payload tagged __demo__', () => {

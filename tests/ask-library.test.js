@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildAskPrompt, parseAskAnswer } from '../ask-library.js';
+import { buildAskPrompt, parseAskAnswer } from '../src/ask-library.js';
 
 const docs = [
   {
@@ -117,7 +117,7 @@ describe('parseAskAnswer', () => {
   });
 });
 
-import { buildFilterPrompt, parseFilterResult } from '../ask-library.js';
+import { buildFilterPrompt, parseFilterResult } from '../src/ask-library.js';
 
 describe('buildFilterPrompt', () => {
   it('includes the question', () => {

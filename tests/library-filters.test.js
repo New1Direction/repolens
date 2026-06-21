@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applyFilters } from '../library-filters.js';
+import { applyFilters } from '../src/library-filters.js';
 
 const mkRow = (repoId, over = {}) => ({
   repoId,

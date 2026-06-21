@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { daysSince, diffAnalyses } from '../diff-analysis.js';
+import { daysSince, diffAnalyses } from '../src/diff-analysis.js';
 
 const NOW = new Date('2026-06-13T00:00:00Z').getTime();
 const daysAgo = (n) => new Date(NOW - n * 86_400_000).toISOString();

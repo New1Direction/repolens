@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { escapeHtml, raw, html } from '../safe-html.js';
+import { escapeHtml, raw, html } from '../src/safe-html.js';
 
 describe('escapeHtml', () => {
   it('escapes all five HTML-significant characters', () => {

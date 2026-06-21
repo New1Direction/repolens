@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { edgeBezier, NODE_W, NODE_H, nodeClass } from '../canvas-engine.js';
+import { edgeBezier, NODE_W, NODE_H, nodeClass } from '../src/canvas-engine.js';
 
 describe('edgeBezier', () => {
   it('starts at the source node right-middle and ends at the target left-middle', () => {
