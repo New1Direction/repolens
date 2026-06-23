@@ -34,6 +34,7 @@ the same day, as a rapid burst of improvements, so they share a date.
 
 ### Fixed
 
+- **Deep Dive (and every lens) no longer freezes mid-run.** On-demand lenses run their model calls in the MV3 service worker _after_ the initial scan's keepalive is released; without it, the worker could be suspended during a provider rate-limit wait — most often before Deep Dive's _Mapping causal lineage_ stage — leaving the tab spinning forever with no error. The keepalive now covers every on-demand lens (Deep Dive, Systems, Ideate, Prioritize, Synergies, Combinator, Versus, SKTPG, Docs Quality, Maintenance, Fits-Stack, Ask), bounded so a stalled run can't pin the worker, and Deep Dive falls back to a “stopped responding → Try again” state instead of an endless spinner.
 - **Stuck scan recovery.** Output tabs now keep the MV3 service worker warm while a scan is loading, repository metadata fetches have a 20s timeout, and output pages render a timeout/retry state instead of spinning forever if the background scan stops responding.
 - **Library load/save hangs after updates.** IndexedDB connections now close on version upgrades and blocked opens reject instead of hanging forever, so stale RepoLens tabs can no longer leave the Library blank or a scan stuck on “Saving…”.
 
