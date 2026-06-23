@@ -654,7 +654,7 @@ async function init() {
     const actions = errorActions(kind, canRetry);
     const HINTS = {
       none: 'Add an API key in Settings → it only takes 30 seconds.',
-      auth: "Your API key was rejected. Regenerate it from the provider's console, then paste it in Settings.",
+      auth: "The provider rejected your credential. For a Claude/ChatGPT subscription sign-in, reconnect it in Settings; for an API key, regenerate it from the provider's console.",
       rate_limit:
         "You've hit the rate limit. Wait a minute and retry — or switch to a different provider in Settings.",
       not_found: 'The model name is unrecognised. Open Settings and pick a valid model from the dropdown.',

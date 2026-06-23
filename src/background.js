@@ -1829,7 +1829,10 @@ async function callAnthropic(model = 'claude-sonnet-4-6', prompt) {
     messages: [{ role: 'user', content: prompt }],
   };
   if (oauth) {
-    body.system = "You are Claude Code, Anthropic's official CLI for Claude.";
+    // Claude's OAuth (subscription) tokens are only honored when the request looks
+    // like the real CLI: the system prompt must lead with the exact Claude Code
+    // identity, sent as a structured text-block array (the form the CLI itself uses).
+    body.system = [{ type: 'text', text: "You are Claude Code, Anthropic's official CLI for Claude." }];
   }
 
   const res = await fetchWithTimeout(
@@ -1844,7 +1847,13 @@ async function callAnthropic(model = 'claude-sonnet-4-6', prompt) {
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     if (oauth && (res.status === 401 || res.status === 403)) await clearAnthropicOAuthTokens();
-    throw new Error(err.error?.message ?? `Anthropic API error ${res.status}`);
+    // Keep both the HTTP status and Anthropic's own reason: the status lets
+    // categorizeError classify reliably (not by keyword-guessing the text), and the
+    // reason is what actually explains an OAuth token refused at inference time.
+    const detail = err.error?.message || `Anthropic API error ${res.status}`;
+    const e = new Error(detail);
+    e.status = res.status;
+    throw e;
   }
   const data = await res.json();
   const text = data.content?.[0]?.text;

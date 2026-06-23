@@ -37,8 +37,17 @@ function humanize(kind, provider, fallback) {
   switch (kind) {
     case 'none':
       return 'No AI provider connected — open Settings to add a key.';
-    case 'auth':
-      return `${who}’s credential was rejected — check or reconnect it in Settings.`;
+    case 'auth': {
+      // Surface the provider's actual reason when we have one — the generic line
+      // hides *why* (e.g. an OAuth subscription token refused at inference time,
+      // which reads very differently from a mistyped API key).
+      const detail = (fallback || '').trim();
+      const showDetail =
+        detail && !/credential was rejected/i.test(detail) && !/^[\w ]+ API error \d+$/i.test(detail);
+      return showDetail
+        ? `${who}’s credential was rejected: ${detail}. Reconnect it in Settings.`
+        : `${who}’s credential was rejected — check or reconnect it in Settings.`;
+    }
     case 'rate_limit':
       return `${who} is rate-limited — wait a moment, or route this part to another provider.`;
     case 'not_found':

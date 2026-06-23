@@ -14,6 +14,21 @@ describe('categorizeError', () => {
     expect(categorizeError({ status: 401 }).kind).toBe('auth');
     expect(categorizeError('invalid x-api-key').kind).toBe('auth');
   });
+  it('surfaces the provider’s real reason for auth failures instead of a generic line', () => {
+    // Mirrors how callAnthropic throws: a clean reason string plus the HTTP status.
+    const r = categorizeError(
+      Object.assign(new Error('OAuth authentication is currently not supported'), { status: 401 }),
+      'Anthropic'
+    );
+    expect(r.kind).toBe('auth');
+    expect(r.userMessage).toMatch(/OAuth authentication is currently not supported/);
+  });
+  it('keeps the generic auth line when there is no specific reason (bare status)', () => {
+    const r = categorizeError({ status: 401 }, 'Anthropic');
+    expect(r.kind).toBe('auth');
+    expect(r.userMessage).toMatch(/reconnect it in Settings/i);
+    expect(r.userMessage).not.toMatch(/API error/i);
+  });
   it('classifies rate limits as retryable', () => {
     expect(categorizeError(new Error('429 Too Many Requests')).kind).toBe('rate_limit');
     expect(categorizeError('rate limit exceeded').retryable).toBe(true);
