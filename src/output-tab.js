@@ -11,6 +11,8 @@ import { lineageSvg, loopSvg } from './diagram.js';
 import { explainerFor, SCAN_EXPLAINERS } from './explainers.js';
 import { deriveFit, firstSentence, verdictCopyText } from './verdict.js';
 import { pingRunner } from './runner.js';
+import { deepDiveLifecycleAction } from './deep-dive-lifecycle.js';
+import { lensActivitySignature } from './background-activity.js';
 import { emptyLens, runOf } from './lens-runs.js';
 import { spine, flow, ranked, matrix2x2, optionMatrix } from './layouts.js';
 import { guideFor } from './lens-guide.js';
@@ -98,7 +100,9 @@ const sessionKey = params.get('key');
 
 let keepalivePort = null;
 let keepaliveTimer = null;
-function startScanKeepalive() {
+let keepaliveRefs = 0;
+
+function openKeepalivePort() {
   if (!sessionKey || keepalivePort) return;
   try {
     keepalivePort = chrome.runtime.connect({ name: 'repolens-scan-keepalive' });
@@ -106,7 +110,7 @@ function startScanKeepalive() {
       try {
         keepalivePort?.postMessage({ type: 'PING', sessionKey, at: Date.now() });
       } catch {
-        /* the worker may be restarting; the next scan/reload reconnects */
+        /* the worker may be restarting; the next tick/reload reconnects */
       }
     };
     ping();
@@ -115,13 +119,17 @@ function startScanKeepalive() {
       keepalivePort = null;
       if (keepaliveTimer) clearInterval(keepaliveTimer);
       keepaliveTimer = null;
+      // Work still in flight (refs > 0) means the worker cycled mid-run — reopen so the
+      // pings keep resetting its idle timer. A deliberate release sets refs to 0 first,
+      // so this no-ops on intentional teardown.
+      if (keepaliveRefs > 0) openKeepalivePort();
     });
   } catch {
     /* keepalive is best-effort; polling still works without it */
   }
 }
 
-function stopScanKeepalive() {
+function closeKeepalivePort() {
   if (keepaliveTimer) clearInterval(keepaliveTimer);
   keepaliveTimer = null;
   try {
@@ -130,6 +138,21 @@ function stopScanKeepalive() {
     /* already disconnected */
   }
   keepalivePort = null;
+}
+
+// Reference-counted keepalive. Every long background flow (initial scan, Deep Dive, and
+// any on-demand lens) keeps the MV3 service worker warm for its own duration; the port only
+// closes once the last holder releases it. Without this, a worker suspended mid-flow leaves
+// the session entry frozen forever — the exact failure Deep Dive hit on the lineage stage.
+function acquireKeepalive() {
+  keepaliveRefs += 1;
+  if (keepaliveRefs === 1) openKeepalivePort();
+}
+
+function releaseKeepalive() {
+  if (keepaliveRefs === 0) return;
+  keepaliveRefs -= 1;
+  if (keepaliveRefs === 0) closeKeepalivePort();
 }
 
 const loading = document.getElementById('loading-state');
@@ -587,13 +610,13 @@ async function init() {
     errorState.style.display = 'flex';
     return;
   }
-  startScanKeepalive();
+  acquireKeepalive();
   let data;
   try {
     data = await waitForData();
   } catch (err) {
     loading.style.display = 'none';
-    stopScanKeepalive();
+    releaseKeepalive();
     try {
       const stored = await chrome.storage.session.get(sessionKey);
       const stale = stored[sessionKey];
@@ -620,7 +643,7 @@ async function init() {
     return;
   }
   loading.style.display = 'none';
-  stopScanKeepalive();
+  releaseKeepalive();
 
   if (data.error) {
     errorMsg.textContent = data.error;
@@ -718,6 +741,7 @@ async function init() {
     .catch(() => {});
   renderThemeSwitcher();
   initHeaderActions();
+  manageKeepalive(data); // re-warm the worker if a lens was already running when the tab loaded
   renderDeepDive(data);
   renderFrameworkLens(data, SYSTEMS_CFG);
   renderFrameworkLens(data, IDEATE_CFG);
@@ -1509,7 +1533,106 @@ function renderUnderstandCheck(host, questions, repoId) {
   drawCard();
 }
 
+// ── Deep Dive keepalive + stall watchdog ──
+// ── MV3 keepalive for ALL on-demand lenses ──
+// Every lens that runs AI work after the initial scan (Deep Dive, Systems/Ideate/Prioritize,
+// Synergies, Combinator, Versus, SKTPG, Docs, Maintenance, Fits-Stack, Ask) needs the worker
+// kept warm or it can be suspended mid-run and freeze. Driven off the session entry's
+// activity signature so one place covers them all; the hold is bounded so a flow that never
+// settles can't pin the worker (and drain) indefinitely.
+const LENS_STALL_MS = 300_000; // give up keeping warm after 5 min with no progress at all
+let lensKeepaliveHeld = false;
+let lensSig = '';
+let lensStallTimer = null;
+
+function releaseLensKeepalive() {
+  if (lensStallTimer) {
+    clearTimeout(lensStallTimer);
+    lensStallTimer = null;
+  }
+  if (lensKeepaliveHeld) {
+    releaseKeepalive();
+    lensKeepaliveHeld = false;
+  }
+}
+
+function manageKeepalive(entry) {
+  const sig = lensActivitySignature(entry);
+  if (sig === lensSig) return; // background-work state unchanged → nothing to do
+  lensSig = sig;
+  const inFlight = sig !== '';
+
+  if (inFlight && !lensKeepaliveHeld) {
+    acquireKeepalive();
+    lensKeepaliveHeld = true;
+  } else if (!inFlight && lensKeepaliveHeld) {
+    releaseKeepalive();
+    lensKeepaliveHeld = false;
+  }
+
+  // Progress (a signature change) re-arms the hold; prolonged silence releases it.
+  if (lensStallTimer) {
+    clearTimeout(lensStallTimer);
+    lensStallTimer = null;
+  }
+  if (inFlight) lensStallTimer = setTimeout(releaseLensKeepalive, LENS_STALL_MS);
+}
+
+// ── Deep Dive stall watchdog ──
+// The heaviest flow gets a tighter watchdog with a graceful recovery: if a stage makes no
+// progress within DD_STALL_MS, persist an error so the tab shows "Deep Dive failed → Try
+// again" (and the keepalive driver then releases) instead of an endless spinner. Keepalive
+// itself is handled by manageKeepalive above; this only owns the watchdog + recovery.
+const DD_STALL_MS = 180_000; // longest plausible single stage (runner ~90s, model + retries) ×2
+let ddLastStatus = null;
+let ddWatchdog = null;
+
+function clearDdWatchdog() {
+  if (ddWatchdog) {
+    clearTimeout(ddWatchdog);
+    ddWatchdog = null;
+  }
+}
+
+async function onDeepDiveStalled() {
+  ddWatchdog = null;
+  ddLastStatus = 'error'; // settle locally so stray re-renders don't re-arm the watchdog
+  const msg =
+    'Deep Dive stopped responding — the background worker was likely suspended mid-run. ' +
+    'Try again; if it repeats, reload RepoLens from chrome://extensions first.';
+  try {
+    // Persist the error so renderDeepDive shows its normal failed/Try-again state, the result
+    // survives a reload, and manageKeepalive sees the run settle and releases the worker.
+    const cur = (await chrome.storage.session.get(sessionKey))[sessionKey] || {};
+    await chrome.storage.session.set({
+      [sessionKey]: { ...cur, deepDive: { ...(cur.deepDive || {}), status: 'error', error: msg } },
+    });
+  } catch {
+    // Storage unavailable — fall back to a local render so the user is never stuck.
+    const host = document.getElementById('t10');
+    if (host) {
+      host.innerHTML = `<div class="dd-cta"><h3>Deep Dive stopped responding</h3><p>${esc(msg)}</p><button class="dd-run" id="dd-run">Try again</button></div>`;
+      document.getElementById('dd-run')?.addEventListener('click', () => {
+        if (lastData) startDeepDive(lastData);
+      });
+    }
+  }
+}
+
+function manageDeepDiveWatchdog(d) {
+  const status = d?.deepDive?.status ?? null;
+  const action = deepDiveLifecycleAction(ddLastStatus, status);
+  if (!action.changed) return;
+  ddLastStatus = status;
+  if (action.clearWatchdog) clearDdWatchdog();
+  if (action.resetWatchdog) {
+    clearDdWatchdog();
+    ddWatchdog = setTimeout(onDeepDiveStalled, DD_STALL_MS);
+  }
+}
+
 function renderDeepDive(d) {
+  manageDeepDiveWatchdog(d);
   const host = document.getElementById('t10');
   if (!host) return;
   const dd = d.deepDive;
@@ -2580,6 +2703,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
   const nv = changes[sessionKey].newValue;
   const ov = changes[sessionKey].oldValue || {};
   lastData = nv;
+  manageKeepalive(nv); // keep the MV3 worker warm while any lens runs in the background
   renderDeepDive(nv);
   renderFrameworkLens(nv, SYSTEMS_CFG);
   renderFrameworkLens(nv, IDEATE_CFG);
