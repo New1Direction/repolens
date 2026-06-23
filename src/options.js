@@ -520,13 +520,16 @@ anyCompatConnected().then((on) => {
   }
 });
 
-function showStatus(msg, color) {
+let _statusHideTimer = null;
+function showStatus(msg, color, durationMs = 2600) {
   statusEl.textContent = msg;
   statusEl.style.color = color;
   statusEl.style.display = 'block';
-  setTimeout(() => {
+  if (_statusHideTimer) clearTimeout(_statusHideTimer);
+  _statusHideTimer = setTimeout(() => {
     statusEl.style.display = 'none';
-  }, 2200);
+    _statusHideTimer = null;
+  }, durationMs);
 }
 
 function openTab(url) {
@@ -895,13 +898,19 @@ document.getElementById('anthropic-oauth-start')?.addEventListener('click', asyn
 });
 
 document.getElementById('save-anthropic-oauth')?.addEventListener('click', async () => {
+  const btn = document.getElementById('save-anthropic-oauth');
   const input = document.getElementById('anthropicOAuthCode');
   const authCode = input.value.trim();
-  if (!authCode) return;
+  if (!authCode) {
+    showStatus('Paste the Claude code first.', '#f87171');
+    input.focus();
+    return;
+  }
   try {
+    setButtonBusy(btn, true, 'Finishing…');
     const s = await chrome.storage.local.get(ANTHROPIC_OAUTH_VERIFIER_KEY);
     const verifier = s[ANTHROPIC_OAUTH_VERIFIER_KEY];
-    if (!verifier) throw new Error('Start Claude sign-in first.');
+    if (!verifier) throw new Error('Start Claude sign-in first, then paste the code.');
     const tokens = await exchangeAnthropicCode({ authCode, verifier });
     await saveAnthropicOAuthTokens(tokens);
     await chrome.storage.local.remove(['anthropicKey', ANTHROPIC_OAUTH_VERIFIER_KEY]);
@@ -909,7 +918,11 @@ document.getElementById('save-anthropic-oauth')?.addEventListener('click', async
     setConnected('anthropic', tokens.access, { method: 'oauth' });
     showStatus('✓ Connected to Claude', '#4ade80');
   } catch (err) {
-    showStatus('✗ Claude sign-in: ' + (err?.message || err), '#f87171');
+    // Keep the real reason on screen long enough to read — Claude codes are
+    // short-lived, so an expired/reused code is the most common failure here.
+    showStatus('✗ Claude sign-in: ' + (err?.message || err), '#f87171', 7000);
+  } finally {
+    setButtonBusy(btn, false);
   }
 });
 

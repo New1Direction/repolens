@@ -417,8 +417,19 @@
         background: var(--accent-deep-hover);
       }
       #status {
-        font-size: 12px;
-        margin-top: 12px;
+        position: fixed;
+        left: 50%;
+        bottom: 24px;
+        transform: translateX(-50%);
+        max-width: min(90vw, 520px);
+        font-size: 13px;
+        line-height: 1.4;
+        padding: 12px 18px;
+        border-radius: 12px;
+        background: var(--surface, #1b1b22);
+        border: 1px solid var(--border, #3a3a44);
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+        z-index: 9999;
         display: none;
       }
 
