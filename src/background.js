@@ -54,8 +54,8 @@ import {
   OPENAI_CREDENTIALS_KEY,
   clearOpenAICredentials,
   exchangeOpenAICode,
+  getOpenAIAccessToken,
   isOpenAIOAuthCallbackUrl,
-  mintOpenAIApiKey,
   refreshOpenAIToken,
 } from './oauth-openai.js';
 import {
@@ -603,8 +603,9 @@ const _handledOAuthCodes = new Set();
 //
 // The redirect lands on http://localhost:1455/auth/callback — the loopback server
 // the CLI runs doesn't exist in a browser, so the navigation can't complete. We
-// intercept it (onBeforeNavigate fires first, with the ?code=), exchange the code,
-// then mint an API key so inference uses the standard OpenAI engine.
+// intercept it (onBeforeNavigate fires first, with the ?code=), exchange the code
+// for OAuth credentials. Inference uses the Codex Responses API with the access
+// token directly — no API key minting needed.
 
 async function handleOpenAIOAuthCallback(rawUrl, tabId) {
   if (!rawUrl || !isOpenAIOAuthCallbackUrl(rawUrl)) return;
@@ -652,15 +653,12 @@ async function handleOpenAIOAuthCallback(rawUrl, tabId) {
 
   try {
     const creds = await exchangeOpenAICode({ code, state, verifier, storedState });
-    // Mint a usable API key so scans run through the ordinary OpenAI engine.
-    const apiKey = await mintOpenAIApiKey(creds.id_token);
-    await chrome.storage.local.set({ openaiKey: apiKey });
+    // Store the OAuth credentials. Inference uses the Codex Responses API
+    // with the access token directly — no API key minting needed.
     await cleanupFlowMarkers();
     if (tabId) chrome.tabs.remove(tabId).catch(() => {});
   } catch (err) {
     console.error('[RepoLens OAuth] OpenAI exchange error:', err.message);
-    // No usable key ⇒ don't leave half-finished OAuth state that reads as "connected".
-    await clearOpenAICredentials().catch(() => {});
     await chrome.storage.local.set({ [OPENAI_OAUTH_ERROR_KEY]: err.message });
     await cleanupFlowMarkers();
     if (tabId) chrome.tabs.remove(tabId).catch(() => {});
@@ -1657,48 +1655,124 @@ async function callEmbeddings(keys, texts) {
   }
 }
 
-// OpenAI via "Sign in with ChatGPT" (the Codex CLI OAuth flow). The OAuth session is
-// exchanged for a normal OpenAI API key; on a 401 we refresh the session, re-mint, and
-// retry once. Inference itself is the standard api.openai.com chat-completions engine.
-async function callOpenAIOAuth(model = 'gpt-4.1', prompt) {
-  let { openaiKey } = await chrome.storage.local.get('openaiKey');
-  if (!openaiKey) openaiKey = await mintAndStoreOpenAIKey();
+// OpenAI via "Sign in with ChatGPT" (Codex CLI OAuth flow).
+//
+// Instead of trying to mint an API key (which requires API platform access that
+// most ChatGPT subscriptions don't include), we use the Codex Responses API at
+// chatgpt.com/backend-api/codex/responses — the same endpoint Aside and the
+// Codex CLI use. The OAuth access token works directly; no sk- key needed.
+//
+// The endpoint returns SSE. We stream it and accumulate the text.
+async function callOpenAIOAuth(model = 'gpt-5.4', prompt) {
+  const accessToken = await getOpenAIAccessToken();
 
-  let res = await openaiChat(openaiKey, model, prompt);
+  const body = {
+    model,
+    instructions: 'You are a helpful assistant.',
+    input: [{ role: 'user', content: [{ type: 'input_text', text: prompt }] }],
+    stream: true,
+    store: false,
+  };
+
+  let res = await fetchWithTimeout(
+    'https://chatgpt.com/backend-api/codex/responses',
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    },
+    'OpenAI (Codex)'
+  );
+
+  // 401 on first try → force-refresh the access token and retry once.
   if (res.status === 401) {
-    openaiKey = await mintAndStoreOpenAIKey(); // the minted key may have been revoked — re-mint once
-    res = await openaiChat(openaiKey, model, prompt);
+    const fresh = await refreshOpenAIToken({ force: true });
+    res = await fetchWithTimeout(
+      'https://chatgpt.com/backend-api/codex/responses',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${fresh.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      },
+      'OpenAI (Codex)'
+    );
   }
+
   if (!res.ok) {
     if (res.status === 401) {
       await clearOpenAICredentials();
       throw new Error('OpenAI session expired — please reconnect in Settings');
     }
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error?.message ?? `OpenAI API error ${res.status}`);
+    const detail = await res.text().catch(() => '');
+    let msg;
+    try { msg = JSON.parse(detail)?.error?.message; } catch { msg = ''; }
+    throw new Error(msg || `OpenAI Codex API error ${res.status}`);
   }
-  return parseOpenAiText(await res.json());
+
+  return parseCodexResponsesSSE(res, AI_FETCH_TIMEOUT_MS);
 }
 
-// Refresh the ChatGPT OAuth session and mint a fresh OpenAI API key into the shared slot.
-async function mintAndStoreOpenAIKey() {
-  const creds = await refreshOpenAIToken({ force: true }); // guarantee a fresh id_token to exchange
-  const key = await mintOpenAIApiKey(creds?.id_token);
-  await chrome.storage.local.set({ openaiKey: key });
-  return key;
-}
+// Parse the SSE stream from the Codex Responses API. Events include:
+//   response.output_text.delta  → incremental text chunks
+//   response.completed          → final response with full output
+//   response.done / .incomplete → terminal signal
+//   error / response.failed     → error
+// We accumulate delta text and, if a completed event arrives with full text,
+// prefer that over the accumulated deltas.
+async function parseCodexResponsesSSE(response, timeoutMs = 60_000) {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let fullText = '';
+  const deadline = Date.now() + timeoutMs;
 
-// Bare OpenAI chat request returning the raw Response, so callers can branch on 401.
-function openaiChat(key, model, prompt) {
-  return fetchWithTimeout(
-    'https://api.openai.com/v1/chat/completions',
-    {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(openaiBody(model, prompt, 4096)),
-    },
-    'OpenAI'
-  );
+  for (;;) {
+    if (Date.now() > deadline) throw new Error('OpenAI Codex stream timed out');
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    let sep;
+    while ((sep = buffer.indexOf('\n\n')) !== -1) {
+      const block = buffer.slice(0, sep);
+      buffer = buffer.slice(sep + 2);
+      const dataLines = block
+        .split('\n')
+        .filter((l) => l.startsWith('data:'))
+        .map((l) => l.slice(5).trim())
+        .filter(Boolean);
+      for (const data of dataLines) {
+        if (data === '[DONE]') continue;
+        let evt;
+        try { evt = JSON.parse(data); } catch { continue; }
+        if (evt.type === 'response.output_text.delta' && typeof evt.delta === 'string') {
+          fullText += evt.delta;
+        }
+        if ((evt.type === 'response.completed' || evt.type === 'response.done') && evt.response?.output) {
+          for (const item of evt.response.output) {
+            if (item.type === 'message' && Array.isArray(item.content)) {
+              for (const blk of item.content) {
+                if (blk.type === 'output_text' && blk.text) fullText = blk.text;
+              }
+            }
+          }
+        }
+        if (evt.type === 'error' || evt.type === 'response.failed') {
+          const msg = evt.error?.message || evt.message || 'Codex API error';
+          throw new Error(msg);
+        }
+      }
+    }
+  }
+
+  if (!fullText) throw new Error('OpenAI Codex returned no text content');
+  return fullText;
 }
 
 // Anthropic-compatible Messages API (x-api-key + anthropic-version).
@@ -1736,7 +1810,7 @@ async function callAnthropicCompatible({
 async function testProvider(provider, keys) {
   const p = compatProviderById(provider);
   if (!p) return { ok: false, connection: false, function: false, detail: 'Unknown provider' };
-  // OpenAI connected via "Sign in with ChatGPT" exercises the OAuth → mint → call path.
+  // OpenAI connected via "Sign in with ChatGPT" exercises the Codex Responses API path.
   const isOpenAiOAuth = provider === 'openai' && !!keys[OPENAI_CREDENTIALS_KEY]?.refresh_token;
   if (!isCompatConnected(provider, keys) && !isOpenAiOAuth) {
     return {

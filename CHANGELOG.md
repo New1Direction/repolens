@@ -7,6 +7,24 @@ This project follows [Semantic Versioning](https://semver.org/) and groups chang
 by theme. Dates are when the release landed on `main`. 1.1.0 through 1.6.0 shipped
 the same day, as a rapid burst of improvements, so they share a date.
 
+## [Unreleased] — 2026-06-25 · _Subscription Auth Fix · Codex Responses API_
+
+### Fixed
+
+- **ChatGPT subscription sign-in now works without API platform access.** The previous flow tried to mint an OpenAI API key (`sk-…`) from the OAuth `id_token` via a token-exchange grant — which only works if your ChatGPT plan includes API platform access. Most ChatGPT Plus/Pro subscriptions don't, so every sign-in failed with "Couldn't enable API access for this ChatGPT account." RepoLens now uses the **Codex Responses API** at `chatgpt.com/backend-api/codex/responses` with the OAuth access token directly — the same endpoint the Codex CLI and Aside browser use. No API key minting required; the subscription itself authorizes the request.
+- **ChatGPT OAuth error messages are now readable.** The token-exchange error handler was stringifying nested error objects as `[object Object]`. It now drills into `error.message`, `error_description`, and stringifies objects properly.
+- **ChatGPT OAuth callback no longer clears credentials on success.** The callback handler was still calling `mintOpenAIApiKey()` after the code exchange, which failed and then wiped the just-stored OAuth credentials — making the provider look disconnected even though the sign-in itself succeeded.
+- **Claude sign-in rate-limit handling.** Anthropic's token endpoint rate-limits aggressively on repeated sign-in attempts or concurrent refreshes, surfacing as "Claude token exchange failed: Rate limited." Both the token exchange and refresh paths now retry with exponential backoff (up to 2 retries, reads `retry-after` header, 30s max delay) before giving up.
+
+### Changed
+
+- **OpenAI model catalog updated.** Added GPT-5.4 (recommended), GPT-5.4 mini, and GPT-5.5 to the model picker — matching what ChatGPT subscriptions expose via the Codex Responses API. GPT-4.1, GPT-4o, and o4-mini remain as fallbacks.
+- **Default OpenAI model is now GPT-5.4** (was GPT-4.1), matching the current generation available through ChatGPT subscriptions.
+- **`waitForOpenAIOAuthResult` now polls for OAuth credentials** instead of a minted API key, since the Codex Responses API path uses the access token directly.
+- **Removed unused `mintOpenAIApiKey` import** from background.js — the minting step is no longer part of the inference or callback path.
+
+---
+
 ## [Unreleased] — 2026-06-19 · _Actionable Scans · Smooth Loading · Provider Refresh · Stability_
 
 ### Added

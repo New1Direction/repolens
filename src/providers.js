@@ -28,8 +28,11 @@ export const COMPAT_PROVIDERS = [
     host: 'https://api.openai.com/*',
     docsUrl: 'https://platform.openai.com/api-keys',
     models: [
-      { value: 'gpt-4.1', label: 'GPT-4.1', recommended: true },
-      { value: 'gpt-4.1-mini', label: 'GPT-4.1 mini — fast' },
+      { value: 'gpt-5.4', label: 'GPT-5.4', recommended: true },
+      { value: 'gpt-5.4-mini', label: 'GPT-5.4 mini — fast' },
+      { value: 'gpt-5.5', label: 'GPT-5.5 — max quality' },
+      { value: 'gpt-4.1', label: 'GPT-4.1' },
+      { value: 'gpt-4.1-mini', label: 'GPT-4.1 mini' },
       { value: 'gpt-4o', label: 'GPT-4o' },
       { value: 'o4-mini', label: 'o4-mini — reasoning' },
     ],

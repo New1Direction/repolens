@@ -224,18 +224,34 @@ async function tokenErrorMessage(res, fallback) {
   const body = await res.text().catch(() => '');
   try {
     const e = JSON.parse(body);
-    return e.error_description || e.error || fallback || `Token request failed (${res.status})`;
+    return e.error_description || e.error?.message || e.error || e.message || fallback || `Token request failed (${res.status})`;
   } catch {
+    // body isn't JSON — if it's an object stringified somehow, stringify it properly
+    if (body && typeof body === 'object') return JSON.stringify(body).slice(0, 160);
     return (body && body.slice(0, 160)) || fallback || `Token request failed (${res.status})`;
   }
 }
 
-/** Poll storage until background.js finishes the callback exchange + key mint. */
+/** Get a valid (refreshed if needed) OAuth access_token for the ChatGPT session.
+ *  Used by the Codex Responses API path — no API-key minting required. */
+export async function getOpenAIAccessToken() {
+  let creds = await getOpenAICredentials();
+  if (!creds?.refresh_token) {
+    await clearOpenAICredentials();
+    throw new Error('OpenAI session expired — please reconnect in Settings');
+  }
+  if (isOpenAITokenExpired(creds)) {
+    creds = await refreshOpenAIToken();
+  }
+  return creds.access_token;
+}
+
+/** Poll storage until background.js finishes the callback exchange. */
 export async function waitForOpenAIOAuthResult({ timeoutMs = 300_000, intervalMs = 500 } = {}) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    const s = await chrome.storage.local.get([OPENAI_API_KEY_NAME, OPENAI_OAUTH_ERROR_KEY]);
-    if (s[OPENAI_API_KEY_NAME]) return { key: s[OPENAI_API_KEY_NAME] };
+    const s = await chrome.storage.local.get([OPENAI_CREDENTIALS_KEY, OPENAI_OAUTH_ERROR_KEY]);
+    if (s[OPENAI_CREDENTIALS_KEY]?.access_token) return { ok: true };
     if (s[OPENAI_OAUTH_ERROR_KEY]) return { error: s[OPENAI_OAUTH_ERROR_KEY] };
     await new Promise((r) => setTimeout(r, intervalMs));
   }

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "RepoLens",
-  "version": "3.1.0",
+  "version": "3.1.1",
   "description": "Click any repo. Get a straight answer on whether to use it.",
   "content_security_policy": { "extension_pages": "script-src 'self'; object-src 'self'" },
   "permissions": [
@@ -34,6 +34,7 @@
     "https://cli-chat-proxy.grok.com/*",
     "https://api.openai.com/*",
     "https://auth.openai.com/*",
+    "https://chatgpt.com/*",
     "https://api.deepseek.com/*",
     "https://api.groq.com/*",
     "https://integrate.api.nvidia.com/*",

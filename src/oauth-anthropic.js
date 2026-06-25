@@ -59,12 +59,45 @@ function expiresAt(expiresInSec) {
   return Date.now() + sec * 1000 - 5 * 60 * 1000;
 }
 
+const _sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/** Fetch with retry on 429 rate-limit. Anthropic's token endpoint throttles
+ *  aggressively — a single retry with backoff prevents false failures. */
+async function fetchWithRetry(url, opts, { maxRetries = 2, baseDelayMs = 2000 } = {}) {
+  let lastErr;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const res = await fetch(url, opts);
+      if (res.status !== 429) return res;
+      // Rate limited — read retry hint and back off
+      const retryAfter = res.headers.get('retry-after');
+      const delay = retryAfter ? Math.max(1000, Number(retryAfter) * 1000) : baseDelayMs * (2 ** attempt);
+      if (attempt < maxRetries) {
+        await _sleep(Math.min(delay, 30000));
+        continue;
+      }
+      return res; // last attempt — let the caller handle the 429
+    } catch (err) {
+      lastErr = err;
+      if (attempt < maxRetries) {
+        await _sleep(baseDelayMs * (2 ** attempt));
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastErr || new Error('Token request failed after retries');
+}
+
 async function parseTokenResponse(res, context) {
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
+    if (res.status === 429) {
+      throw new Error(`${context} failed: Rate limited. Please try again in a minute.`);
+    }
     const detail =
       json.error_description || json.error?.message || json.error || json.message || `${res.status}`;
-    throw new Error(`${context} failed: ${detail}`);
+    throw new Error(`${context} failed: ${typeof detail === 'object' ? JSON.stringify(detail) : detail}`);
   }
   if (!json.access_token) throw new Error(`${context} failed: Anthropic returned no access token`);
   return {
@@ -79,7 +112,7 @@ export async function exchangeAnthropicCode({ authCode, verifier }) {
   if (!code) throw new Error('Paste the Claude authorization code first.');
   if (state && state !== verifier) throw new Error('Claude sign-in state mismatch. Start the sign-in again.');
 
-  const res = await fetch(ANTHROPIC_TOKEN_URL, {
+  const res = await fetchWithRetry(ANTHROPIC_TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -136,7 +169,7 @@ export async function refreshAnthropicAccessToken() {
       throw new Error('Claude sign-in expired — reconnect Anthropic in Settings.');
     }
 
-    const res = await fetch(ANTHROPIC_TOKEN_URL, {
+    const res = await fetchWithRetry(ANTHROPIC_TOKEN_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

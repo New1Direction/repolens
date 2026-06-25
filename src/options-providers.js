@@ -258,7 +258,8 @@ function buildCard(p, snapshot) {
   }
 
   // "Sign in with ChatGPT" — PKCE authorize in a new tab; background.js intercepts the
-  // loopback redirect, exchanges the code, and mints an OpenAI API key into openaiKey.
+  // loopback redirect, exchanges the code, and stores the OAuth credentials.
+  // Inference uses the Codex Responses API with the access token directly.
   async function connectOpenAiOAuth() {
     const restore = () => {
       openAiOAuthBtn.disabled = false;

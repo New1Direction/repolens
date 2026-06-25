@@ -96,7 +96,7 @@ describe('buildAttemptPlan', () => {
   it('treats ChatGPT-login OAuth as connected before the OpenAI key is minted', () => {
     expect(isConnected('openai', { openaiOauthCredentials: { refresh_token: 'refresh' } })).toBe(true);
     const plan = buildAttemptPlan({ keys: { openaiOauthCredentials: { refresh_token: 'refresh' } } });
-    expect(plan).toEqual([{ provider: 'openai', model: 'gpt-4.1' }]);
+    expect(plan).toEqual([{ provider: 'openai', model: 'gpt-5.4' }]);
   });
 
   it('a registry provider can be the per-part override and is tried first', () => {
